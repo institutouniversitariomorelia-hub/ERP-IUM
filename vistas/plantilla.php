@@ -23,7 +23,7 @@ if (!isset($vista_a_cargar) || $vista_a_cargar === "404") {
     
     <style>
         :root { --bs-danger: #E70000; }
-        body { background-color: #94493fff; }
+        body { background-color: #37ca3cff; }
         #sidebar {
             width: 250px; height: 100vh; position: fixed;
             background-color: var(--bs-danger);
