@@ -1,129 +1,78 @@
 <?php
-// controllers/AuthController.php
+// controllers/AuditoriaController.php
 
-// Asegúrate de que password.php esté en la raíz del proyecto
-require_once 'password.php'; 
+require_once 'models/AuditoriaModel.php';
+require_once 'models/UserModel.php'; // Necesitamos la lista de usuarios para el filtro
 
-class AuthController {
+class AuditoriaController {
     private $db;
+    private $auditoriaModel;
+    private $userModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
+        $this->auditoriaModel = new AuditoriaModel($dbConnection);
+        $this->userModel = new UserModel($dbConnection); // Instanciar UserModel
     }
 
     /**
-     * Muestra la página/vista del formulario de login.
+     * Acción principal: Muestra la página de auditoría con filtros y tablas.
      */
-    public function login() {
-        if (isset($_SESSION['user_id'])) {
-            header('Location: ' . BASE_URL . 'index.php?controller=' . DEFAULT_CONTROLLER . '&action=' . DEFAULT_ACTION);
-            exit;
-        }
-        $error = $_GET['error'] ?? null;
-        // Verificar si la vista existe
-        if (file_exists('views/login.php')) {
-            require 'views/login.php';
-        } else {
-            die("Error crítico: No se encontró la vista de login.");
-        }
-    }
+    public function index() {
+        if (!isset($_SESSION['user_id'])) { header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login'); exit; }
 
-    /**
-     * Procesa los datos enviados desde el formulario de login.
-     */
-    public function processLogin() {
-        $username = $_POST['username'] ?? '';
-        $password = $_POST['password'] ?? '';
+        // Recoger filtros de la URL (si se enviaron por GET desde el formulario)
+        $filtros = [
+            'seccion' => $_GET['seccion'] ?? null,
+            'usuario' => $_GET['usuario'] ?? null,
+            'fecha_inicio' => $_GET['fecha_inicio'] ?? null,
+            'fecha_fin' => $_GET['fecha_fin'] ?? null,
+        ];
 
-        if (empty($username) || empty($password)) {
-            header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login&error=Usuario y contraseña son requeridos');
-            exit;
-        }
+        // Pedir datos a los Modelos
+        $auditoriaLogs = $this->auditoriaModel->getAuditoriaLogs($filtros);
+        $usuarios = $this->userModel->getAllUsers(); // Obtener lista de usuarios para el <select>
 
-        $stmt = $this->db->prepare("SELECT id, nombre, username, password, rol FROM usuarios WHERE username = ?");
-        if (!$stmt) {
-             error_log("Error al preparar la consulta de login: " . $this->db->error);
-             header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login&error=Error interno del servidor');
-             exit;
-         }
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        $result = $stmt->get_result();
+        // Datos para la Vista
+        $pageTitle = "Historial de Auditoría";
+        $activeModule = "auditoria";
 
-        if ($user = $result->fetch_assoc()) {
-            if (password_verify($password, $user['password'])) {
-                session_regenerate_id(true);
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['user_nombre'] = $user['nombre'];
-                $_SESSION['user_username'] = $user['username'];
-                $_SESSION['user_rol'] = $user['rol'];
-                header('Location: ' . BASE_URL . 'index.php?controller=' . DEFAULT_CONTROLLER . '&action=' . DEFAULT_ACTION);
-                exit;
-            }
-        }
-        
-        $stmt->close(); // Cerrar statement
-        header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login&error=Usuario o contraseña incorrectos');
-        exit;
-    }
-
-    /**
-     * Cierra la sesión del usuario.
-     */
-    public function logout() {
-        session_unset(); 
-        session_destroy(); 
-        header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login');
-        exit;
+        // Renderizar la Vista dentro del Layout
+        $this->renderView('auditoria_list', [
+            'pageTitle' => $pageTitle,
+            'activeModule' => $activeModule,
+            'auditoriaLogs' => $auditoriaLogs,
+            'usuarios' => $usuarios, // Pasar usuarios al <select>
+            'filtrosActuales' => $filtros // Pasar filtros actuales para mantenerlos en el form
+        ]);
     }
     
     /**
-     * Acción AJAX: Cambia la contraseña de un usuario.
+     * Acción AJAX: Obtiene los logs de auditoría (usada por el JS si no recargamos página).
+     * Nota: Actualmente recargamos la página al filtrar, así que esta acción AJAX no se usa,
+     * pero la dejamos como ejemplo si quisiéramos actualizar la tabla dinámicamente.
      */
-    public function changePassword() {
-        header('Content-Type: application/json');
-        if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
+     /*
+     public function getLogsAjax() {
+         header('Content-Type: application/json');
+         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+         
+         $filtros = $_GET; // Recoger filtros de la petición GET (o POST)
+         $logs = $this->auditoriaModel->getAuditoriaLogs($filtros);
+         echo json_encode($logs);
+         exit;
+     }
+     */
 
-        $username = $_POST['username'] ?? '';
-        $newPassword = $_POST['password'] ?? '';
-        $response = ['success' => false];
-
-        if (empty($username) || empty($newPassword)) {
-            $response['error'] = 'Usuario y nueva contraseña son requeridos.';
-            echo json_encode($response); exit;
-        }
-        if ($_SESSION['user_rol'] !== 'SU' && $_SESSION['user_username'] !== $username) {
-             $response['error'] = 'Permiso denegado.';
-             echo json_encode($response); exit;
-        }
-
-        try {
-            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
-            $stmt = $this->db->prepare("UPDATE usuarios SET password = ? WHERE username = ?");
-            if ($stmt) {
-                $stmt->bind_param("ss", $hashedPassword, $username);
-                $success = $stmt->execute();
-                if ($success) {
-                    addAudit($this->db, 'Usuario', 'Actualización', "Contraseña cambiada para {$username}");
-                    $response['success'] = true;
-                } else {
-                     $response['error'] = 'Error al actualizar la contraseña: ' . $stmt->error;
-                     error_log("Error al ejecutar changePassword: " . $stmt->error);
-                }
-                $stmt->close();
-            } else {
-                $response['error'] = 'Error al preparar la actualización: ' . $this->db->error;
-                 error_log("Error al preparar changePassword: " . $this->db->error);
-            }
-        } catch (Exception $e) {
-             error_log("Excepción en AuthController->changePassword: " . $e->getMessage());
-             $response['error'] = 'Error interno del servidor al cambiar contraseña.';
-        }
-        echo json_encode($response);
-        exit;
-    } // <- Cierre del método changePassword
-    
-} // <- Cierre de la CLASE AuthController
-?> // <- Cierre opcional de PHP
-
-
+     /**
+     * Función helper para renderizar vistas.
+     */
+    protected function renderView($view, $data = []) {
+        extract($data);
+        ob_start();
+        require "views/{$view}.php";
+        $content = ob_get_clean(); 
+        require 'views/layout.php'; 
+    }
+}
+?>

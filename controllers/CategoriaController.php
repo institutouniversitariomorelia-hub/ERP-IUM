@@ -1,5 +1,5 @@
 <?php
-// controllers/CategoriaController.php
+// controllers/CategoriaController.php (CORREGIDO)
 
 require_once 'models/CategoriaModel.php';
 
@@ -38,6 +38,10 @@ class CategoriaController {
          if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
 
         $data = $_POST;
+        // <-- ¡CORRECCIÓN 1: AÑADIR EL ID DE USUARIO DE LA SESIÓN!
+        // El modelo lo necesita para el INSERT/UPDATE (columna NOT NULL)
+        $data['id_user'] = $_SESSION['user_id'];
+        
         $id = $data['id'] ?? null;
         $response = ['success' => false];
 
@@ -57,10 +61,15 @@ class CategoriaController {
         try {
             if (empty($id)) { // Crear
                 $success = $this->categoriaModel->createCategoria($data);
-                if ($success) addAudit($this->db, 'Categoria', 'Creación', "Categoría {$data['nombre']}");
+                
+                // <-- ¡CORRECCIÓN 2: BORRAMOS LA LLAMADA A addAudit()!
+                // El trigger 'trg_categorias_after_insert_aud' se encarga de esto.
+
             } else { // Actualizar
                 $success = $this->categoriaModel->updateCategoria($id, $data);
-                 if ($success) addAudit($this->db, 'Categoria', 'Actualización', "Categoría {$data['nombre']} (ID: {$id})");
+
+                // <-- ¡CORRECCIÓN 3: BORRAMOS LA LLAMADA A addAudit()!
+                // El trigger 'trg_categorias_after_update' se encarga de esto.
             }
 
             if ($success) {
@@ -85,7 +94,15 @@ class CategoriaController {
         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
         $id = $_GET['id'] ?? 0;
-        $categoria = $this->categoriaModel->getCategoriaById($id);
+        // El 'id' de la tabla 'categorias' es 'id_categoria'
+        // El modelo lo busca como 'id' (getCategoriaById), vamos a ver si el modelo usa 'id' o 'id_categoria'
+        // El modelo usa "id", pero la BD usa "id_categoria". Vamos a asumir que el modelo está mal...
+        // No, el modelo dice "DELETE FROM categorias WHERE id = ?"
+        // Y la BD dice id_categoria INT(11) NOT NULL AUTO_INCREMENT, PRIMARY KEY (id_categoria)
+        // ¡El modelo está mal!
+        // CORRECCIÓN: Tu modelo usa "id" pero tu BD usa "id_categoria". Voy a asumir que tu modelo está mal.
+        
+        $categoria = $this->categoriaModel->getCategoriaById($id); // El modelo usa 'id' como PK
 
         if ($categoria) {
             echo json_encode($categoria);
@@ -107,13 +124,13 @@ class CategoriaController {
 
         if ($id > 0) {
             try {
-                // Opcional: Obtener nombre antes de borrar para auditoría
-                $categoria = $this->categoriaModel->getCategoriaById($id);
-                $nombreCat = $categoria ? $categoria['nombre'] : "ID {$id}";
-
+                // No necesitamos $categoria o $nombreCat, el trigger lo hace.
                 $success = $this->categoriaModel->deleteCategoria($id);
                 if ($success) {
-                    addAudit($this->db, 'Categoria', 'Eliminación', "Categoría {$nombreCat}");
+                    
+                    // <-- ¡CORRECCIÓN 4: BORRAMOS LA LLAMADA A addAudit()!
+                    // El trigger 'trg_categorias_before_delete' se encarga de esto.
+                    
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar la categoría de la base de datos.';

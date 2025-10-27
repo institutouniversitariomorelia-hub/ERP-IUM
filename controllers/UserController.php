@@ -1,5 +1,5 @@
 <?php
-// controllers/UserController.php
+// controllers/UserController.php (CORREGIDO)
 
 require_once 'models/UserModel.php'; // Incluir el modelo
 
@@ -50,7 +50,7 @@ class UserController {
         if ($_SESSION['user_rol'] !== 'SU') { echo json_encode(['success' => false, 'error' => 'Permiso denegado.']); exit; }
 
         $data = $_POST;
-        $id = $data['id'] ?? null;
+        $id = $data['id'] ?? null; // Este 'id' viene del alias 'id_user as id' del modelo
         $isUpdate = !empty($id);
         $response = ['success' => false];
 
@@ -67,11 +67,13 @@ class UserController {
             if ($isUpdate) { 
                 if (!empty($data['password'])) {
                     $hash = password_hash($data['password'], PASSWORD_DEFAULT);
-                    $stmt = $this->db->prepare("UPDATE usuarios SET nombre=?, username=?, password=?, rol=? WHERE id=?");
+                    // <-- ¡CORRECCIÓN DE BD!
+                    $stmt = $this->db->prepare("UPDATE usuarios SET nombre=?, username=?, password=?, rol=? WHERE id_user=?");
                     if(!$stmt) throw new Exception("Error al preparar update (con pass): ".$this->db->error);
                     $stmt->bind_param("ssssi", $data['nombre'], $data['username'], $hash, $data['rol'], $id);
                 } else {
-                    $stmt = $this->db->prepare("UPDATE usuarios SET nombre=?, username=?, rol=? WHERE id=?");
+                    // <-- ¡CORRECCIÓN DE BD!
+                    $stmt = $this->db->prepare("UPDATE usuarios SET nombre=?, username=?, rol=? WHERE id_user=?");
                      if(!$stmt) throw new Exception("Error al preparar update (sin pass): ".$this->db->error);
                     $stmt->bind_param("sssi", $data['nombre'], $data['username'], $data['rol'], $id);
                 }
@@ -83,15 +85,18 @@ class UserController {
             }
 
             if ($stmt->execute()) {
-                $action = $isUpdate ? 'Actualización' : 'Creación';
-                addAudit($this->db, 'Usuario', $action, "Usuario {$data['username']}");
+                
+                // <-- ¡CORRECCIÓN DE AUDITORÍA! BORRAMOS LA LLAMADA A addAudit()
+                // Los triggers 'trg_usuarios_after_insert_aud' y '..._after_update_aud'
+                // se encargan de esto automáticamente.
+                
                 $response['success'] = true;
             } else {
                 $errorMsg = $stmt->error;
                 if ($this->db->errno === 1062) {
                      $response['error'] = 'El nombre de usuario ya existe.';
                 } else {
-                    $response['error'] = 'No se pudo guardar el usuario: ' . $errorMsg;
+                     $response['error'] = 'No se pudo guardar el usuario: ' . $errorMsg;
                 }
                 error_log("Error al guardar usuario: " . $errorMsg);
             }
@@ -120,15 +125,18 @@ class UserController {
         if ($id == $_SESSION['user_id']) { $response['error'] = 'No puedes eliminar tu propio usuario.'; echo json_encode($response); exit; }
 
         try {
-            $userToDelete = $this->userModel->getUserById($id);
-            $usernameToDelete = $userToDelete ? $userToDelete['username'] : "ID {$id}";
-
-            $stmt = $this->db->prepare("DELETE FROM usuarios WHERE id = ?");
+            // $userToDelete = $this->userModel->getUserById($id); // No es necesario, el trigger lo registra
+            
+            // <-- ¡CORRECCIÓN DE BD!
+            $stmt = $this->db->prepare("DELETE FROM usuarios WHERE id_user = ?");
             if ($stmt) {
                 $stmt->bind_param("i", $id);
                 $success = $stmt->execute();
                 if ($success) {
-                    addAudit($this->db, 'Usuario', 'Eliminación', "Usuario {$usernameToDelete}");
+                    
+                    // <-- ¡CORRECCIÓN DE AUDITORÍA! BORRAMOS LA LLAMADA A addAudit()
+                    // El trigger 'trg_usuarios_before_delete' se encarga de esto.
+
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar el usuario: ' . $stmt->error;
@@ -155,10 +163,10 @@ class UserController {
         ob_start();
         // Verificar si el archivo de vista existe antes de incluirlo
         if (file_exists("views/{$view}.php")) {
-            require "views/{$view}.php";
+             require "views/{$view}.php";
         } else {
-            error_log("Vista no encontrada: views/{$view}.php");
-            echo "<div class='alert alert-danger'>Error: No se encontró la plantilla de la vista.</div>"; // Mostrar error en la vista
+             error_log("Vista no encontrada: views/{$view}.php");
+             echo "<div class='alert alert-danger'>Error: No se encontró la plantilla de la vista.</div>"; // Mostrar error en la vista
         }
         $content = ob_get_clean(); 
         // Verificar si el layout existe antes de incluirlo
@@ -170,4 +178,4 @@ class UserController {
     } // <- Cierre del método renderView
     
 } 
-?> 
+?>

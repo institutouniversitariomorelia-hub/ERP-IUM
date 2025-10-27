@@ -1,5 +1,5 @@
 <?php
-// controllers/PresupuestoController.php
+// controllers/PresupuestoController.php (CORREGIDO)
 
 require_once 'models/PresupuestoModel.php';
 require_once 'models/CategoriaModel.php'; // Necesitamos las categorías
@@ -41,30 +41,33 @@ class PresupuestoController {
          if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
 
         $data = $_POST;
-        $id = $data['id'] ?? null; // ID puede venir si es una edición explícita
+        // <-- ¡CORRECCIÓN 1: AÑADIR EL ID DE USUARIO DE LA SESIÓN!
+        $data['id_user'] = $_SESSION['user_id'];
+        
+        $id = $data['id'] ?? null; // ID puede venir si es una edición (id_presupuesto)
         $response = ['success' => false];
 
-        // Validación básica
-        if (empty($data['categoria']) || empty($data['monto']) || empty($data['fecha'])) {
-             $response['error'] = 'Todos los campos son obligatorios.';
+        // Validación básica (ajustada a nuestra BD)
+        if (empty($data['monto_limite']) || empty($data['fecha'])) {
+             $response['error'] = 'El monto límite y la fecha son obligatorios.';
              echo json_encode($response);
              exit;
          }
-         if (!is_numeric($data['monto']) || $data['monto'] <= 0) {
+         if (!is_numeric($data['monto_limite']) || $data['monto_limite'] <= 0) {
              $response['error'] = 'El monto debe ser un número positivo.';
              echo json_encode($response);
              exit;
          }
 
         try {
-            // El modelo se encarga de decidir si crear o actualizar basado en la categoría
+            // El modelo ahora hace un simple INSERT o UPDATE
             $success = $this->presupuestoModel->savePresupuesto($data, $id);
 
             if ($success) {
-                // Determinar si fue creación o actualización para la auditoría
-                // (Podríamos mejorar esto consultando antes/después, pero savePresupuesto no devuelve esa info)
-                $action = !empty($id) ? 'Actualización' : 'Creación/Actualización';
-                addAudit($this->db, 'Presupuesto', $action, "Presupuesto para {$data['categoria']}");
+                // <-- ¡CORRECCIÓN 2: BORRAMOS LA LLAMADA A addAudit()!
+                // Los triggers 'trg_presupuestos_after_insert_aud' y '..._after_update'
+                // se encargan de esto.
+
                 $response['success'] = true;
             } else {
                  $response['error'] = 'No se pudo guardar el presupuesto en la base de datos.';
@@ -98,6 +101,7 @@ class PresupuestoController {
      
      /**
       * Acción AJAX: Obtiene todas las categorías (para llenar el select del modal).
+      * NOTA: Esto es para un formulario, lo dejamos aunque la lógica del modelo cambió.
       */
       public function getAllCategorias() {
            header('Content-Type: application/json');
@@ -120,13 +124,14 @@ class PresupuestoController {
 
         if ($id > 0) {
             try {
-                 // Opcional: obtener datos antes de borrar para auditoría
-                 $presupuesto = $this->presupuestoModel->getPresupuestoById($id);
-                 $catNombre = $presupuesto ? $presupuesto['categoria'] : "ID {$id}";
-
+                // No necesitamos $presupuesto, el trigger lo hace.
                 $success = $this->presupuestoModel->deletePresupuesto($id);
                 if ($success) {
-                    addAudit($this->db, 'Presupuesto', 'Eliminación', "Presupuesto para {$catNombre}");
+                    
+                    // <-- ¡CORRECCIÓN 3: BORRAMOS LA LLAMADA A addAudit()!
+                    // Vamos a crear el trigger 'trg_presupuestos_before_delete'
+                    // para que esto sea automático.
+
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar el presupuesto de la base de datos.';
