@@ -1,5 +1,5 @@
 <?php
-// models/AuditoriaModel.php
+// models/AuditoriaModel.php (CORREGIDO)
 
 class AuditoriaModel {
     private $db;
@@ -9,41 +9,62 @@ class AuditoriaModel {
     }
 
     /**
-     * Obtiene los registros de auditoría, opcionalmente filtrados.
-     * @param array $filtros Array asociativo con los filtros (seccion, usuario, fecha_inicio, fecha_fin).
+     * Obtiene los registros de auditoría, opcionalmente filtrados,
+     * uniendo con las tablas de usuario para obtener el nombre.
+     * @param array $filtros Array asociativo con los filtros.
      * @return array Lista de registros de auditoría.
      */
     public function getAuditoriaLogs($filtros = []) {
-        $query = "SELECT * FROM auditoria WHERE 1=1"; // Empieza la consulta base
+        
+        // --- ¡CONSULTA TOTALMENTE REESCRITA CON JOINS! ---
+        $query = "SELECT 
+                    a.id_auditoria,
+                    a.fecha_hora,
+                    a.seccion,
+                    a.accion,
+                    a.old_valor,
+                    a.new_valor,
+                    a.folio_egreso,
+                    a.folio_ingreso,
+                    u.username  -- Obtenemos el username del usuario
+                  FROM auditoria a
+                  -- Unimos con la tabla de relación
+                  LEFT JOIN usuario_historial uh ON a.id_auditoria = uh.id_ha
+                  -- Unimos con la tabla de usuarios para obtener el nombre
+                  LEFT JOIN usuarios u ON uh.id_user = u.id_user
+                  WHERE 1=1"; // Empieza la consulta base
+        
         $params = []; // Array para los parámetros de bind_param
         $types = ''; // String para los tipos de bind_param
 
         // Añadir filtros si existen
         if (!empty($filtros['seccion'])) {
-            $query .= " AND seccion = ?";
+            $query .= " AND a.seccion = ?"; // Usamos alias 'a'
             $params[] = $filtros['seccion'];
             $types .= 's';
         }
-        if (!empty($filtros['usuario'])) {
-            $query .= " AND usuario = ?";
+        
+        // CORREGIDO: El filtro de usuario ahora es por 'id_user'
+        if (!empty($filtros['usuario'])) { // Asumimos que $filtros['usuario'] es el id_user
+            $query .= " AND u.id_user = ?"; // Usamos alias 'u'
             $params[] = $filtros['usuario'];
-            $types .= 's';
+            $types .= 'i'; // Es un ID numérico
         }
+        
+        // CORREGIDO: La columna de fecha es 'fecha_hora'
         if (!empty($filtros['fecha_inicio'])) {
-            // Compara solo la parte de la fecha (ignora hora) >= fecha_inicio
-            $query .= " AND DATE(fecha) >= ?"; 
+            $query .= " AND DATE(a.fecha_hora) >= ?"; // Usamos alias 'a'
             $params[] = $filtros['fecha_inicio'];
             $types .= 's';
         }
         if (!empty($filtros['fecha_fin'])) {
-             // Compara solo la parte de la fecha (ignora hora) <= fecha_fin
-            $query .= " AND DATE(fecha) <= ?";
+            $query .= " AND DATE(a.fecha_hora) <= ?"; // Usamos alias 'a'
             $params[] = $filtros['fecha_fin'];
             $types .= 's';
         }
 
-        // Ordenar por fecha más reciente y limitar resultados (opcional)
-        $query .= " ORDER BY fecha DESC LIMIT 500"; // Limita a 500 para evitar sobrecarga
+        // CORREGIDO: Ordenar por 'fecha_hora'
+        $query .= " ORDER BY a.fecha_hora DESC LIMIT 500"; 
 
         $stmt = $this->db->prepare($query);
 

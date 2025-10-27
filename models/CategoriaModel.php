@@ -1,5 +1,5 @@
 <?php
-// models/CategoriaModel.php
+// models/CategoriaModel.php (CORREGIDO)
 
 class CategoriaModel {
     private $db;
@@ -14,7 +14,8 @@ class CategoriaModel {
      * @return array Lista de categorías.
      */
     public function getCategoriasByTipo($tipo = null) {
-        $query = "SELECT * FROM categorias";
+        // CORREGIDO: Seleccionamos 'id_categoria' como 'id' para que el JS (data-id) funcione
+        $query = "SELECT *, id_categoria as id FROM categorias"; 
         $params = [];
         $types = '';
 
@@ -54,7 +55,8 @@ class CategoriaModel {
     }
 
     public function getCategoriaById($id) {
-        $stmt = $this->db->prepare("SELECT * FROM categorias WHERE id = ?");
+        // CORREGIDO: La columna PK es 'id_categoria'
+        $stmt = $this->db->prepare("SELECT *, id_categoria as id FROM categorias WHERE id_categoria = ?");
         if ($stmt) {
             $stmt->bind_param("i", $id);
             $stmt->execute();
@@ -67,9 +69,11 @@ class CategoriaModel {
     }
 
     public function createCategoria($data) {
-        $stmt = $this->db->prepare("INSERT INTO categorias (nombre, tipo, descripcion) VALUES (?, ?, ?)");
+        // CORREGIDO: Añadida la columna 'id_user' (es NOT NULL)
+        $stmt = $this->db->prepare("INSERT INTO categorias (nombre, tipo, descripcion, id_user) VALUES (?, ?, ?, ?)");
         if ($stmt) {
-            $stmt->bind_param("sss", $data['nombre'], $data['tipo'], $data['descripcion']);
+            // CORREGIDO: Añadido 'id_user' (tipo 'i')
+            $stmt->bind_param("sssi", $data['nombre'], $data['tipo'], $data['descripcion'], $data['id_user']);
             $success = $stmt->execute();
             if (!$success) error_log("Error al ejecutar createCategoria: " . $stmt->error);
             $stmt->close();
@@ -80,9 +84,11 @@ class CategoriaModel {
     }
 
     public function updateCategoria($id, $data) {
-        $stmt = $this->db->prepare("UPDATE categorias SET nombre=?, tipo=?, descripcion=? WHERE id=?");
+        // CORREGIDO: Añadida la columna 'id_user' y la PK es 'id_categoria'
+        $stmt = $this->db->prepare("UPDATE categorias SET nombre=?, tipo=?, descripcion=?, id_user=? WHERE id_categoria=?");
         if ($stmt) {
-            $stmt->bind_param("sssi", $data['nombre'], $data['tipo'], $data['descripcion'], $id);
+            // CORREGIDO: Añadido 'id_user' (tipo 'i') y el id al final
+            $stmt->bind_param("sssii", $data['nombre'], $data['tipo'], $data['descripcion'], $data['id_user'], $id);
             $success = $stmt->execute();
             if (!$success) error_log("Error al ejecutar updateCategoria: " . $stmt->error);
             $stmt->close();
@@ -93,7 +99,8 @@ class CategoriaModel {
     }
 
     public function deleteCategoria($id) {
-        $stmt = $this->db->prepare("DELETE FROM categorias WHERE id = ?");
+        // CORREGIDO: La columna PK es 'id_categoria'
+        $stmt = $this->db->prepare("DELETE FROM categorias WHERE id_categoria = ?");
         if ($stmt) {
             $stmt->bind_param("i", $id);
             $success = $stmt->execute();

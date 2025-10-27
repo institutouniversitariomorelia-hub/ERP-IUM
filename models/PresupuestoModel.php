@@ -1,5 +1,5 @@
 <?php
-// models/PresupuestoModel.php
+// models/PresupuestoModel.php (CORREGIDO PARA COINCIDIR CON LA BD)
 
 class PresupuestoModel {
     private $db;
@@ -13,7 +13,9 @@ class PresupuestoModel {
      * @return array Lista de presupuestos.
      */
     public function getAllPresupuestos() {
-        $query = "SELECT * FROM presupuestos ORDER BY categoria ASC"; // Ordenamos por categoría
+        // CORREGIDO: Selecciona de 'presupuestos' y usa 'id_presupuesto'
+        // Damos alias 'id' para compatibilidad con JS
+        $query = "SELECT *, id_presupuesto as id FROM presupuestos ORDER BY fecha DESC";
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);
@@ -25,11 +27,12 @@ class PresupuestoModel {
 
     /**
      * Obtiene un presupuesto específico por su ID.
-     * @param int $id ID del presupuesto.
+     * @param int $id ID del presupuesto (id_presupuesto).
      * @return array|null Datos del presupuesto o null.
      */
     public function getPresupuestoById($id) {
-        $query = "SELECT * FROM presupuestos WHERE id = ?";
+        // CORREGIDO: Busca por 'id_presupuesto' y da alias 'id'
+        $query = "SELECT *, id_presupuesto as id FROM presupuestos WHERE id_presupuesto = ?";
         $stmt = $this->db->prepare($query);
         if ($stmt) {
             $stmt->bind_param("i", $id);
@@ -43,60 +46,25 @@ class PresupuestoModel {
         }
     }
 
-     /**
-     * Obtiene un presupuesto por el nombre de la categoría.
-     * @param string $categoria Nombre de la categoría.
-     * @return array|null Datos del presupuesto o null.
-     */
-    public function getPresupuestoByCategoria($categoria) {
-        $query = "SELECT * FROM presupuestos WHERE categoria = ?";
-        $stmt = $this->db->prepare($query);
-         if ($stmt) {
-            $stmt->bind_param("s", $categoria);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $stmt->close();
-            return $result->fetch_assoc();
-        } else {
-            error_log("Error al preparar getPresupuestoByCategoria: " . $this->db->error);
-            return null;
-        }
-    }
-
     /**
-     * Crea o actualiza un presupuesto para una categoría.
-     * Solo debe haber un presupuesto por categoría.
-     * @param array $data Datos del presupuesto (categoria, monto, fecha).
-     * @param int|null $id ID del presupuesto si se está actualizando explícitamente.
+     * Crea o actualiza un presupuesto.
+     * @param array $data Datos del presupuesto (monto_limite, fecha, id_user).
+     * @param int|null $id ID del presupuesto si es actualización.
      * @return bool True si la operación fue exitosa, false en caso contrario.
      */
     public function savePresupuesto($data, $id = null) {
-        // Verificar si ya existe un presupuesto para esta categoría (excluyendo el ID actual si es update)
-        $existing = $this->getPresupuestoByCategoria($data['categoria']);
-
-        if ($existing && (empty($id) || $existing['id'] != $id)) {
-            // Ya existe para esta categoría y no es el que estamos editando, actualizamos el existente.
-            $id = $existing['id'];
-             error_log("Actualizando presupuesto existente para categoría: " . $data['categoria']);
-        } elseif (!empty($id)) {
-            // Es una actualización por ID directo
-             error_log("Actualizando presupuesto por ID: " . $id);
-        } else {
-             // Es una creación nueva
-             error_log("Creando nuevo presupuesto para categoría: " . $data['categoria']);
-             $id = null; // Asegura que $id es null para la inserción
-        }
-
+        
+        // CORREGIDO: Lógica adaptada a la nueva tabla
         if ($id) { // Actualizar
-            $query = "UPDATE presupuestos SET categoria=?, monto=?, fecha=? WHERE id=?";
+            $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_user=? WHERE id_presupuesto=?";
             $stmt = $this->db->prepare($query);
             if (!$stmt) { error_log("Error al preparar updatePresupuesto: " . $this->db->error); return false; }
-            $stmt->bind_param("sdsi", $data['categoria'], $data['monto'], $data['fecha'], $id);
+            $stmt->bind_param("dsii", $data['monto_limite'], $data['fecha'], $data['id_user'], $id);
         } else { // Crear
-            $query = "INSERT INTO presupuestos (categoria, monto, fecha) VALUES (?, ?, ?)";
+            $query = "INSERT INTO presupuestos (monto_limite, fecha, id_user) VALUES (?, ?, ?)";
             $stmt = $this->db->prepare($query);
              if (!$stmt) { error_log("Error al preparar createPresupuesto: " . $this->db->error); return false; }
-            $stmt->bind_param("sds", $data['categoria'], $data['monto'], $data['fecha']);
+            $stmt->bind_param("dsi", $data['monto_limite'], $data['fecha'], $data['id_user']);
         }
 
         $success = $stmt->execute();
@@ -108,11 +76,12 @@ class PresupuestoModel {
 
     /**
      * Elimina un presupuesto de la base de datos.
-     * @param int $id ID del presupuesto a eliminar.
+     * @param int $id ID (id_presupuesto) del presupuesto a eliminar.
      * @return bool True si se eliminó con éxito, false en caso contrario.
      */
     public function deletePresupuesto($id) {
-        $query = "DELETE FROM presupuestos WHERE id = ?";
+        // CORREGIDO: Busca por 'id_presupuesto'
+        $query = "DELETE FROM presupuestos WHERE id_presupuesto = ?";
         $stmt = $this->db->prepare($query);
         if ($stmt) {
             $stmt->bind_param("i", $id);

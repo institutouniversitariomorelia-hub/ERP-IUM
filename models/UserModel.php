@@ -1,5 +1,5 @@
 <?php
-// models/UserModel.php
+// models/UserModel.php (CORREGIDO)
 
 class UserModel {
     private $db;
@@ -13,7 +13,8 @@ class UserModel {
      * @return array Lista de usuarios o array vacío si no hay.
      */
     public function getAllUsers() {
-        $query = "SELECT id, nombre, username, rol FROM usuarios ORDER BY nombre ASC";
+        // <-- ¡CORRECCIÓN DE BD! Usamos 'id_user' y le damos un alias 'id'
+        $query = "SELECT id_user as id, nombre, username, rol FROM usuarios ORDER BY nombre ASC";
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);
@@ -29,7 +30,8 @@ class UserModel {
      * @return array|null Datos del usuario o null si no se encuentra o hay error.
      */
     public function getUserById($id) {
-        $query = "SELECT id, nombre, username, rol FROM usuarios WHERE id = ?";
+        // <-- ¡CORRECCIÓN DE BD! Usamos 'id_user' en el WHERE y alias 'id' en el SELECT
+        $query = "SELECT id_user as id, nombre, username, rol FROM usuarios WHERE id_user = ?";
         $stmt = $this->db->prepare($query);
         if ($stmt) {
             $stmt->bind_param("i", $id);
