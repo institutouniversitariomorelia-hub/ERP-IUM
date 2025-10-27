@@ -1,34 +1,68 @@
 <?php
-// ===============================================
-// Archivo: index.php (El Router Principal)
-// FIX: La lógica de $vista_a_cargar debe ser estable.
-// ===============================================
+// index.php (Enrutador Principal)
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-// 1. Incluir el controlador
-require_once __DIR__ . "/controladores/vistasControlador.php";
-
-// 2. Crear instancia del controlador
-$controlador = new vistasControlador();
-
-// 3. Obtener la RUTA del archivo a cargar (ejemplo: "LOGIN/login.html" o "vistas/plantilla.php")
-$ruta_a_cargar = $controlador->obtener_vistas_controlador(); // Esto devuelve la RUTA
-
-// 4. Obtener el nombre del MÓDULO (necesario para plantilla.php)
-// Si views está presente, usamos su valor. Si no existe (estamos en el login), usamos 'mi_perfil' por defecto.
-$vista_a_cargar = $_GET['views'] ?? 'mi_perfil'; 
-// NOTA: Si vienes del login, $_GET['views'] SÍ existe y es 'mi_perfil', lo cual es correcto.
-
-// 5. Decidir qué cargar:
-if ($ruta_a_cargar == "404") {
-    // Manejo de error 404
-    echo "<!DOCTYPE html><html><head><title>404</title><style>body{font-family:sans-serif;text-align:center;padding-top:100px;}h1{color:#E70000;}</style></head><body><h1>404 | PÁGINA NO ENCONTRADA</h1><p>La vista solicitada no existe o no está autorizada.</p></body></html>";
-} else {
-    // Si la ruta es la plantilla, la incluimos.
-    $ruta_final = __DIR__ . "/" . $ruta_a_cargar;
-    
-    // Incluir el archivo (login.html o plantilla.php)
-    include $ruta_final; 
+// Iniciar sesión SIEMPRE al principio
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
+
+// Configuración básica
+define('BASE_URL', '/erp-ium/'); // Ajusta si tu carpeta tiene otro nombre
+define('DEFAULT_CONTROLLER', 'user'); // Controlador por defecto si hay sesión
+define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
+
+// Incluir archivos necesarios
+require_once 'db.php'; // Conexión BD
+require_once 'password.php'; // Compatibilidad de hash
+
+// Determinar controlador y acción
+$controllerName = $_GET['controller'] ?? (isset($_SESSION['user_id']) ? DEFAULT_CONTROLLER : 'auth');
+$actionName = $_GET['action'] ?? (isset($_SESSION['user_id']) ? DEFAULT_ACTION : 'login');
+
+// Formatear nombres
+$controllerClassName = ucfirst($controllerName) . 'Controller';
+$controllerFile = 'controllers/' . $controllerClassName . '.php';
+
+// Verificar si el archivo del controlador existe
+if (file_exists($controllerFile)) {
+    require_once $controllerFile;
+    // Verificar si la clase existe
+    if (class_exists($controllerClassName)) {
+        // Crear instancia del controlador, pasando la conexión a la BD
+        $controller = new $controllerClassName($conn); // $conn viene de db.php
+        // Verificar si la acción (método) existe
+        if (method_exists($controller, $actionName)) {
+            // Llamar a la acción
+            try {
+                $controller->$actionName();
+            } catch (Exception $e) {
+                // Manejo básico de errores
+                error_log("Error ejecutando acción: " . $e->getMessage()); // Registrar error
+                die("Ocurrió un error inesperado."); // Mensaje genérico al usuario
+            }
+        } else {
+            // Si la acción no existe, mostrar error 404
+             error_log("Acción no encontrada: {$controllerClassName}->{$actionName}");
+             http_response_code(404);
+             die("Error 404: Página no encontrada (acción inválida).");
+        }
+    } else {
+        die("Error: La clase '{$controllerClassName}' no existe en '{$controllerFile}'.");
+    }
+} else {
+     // Si no se encuentra el controlador y no es el login, redirigir a login si no hay sesión
+    if ($controllerName !== 'auth' && !isset($_SESSION['user_id'])) {
+        header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login');
+        exit;
+    }
+    // Si hay sesión pero el controlador no existe, mostrar error 404
+     error_log("Controlador no encontrado: {$controllerFile}");
+     http_response_code(404);
+     die("Error 404: Página no encontrada (controlador inválido).");
+}
+
+// Cerrar conexión (opcional, PHP suele hacerlo)
+if (isset($conn) && $conn instanceof mysqli) {
+    $conn->close();
+}
+?>
