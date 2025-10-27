@@ -8,9 +8,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Configuración de la conexión
 define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', ''); // Contraseña vacía por defecto en XAMPP
-define('DB_NAME', 'erp_ium'); // Nombre de tu base de datos
+define('DB_USER', 'plataforma');
+define('DB_PASS', '1234'); 
+define('DB_NAME', 'erp_ium');
 
 // Crear la conexión
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
