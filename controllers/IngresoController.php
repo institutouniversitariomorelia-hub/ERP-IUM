@@ -90,7 +90,10 @@ class IngresoController {
                 // Llamar a createIngreso del modelo
                 $newId = $this->ingresoModel->createIngreso($data);
                 if ($newId) {
-                    addAudit($this->db, 'Ingreso', 'Creación', "Ingreso creado ID: {$newId} para {$data['alumno']} ({$data['matricula']})");
+                    
+                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
+                    // El trigger 'trg_ingresos_after_insert_aud' se encarga de esto.
+
                     $response['success'] = true;
                     $response['newId'] = $newId; // Devolver el nuevo ID por si JS lo necesita
                 } else {
@@ -100,8 +103,11 @@ class IngresoController {
                 // Pasamos el folio_ingreso_id (PK) y los datos
                 $success = $this->ingresoModel->updateIngreso($folio_ingreso_id, $data);
                  if ($success) {
-                     addAudit($this->db, 'Ingreso', 'Actualización', "Ingreso ID: {$folio_ingreso_id}");
-                     $response['success'] = true;
+                    
+                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
+                    // El trigger 'trg_ingresos_after_update' se encarga de esto.
+
+                    $response['success'] = true;
                  } else {
                      $response['error'] = 'No se pudo actualizar el ingreso en la base de datos.';
                  }
@@ -155,7 +161,10 @@ class IngresoController {
             try {
                 $success = $this->ingresoModel->deleteIngreso($folio_ingreso_id); // Pasa la PK correcta
                 if ($success) {
-                    addAudit($this->db, 'Ingreso', 'Eliminación', "Ingreso ID {$folio_ingreso_id}");
+
+                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
+                    // El trigger 'trg_ingresos_before_delete' se encarga de esto.
+                    
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar el ingreso de la base de datos.';
@@ -180,10 +189,10 @@ class IngresoController {
         ob_start();
          // Verificar si el archivo de vista existe
          if (file_exists("views/{$view}.php")) {
-            require "views/{$view}.php";
+             require "views/{$view}.php";
         } else {
-            error_log("Vista no encontrada: views/{$view}.php");
-            echo "<div class='alert alert-danger'>Error: No se encontró la plantilla de la vista '{$view}'.</div>";
+             error_log("Vista no encontrada: views/{$view}.php");
+             echo "<div class='alert alert-danger'>Error: No se encontró la plantilla de la vista '{$view}'.</div>";
         }
         $content = ob_get_clean();
         require 'views/layout.php';
