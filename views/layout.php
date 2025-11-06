@@ -123,12 +123,24 @@ $currentUser = [
         </div>
         <ul class="nav flex-column">
              <?php $activeModule = $activeModule ?? ''; ?>
-            <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'profile' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=user&action=profile"><ion-icon name="person-circle-outline"></ion-icon> Mi Perfil</a></li>
-            <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'egresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=egreso&action=index"><ion-icon name="trending-down-outline"></ion-icon> Egresos</a></li>
-            <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'ingresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=ingreso&action=index"><ion-icon name="trending-up-outline"></ion-icon> Ingresos</a></li>
-            <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'categorias' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=categoria&action=index"><ion-icon name="pricetags-outline"></ion-icon> Categorías</a></li>
-            <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'presupuestos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=presupuesto&action=index"><ion-icon name="wallet-outline"></ion-icon> Presupuestos</a></li>
-            <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'auditoria' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=auditoria&action=index"><ion-icon name="layers-outline"></ion-icon> Historial Auditoría</a></li>
+            <?php if (roleCanViewModule('profile')): ?>
+                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'profile' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=user&action=profile"><ion-icon name="person-circle-outline"></ion-icon> Mi Perfil</a></li>
+            <?php endif; ?>
+            <?php if (roleCanViewModule('egresos')): ?>
+                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'egresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=egreso&action=index"><ion-icon name="trending-down-outline"></ion-icon> Egresos</a></li>
+            <?php endif; ?>
+            <?php if (roleCanViewModule('ingresos')): ?>
+                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'ingresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=ingreso&action=index"><ion-icon name="trending-up-outline"></ion-icon> Ingresos</a></li>
+            <?php endif; ?>
+            <?php if (roleCanViewModule('categorias')): ?>
+                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'categorias' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=categoria&action=index"><ion-icon name="pricetags-outline"></ion-icon> Categorías</a></li>
+            <?php endif; ?>
+            <?php if (roleCanViewModule('presupuestos')): ?>
+                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'presupuestos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=presupuesto&action=index"><ion-icon name="wallet-outline"></ion-icon> Presupuestos</a></li>
+            <?php endif; ?>
+            <?php if (roleCanViewModule('auditoria')): ?>
+                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'auditoria' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=auditoria&action=index"><ion-icon name="layers-outline"></ion-icon> Historial Auditoría</a></li>
+            <?php endif; ?>
         </ul>
         <ul class="nav flex-column mt-auto">
              <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>index.php?controller=auth&action=logout"><ion-icon name="log-out-outline"></ion-icon> Cerrar Sesión</a></li>

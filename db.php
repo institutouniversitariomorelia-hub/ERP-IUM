@@ -21,6 +21,56 @@ if (!$conn->set_charset("utf8mb4")) {
      error_log("Error al establecer utf8mb4: " . $conn->error);
 }
 
+// Role & permission helpers (available globally to controllers and views)
+if (!function_exists('roleCanViewModule')) {
+    function roleCanViewModule($module) {
+        $rol = $_SESSION['user_rol'] ?? '';
+        switch ($rol) {
+            case 'SU':
+                return true; // full access
+            case 'REC':
+                return true; // can view all modules (read-only)
+            case 'ADM':
+                // ADM cannot view auditoria
+                if ($module === 'auditoria') return false;
+                return true;
+            case 'COB':
+                // COB cannot view auditoria or egresos
+                if (in_array($module, ['auditoria','egresos'])) return false;
+                return in_array($module, ['profile','categorias','presupuestos','ingresos']);
+            default:
+                return false;
+        }
+    }
+}
+if (!function_exists('roleCan')) {
+    function roleCan($action, $module) {
+        $rol = $_SESSION['user_rol'] ?? '';
+        // SU can do everything
+        if ($rol === 'SU') return true;
+        // REC can only view
+        if ($rol === 'REC') {
+            return $action === 'view' || $action === 'report';
+        }
+        if ($rol === 'ADM') {
+            // ADM cannot add/modify users
+            if ($module === 'user' && in_array($action, ['add','edit'])) return false;
+            // Otherwise ADM can do everything
+            return true;
+        }
+        if ($rol === 'COB') {
+            // COB: profile full (except user management), categorias/presupuestos read-only, ingresos full, egresos/auditoria hidden
+            if ($module === 'profile') return true;
+            if (in_array($module, ['categorias','presupuestos'])) {
+                return $action === 'view' || $action === 'report';
+            }
+            if ($module === 'ingresos') return true;
+            return false;
+        }
+        return false;
+    }
+}
+
 // **CAMBIO IMPORTANTE PARA AUDITORÍA**
 // Establecer la variable de sesión de MySQL para los Triggers de Auditoría.
 // Tus triggers (ej: trg_ingresos_after_insert_aud) usan @auditoria_user_id.

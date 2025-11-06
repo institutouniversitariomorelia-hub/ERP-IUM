@@ -7,12 +7,14 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle); ?>: Catálogo Actual</h3>
     <div>
-        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalCategoria" id="btnNuevaCategoria">
-            <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar Categoría
-        </button>
-        <button class="btn btn-outline-secondary" id="btnRefrescarCategorias" title="Recargar lista">
-            <ion-icon name="refresh-outline"></ion-icon> Refrescar
-        </button>
+            <?php if (roleCan('add','categorias')): ?>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalCategoria" id="btnNuevaCategoria">
+                    <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar Categoría
+                </button>
+            <?php endif; ?>
+            <button class="btn btn-outline-secondary" id="btnRefrescarCategorias" title="Recargar lista">
+                <ion-icon name="refresh-outline"></ion-icon> Refrescar
+            </button>
     </div>
 </div>
 
@@ -50,17 +52,21 @@
                                 <td><?php echo htmlspecialchars($categoria['descripcion'] ?: '-'); // Muestra '-' si está vacío ?></td>
                                 <td class="text-center">
                                     <div class="btn-responsive-sm">
-                                        <button class="btn btn-sm btn-warning btn-edit-categoria"
-                                                data-id="<?php echo $categoria['id']; ?>"
-                                                data-bs-toggle="modal" data-bs-target="#modalCategoria"
-                                                title="Editar Categoría">
-                                             <ion-icon name="create-outline"></ion-icon> Editar
-                                        </button>
-                                        <button class="btn btn-sm btn-danger btn-del-categoria"
-                                                data-id="<?php echo $categoria['id']; ?>"
-                                                title="Eliminar Categoría">
-                                            <ion-icon name="trash-outline"></ion-icon> Eliminar
-                                        </button>
+                                        <?php if (roleCan('edit','categorias')): ?>
+                                            <button class="btn btn-sm btn-warning btn-edit-categoria"
+                                                    data-id="<?php echo $categoria['id']; ?>"
+                                                    data-bs-toggle="modal" data-bs-target="#modalCategoria"
+                                                    title="Editar Categoría">
+                                                 <ion-icon name="create-outline"></ion-icon> Editar
+                                            </button>
+                                        <?php endif; ?>
+                                        <?php if (roleCan('delete','categorias')): ?>
+                                            <button class="btn btn-sm btn-danger btn-del-categoria"
+                                                    data-id="<?php echo $categoria['id']; ?>"
+                                                    title="Eliminar Categoría">
+                                                <ion-icon name="trash-outline"></ion-icon> Eliminar
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

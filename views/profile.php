@@ -22,8 +22,10 @@
             </div>
         </div>
         <div class="btn-responsive-sm mt-3">
-            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCambiarPassword" id="btnCambiarMiPassword">Cambiar mi contraseña</button>
-            <?php if ($currentUser['rol'] === 'SU'): ?>
+            <?php if (roleCan('view','profile')): ?>
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCambiarPassword" id="btnCambiarMiPassword">Cambiar mi contraseña</button>
+            <?php endif; ?>
+            <?php if (roleCan('add','user')): ?>
                 <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalUsuario" id="btnRegistrarUsuario">Registrar Usuario (SU)</button>
             <?php endif; ?>
         </div>
@@ -54,27 +56,33 @@
                                 <td><span class="badge bg-secondary"><?php echo htmlspecialchars($user['rol']); ?></span></td>
                                 <td class="text-center">
                                     <div class="btn-responsive-sm">
-                                        <button class="btn btn-sm btn-warning btn-edit-user" 
-                                                data-id="<?php echo $user['id']; ?>" 
-                                                data-nombre="<?php echo htmlspecialchars($user['nombre']); ?>"
-                                                data-username="<?php echo htmlspecialchars($user['username']); ?>"
-                                                data-rol="<?php echo htmlspecialchars($user['rol']); ?>"
-                                                data-bs-toggle="modal" data-bs-target="#modalUsuario" 
-                                                title="Editar Usuario">
-                                            <ion-icon name="create-outline"></ion-icon> Editar
-                                        </button>
-                                        <button class="btn btn-sm btn-secondary btn-change-pass" 
-                                                data-username="<?php echo htmlspecialchars($user['username']); ?>" 
-                                                data-bs-toggle="modal" data-bs-target="#modalCambiarPassword"
-                                                title="Cambiar Contraseña">
-                                            <ion-icon name="lock-open-outline"></ion-icon> Contraseña
-                                        </button>
-                                        <button class="btn btn-sm btn-danger btn-delete-user" 
-                                                data-id="<?php echo $user['id']; ?>" 
-                                                <?php echo ($user['id'] == $currentUser['id']) ? 'disabled' : ''; ?> 
-                                                title="Eliminar Usuario">
-                                            <ion-icon name="trash-outline"></ion-icon> Eliminar
-                                        </button>
+                                            <?php if (roleCan('edit','user')): ?>
+                                                <button class="btn btn-sm btn-warning btn-edit-user" 
+                                                        data-id="<?php echo $user['id']; ?>" 
+                                                        data-nombre="<?php echo htmlspecialchars($user['nombre']); ?>"
+                                                        data-username="<?php echo htmlspecialchars($user['username']); ?>"
+                                                        data-rol="<?php echo htmlspecialchars($user['rol']); ?>"
+                                                        data-bs-toggle="modal" data-bs-target="#modalUsuario" 
+                                                        title="Editar Usuario">
+                                                    <ion-icon name="create-outline"></ion-icon> Editar
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if (roleCan('change_pass','user')): ?>
+                                                <button class="btn btn-sm btn-secondary btn-change-pass" 
+                                                        data-username="<?php echo htmlspecialchars($user['username']); ?>" 
+                                                        data-bs-toggle="modal" data-bs-target="#modalCambiarPassword"
+                                                        title="Cambiar Contraseña">
+                                                    <ion-icon name="lock-open-outline"></ion-icon> Contraseña
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if (roleCan('delete','user')): ?>
+                                                <button class="btn btn-sm btn-danger btn-delete-user" 
+                                                        data-id="<?php echo $user['id']; ?>" 
+                                                        <?php echo ($user['id'] == $currentUser['id']) ? 'disabled' : ''; ?> 
+                                                        title="Eliminar Usuario">
+                                                    <ion-icon name="trash-outline"></ion-icon> Eliminar
+                                                </button>
+                                            <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

@@ -4,11 +4,13 @@
 // Variables disponibles: $pageTitle, $activeModule, $egresos, $currentUser (del layout)
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle ?? 'Egresos'); ?>: Historial Reciente</h3>
-    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalEgreso" id="btnNuevoEgreso">
-        <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar Egreso
-    </button>
+    <?php if (roleCan('add','egresos')): ?>
+        <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalEgreso" id="btnNuevoEgreso">
+            <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar Egreso
+        </button>
+    <?php endif; ?>
 </div>
 
 <div class="card shadow-sm">
@@ -72,17 +74,21 @@
                                 <td class="text-end text-danger fw-bold"><?php echo $montoFormateado; ?></td>
                                 <td class="text-center">
                                     <div class="btn-responsive-sm">
-                                        <button class="btn btn-sm btn-warning btn-edit-egreso"
-                                                data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
-                                                data-bs-toggle="modal" data-bs-target="#modalEgreso"
-                                                title="Editar Egreso">
-                                             <ion-icon name="create-outline"></ion-icon>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger btn-del-egreso"
-                                                data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
-                                                title="Eliminar Egreso">
-                                            <ion-icon name="trash-outline"></ion-icon>
-                                        </button>
+                                        <?php if (roleCan('edit','egresos')): ?>
+                                            <button class="btn btn-sm btn-warning btn-edit-egreso"
+                                                    data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
+                                                    data-bs-toggle="modal" data-bs-target="#modalEgreso"
+                                                    title="Editar Egreso">
+                                                 <ion-icon name="create-outline"></ion-icon>
+                                            </button>
+                                        <?php endif; ?>
+                                        <?php if (roleCan('delete','egresos')): ?>
+                                            <button class="btn btn-sm btn-danger btn-del-egreso"
+                                                    data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
+                                                    title="Eliminar Egreso">
+                                                <ion-icon name="trash-outline"></ion-icon>
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

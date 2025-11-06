@@ -20,11 +20,13 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
 
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle ?? 'Ingresos'); ?>: Historial Reciente</h3>
-    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalIngreso" id="btnNuevoIngreso">
-        <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar Ingreso
-    </button>
+    <?php if (roleCan('add','ingresos')): ?>
+        <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalIngreso" id="btnNuevoIngreso">
+            <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar Ingreso
+        </button>
+    <?php endif; ?>
 </div>
 
 <div class="card shadow-sm">
@@ -104,17 +106,21 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
                                 <td class="text-end text-success fw-bold"><?php echo $montoFormateado; ?></td>
                                 <td class="text-center">
                                     <div class="btn-responsive-sm">
-                                        <button class="btn btn-sm btn-warning btn-edit-ingreso"
-                                                data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
-                                                data-bs-toggle="modal" data-bs-target="#modalIngreso"
-                                                title="Editar Ingreso">
-                                             <ion-icon name="create-outline"></ion-icon>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger btn-del-ingreso"
-                                                data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
-                                                title="Eliminar Ingreso">
-                                            <ion-icon name="trash-outline"></ion-icon>
-                                        </button>
+                                            <?php if (roleCan('edit','ingresos')): ?>
+                                                <button class="btn btn-sm btn-warning btn-edit-ingreso"
+                                                        data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
+                                                        data-bs-toggle="modal" data-bs-target="#modalIngreso"
+                                                        title="Editar Ingreso">
+                                                     <ion-icon name="create-outline"></ion-icon>
+                                                </button>
+                                            <?php endif; ?>
+                                            <?php if (roleCan('delete','ingresos')): ?>
+                                                <button class="btn btn-sm btn-danger btn-del-ingreso"
+                                                        data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
+                                                        title="Eliminar Ingreso">
+                                                    <ion-icon name="trash-outline"></ion-icon>
+                                                </button>
+                                            <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

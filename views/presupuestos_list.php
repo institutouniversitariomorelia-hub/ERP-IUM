@@ -4,11 +4,13 @@
 // Variables disponibles: $pageTitle, $activeModule, $presupuestos, $currentUser (del layout)
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle); ?>: Resumen General</h3>
-    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalPresupuesto" id="btnNuevoPresupuesto">
-        <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar/Actualizar Presupuesto
-    </button>
+    <?php if (roleCan('add','presupuestos')): ?>
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalPresupuesto" id="btnNuevoPresupuesto">
+            <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar/Actualizar Presupuesto
+        </button>
+    <?php endif; ?>
 </div>
 
 <div class="action-menu mb-4 d-none">
@@ -53,17 +55,21 @@
                                 <td><?php echo $fechaDisplay; ?></td>
                                 <td class="text-center">
                                     <div class="btn-responsive-sm">
-                                        <button class="btn btn-sm btn-warning btn-edit-presupuesto"
-                                                data-id="<?php echo $presId; ?>"
-                                                data-bs-toggle="modal" data-bs-target="#modalPresupuesto"
-                                                title="Editar Presupuesto">
-                                             <ion-icon name="create-outline"></ion-icon> Editar
-                                        </button>
-                                        <button class="btn btn-sm btn-danger btn-del-presupuesto"
-                                                data-id="<?php echo $presId; ?>"
-                                                title="Eliminar Presupuesto">
-                                            <ion-icon name="trash-outline"></ion-icon> Eliminar
-                                        </button>
+                                        <?php if (roleCan('edit','presupuestos')): ?>
+                                            <button class="btn btn-sm btn-warning btn-edit-presupuesto"
+                                                    data-id="<?php echo $presId; ?>"
+                                                    data-bs-toggle="modal" data-bs-target="#modalPresupuesto"
+                                                    title="Editar Presupuesto">
+                                                 <ion-icon name="create-outline"></ion-icon> Editar
+                                            </button>
+                                        <?php endif; ?>
+                                        <?php if (roleCan('delete','presupuestos')): ?>
+                                            <button class="btn btn-sm btn-danger btn-del-presupuesto"
+                                                    data-id="<?php echo $presId; ?>"
+                                                    title="Eliminar Presupuesto">
+                                                <ion-icon name="trash-outline"></ion-icon> Eliminar
+                                            </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
