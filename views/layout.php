@@ -48,7 +48,10 @@ $currentUser = [
         .table { border-collapse: separate; border-spacing: 0; }
         .table thead th { background-color: #f8f9fa; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.5px; color: var(--c-texto-secundario); border-bottom-width: 1px; padding: 0.75rem; vertical-align: bottom;}
         .table tbody tr:hover { background-color: #f1f1f1; }
+    .clickable-row { cursor: pointer; }
         .table td, .table th { padding: 0.75rem; vertical-align: middle; }
+    /* Improve wrap behavior on small screens */
+    .table td, .table th { word-break: break-word; white-space: normal; }
         .btn { border-radius: 6px; transition: all 0.2s ease-in-out; padding: 0.375rem 0.75rem; font-size: 0.9rem;}
         .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
         .btn-danger { background-color: var(--c-primario); border-color: var(--c-primario); }
@@ -57,6 +60,59 @@ $currentUser = [
         .modal-header-danger { background-color: var(--c-primario); color: white; border-top-left-radius: 7px; border-top-right-radius: 7px;}
         .modal-title { font-weight: 500; }
         .badge { padding: 0.4em 0.6em; }
+        /* Small screen adjustments */
+        @media (max-width: 991px) {
+            .top-header { padding: 8px 12px; font-size: 0.95rem; }
+            #view-container { padding: 12px; }
+            .card { margin-bottom: 1rem; width: 100%; }
+            .table thead th { font-size: 0.72rem; }
+            .table td, .table th { padding: 0.5rem; }
+            .btn { padding: 0.35rem 0.6rem; font-size: 0.85rem; }
+            /* Sidebar behaviour on small screens: act as overlay panel without pushing content */
+            #sidebar { width: 85%; max-width: 320px; left: 0; transform: translateX(-110%); position: fixed; top: 0; height: 100vh; z-index: 1100; border-right: 1px solid rgba(0,0,0,0.06); border-top-right-radius: 8px; background-color: var(--c-primario) !important; color: #fff !important; }
+            #sidebar.open { transform: translateX(0); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+            /* Make sure the sidebar keeps the brand color and no white corners on phones */
+            #sidebar, #sidebar .logo-container, #sidebar .nav { background-color: var(--c-primario) !important; color: #fff !important; border-radius: 0 !important; }
+            #sidebar.closed { transform: translateX(-110%); }
+            /* Keep the main content full width when sidebar is hidden */
+            #main-content { margin-left: 0 !important; width: 100% !important; }
+            /* Make nav links wrap instead of overflowing */
+            #sidebar .nav-link { white-space: normal; padding: 10px 16px; }
+            .logo-container img { max-height: 44px; }
+            .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1050; }
+            /* when overlay is active, JS sets overlay.style.display = 'block' */
+        }
+
+        /* Extra small screens: tweak spacing a bit more */
+        @media (max-width: 575px) {
+            .table thead th { font-size: 0.68rem; }
+            .table td, .table th { padding: 0.4rem; }
+            .logo-container img { max-height: 40px; }
+        }
+
+        /* Column helpers */
+        .col-id { width: 5%; }
+        @media (max-width: 767px) { .col-id { width: auto; } }
+
+        /* Make action buttons full width on small screens and auto on md+ */
+        .btn-responsive-sm { display: flex; flex-direction: column; gap: .5rem; }
+        .btn-responsive-sm .btn { width: 100%; }
+        @media (min-width: 768px) {
+            .btn-responsive-sm { flex-direction: row; gap: .5rem; }
+            .btn-responsive-sm .btn { width: auto; }
+        }
+
+        /* Ensure card headers are full width and not floated on small screens */
+        @media (max-width: 991px) {
+            .card .card-header { display: block; width: 100%; box-sizing: border-box; }
+        }
+
+        /* Auditoría helpers */
+        #aud_raw_consulta { display:none; white-space: pre-wrap; background:#f8f9fa; padding:10px; border-radius:4px; font-family: monospace; font-size: 0.9em; }
+        .aud-action-badge { font-weight:600; font-size:0.85em; }
+        .aud-row-insert { background: rgba(198, 239, 206, 0.25); }
+        .aud-row-update { background: rgba(255, 243, 205, 0.25); }
+        .aud-row-delete { background: rgba(248, 215, 218, 0.25); }
     </style>
 </head>
 <body>
@@ -98,19 +154,19 @@ $currentUser = [
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content"><form id="formUsuario"><div class="modal-header modal-header-danger"><h5 class="modal-title" id="modalUsuarioTitle">Registrar/Editar Usuario</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="usuario_id" name="id"><div class="mb-3"><label for="usuario_nombre" class="form-label">Nombre</label><input id="usuario_nombre" name="nombre" type="text" class="form-control" required></div><div class="mb-3"><label for="usuario_username" class="form-label">Usuario (username)</label><input id="usuario_username" name="username" type="text" class="form-control" required></div><div class="mb-3"><label for="usuario_password" class="form-label">Contraseña</label><input id="usuario_password" name="password" type="password" class="form-control"><div class="form-text">Dejar en blanco para no cambiar. Obligatorio para usuarios nuevos.</div></div><div class="mb-3"><label for="usuario_rol" class="form-label">Asignar Rol</label><select id="usuario_rol" name="rol" class="form-select" required><option value="ADM">Administración (ADM)</option><option value="COB">Cobranzas (COB)</option><option value="REC">Rectoría (REC)</option><option value="SU">SUPER USUARIO (SU)</option></select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Guardar Usuario</button></div></form></div>
         </div>
     </div>
 
     <div class="modal fade" id="modalCambiarPassword" tabindex="-1" aria-labelledby="modalCambiarPasswordLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content"><form id="formCambiarPassword"><div class="modal-header modal-header-danger"><h5 class="modal-title" id="modalCambiarPasswordLabel">Cambiar Contraseña</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="change_pass_username" name="username"><div class="mb-3"><label class="form-label">Nueva Contraseña para <strong id="username_display"></strong></label><input id="change_pass_password" name="password" type="password" class="form-control" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Guardar Contraseña</button></div></form></div>
         </div>
     </div>
 
     <div class="modal fade" id="modalEgreso" tabindex="-1" aria-labelledby="modalEgresoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
             <div class="modal-content">
                             <form id="formEgreso">
                                 <div class="modal-header modal-header-danger">
@@ -191,7 +247,7 @@ $currentUser = [
     </div>
 
     <div class="modal fade" id="modalIngreso" tabindex="-1" aria-labelledby="modalIngresoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
             <div class="modal-content">
                 <form id="formIngreso">
                     <div class="modal-header modal-header-danger">
@@ -231,13 +287,13 @@ $currentUser = [
     </div>
 
     <div class="modal fade" id="modalCategoria" tabindex="-1" aria-labelledby="modalCategoriaLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content"><form id="formCategoria"><div class="modal-header modal-header-danger"><h5 class="modal-title" id="modalCategoriaTitle">Agregar/Editar Categoría</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="categoria_id" name="id"><div class="mb-3"><label for="cat_nombre" class="form-label">Nombre de Categoría</label><input id="cat_nombre" name="nombre" type="text" class="form-control" required></div><div class="mb-3"><label for="cat_tipo" class="form-label">Tipo de Flujo</label><select id="cat_tipo" name="tipo" class="form-select" required><option value="Ingreso">Ingreso</option><option value="Egreso">Egreso</option></select></div><div class="mb-3"><label for="cat_descripcion" class="form-label">Descripción</label><textarea id="cat_descripcion" name="descripcion" class="form-control" rows="2"></textarea></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Guardar Categoría</button></div></form></div>
         </div>
     </div>
 
     <div class="modal fade" id="modalPresupuesto" tabindex="-1" aria-labelledby="modalPresupuestoLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content"><form id="formPresupuesto"><div class="modal-header modal-header-danger"><h5 class="modal-title" id="modalPresupuestoTitle">Asignar/Actualizar Presupuesto</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="presupuesto_id" name="id"><div class="mb-3"><label for="pres_categoria" class="form-label">Categoría</label><select id="pres_categoria" name="categoria" class="form-select" required></select></div><div class="mb-3"><label for="pres_monto" class="form-label">Monto Límite</label><input id="pres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required></div><div class="mb-3"><label for="pres_fecha" class="form-label">Fecha de Asignación</label><input id="pres_fecha" name="fecha" type="date" class="form-control" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Guardar/Actualizar Presupuesto</button></div></form></div>
         </div>
     </div>

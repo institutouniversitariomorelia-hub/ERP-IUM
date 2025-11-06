@@ -15,18 +15,18 @@
     <div class="card-body p-0">
         <div class="table-responsive">
             
-            <table class="table table-hover table-sm mb-0" style="font-size: 0.8em; white-space: nowrap;">
+            <table class="table table-hover table-striped table-sm mb-0">
                 <thead>
                     <tr class="table-light">
                         <th>Fecha</th>
-                        <th>ID</th> 
+                        <th class="d-none d-md-table-cell">ID</th>
                         <th>Destinatario</th>
-                        <th>Categoría</th> 
-                        <th>Proveedor</th>
-                        <th>Descripción</th>
+                        <th>Categoría</th>
+                        <th class="d-none d-md-table-cell">Proveedor</th>
+                        <th class="d-none d-md-table-cell">Descripción</th>
                         <th>Forma Pago</th>
-                        <th>Doc. Amparo</th>
-                        <th>Activo Fijo</th>
+                        <th class="d-none d-md-table-cell">Doc. Amparo</th>
+                        <th class="d-none d-md-table-cell">Activo Fijo</th>
                         <th class="text-end">Monto</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -54,35 +54,36 @@
                         ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($egreso['fecha'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($egreso['folio_egreso'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($egreso['folio_egreso'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($egreso['destinatario'] ?? 'N/A'); ?></td>
                                 
                                 <td><?php echo htmlspecialchars($egreso['nombre_categoria'] ?? 'Sin categoría'); ?></td>
-                                <td><?php echo htmlspecialchars($egreso['proveedor'] ?? '-'); ?></td>
-                                <td title="<?php echo $descripcionCompleta; ?>"> 
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($egreso['proveedor'] ?? '-'); ?></td>
+                                <td class="d-none d-md-table-cell" title="<?php echo $descripcionCompleta; ?>"> 
                                     <?php echo $descripcionCorta ?: '-'; ?> 
                                 </td>
                                 <td><?php echo htmlspecialchars($egreso['forma_pago'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($egreso['documento_de_amparo'] ?? '-'); ?></td>
-                                <td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($egreso['documento_de_amparo'] ?? '-'); ?></td>
+                                <td class="d-none d-md-table-cell">
                                     <span class="badge <?php echo ($egreso['activo_fijo'] ?? 'NO') === 'SI' ? 'bg-info text-dark' : 'bg-light text-secondary'; ?>">
                                         <?php echo htmlspecialchars($egreso['activo_fijo'] ?? 'NO'); ?>
                                     </span>
                                 </td>
                                 <td class="text-end text-danger fw-bold"><?php echo $montoFormateado; ?></td>
                                 <td class="text-center">
-                                    
-                                    <button class="btn btn-sm btn-warning btn-edit-egreso"
-                                            data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
-                                            data-bs-toggle="modal" data-bs-target="#modalEgreso"
-                                            title="Editar Egreso">
-                                         <ion-icon name="create-outline"></ion-icon>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger btn-del-egreso"
-                                            data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
-                                            title="Eliminar Egreso">
-                                        <ion-icon name="trash-outline"></ion-icon>
-                                    </button>
+                                    <div class="btn-responsive-sm">
+                                        <button class="btn btn-sm btn-warning btn-edit-egreso"
+                                                data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
+                                                data-bs-toggle="modal" data-bs-target="#modalEgreso"
+                                                title="Editar Egreso">
+                                             <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger btn-del-egreso"
+                                                data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
+                                                title="Eliminar Egreso">
+                                            <ion-icon name="trash-outline"></ion-icon>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
