@@ -89,6 +89,11 @@
                                                 <ion-icon name="trash-outline"></ion-icon>
                                             </button>
                                         <?php endif; ?>
+                                        <?php if (roleCan('view','egresos')): ?>
+                                                <a class="btn btn-sm btn-primary ms-1" href="<?php echo 'generate_receipt_egreso.php?folio=' . urlencode($egreso['folio_egreso'] ?? $egreso['id'] ?? 0); ?>" target="_blank" title="Generar Recibo">
+                                                    <ion-icon name="document-text-outline"></ion-icon>
+                                                </a>
+                                            <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>

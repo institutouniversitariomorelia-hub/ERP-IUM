@@ -123,7 +123,7 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
                                                 </button>
                                             <?php endif; ?>
                                             <?php if (roleCan('view','ingresos')): ?>
-                                                <a class="btn btn-sm btn-primary ms-1" href="<?php echo 'generate_receipt.php?folio=' . urlencode($ingreso['folio_ingreso'] ?? $ingreso['id'] ?? 0); ?>" target="_blank" title="Generar Recibo">
+                                                <a class="btn btn-sm btn-primary ms-1" href="<?php echo 'generate_receipt_ingreso.php?folio=' . urlencode($ingreso['folio_ingreso'] ?? $ingreso['id'] ?? 0); ?>" target="_blank" title="Generar Recibo">
                                                     <ion-icon name="document-text-outline"></ion-icon>
                                                 </a>
                                             <?php endif; ?>
