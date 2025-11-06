@@ -53,23 +53,18 @@ class AuthController {
         if ($user = $result->fetch_assoc()) {
             if (password_verify($password, $user['password'])) {
                 session_regenerate_id(true);
-                
-                // Renombré 'id' a 'id_user' para que coincida con tu SELECT
-                $_SESSION['user_id'] = $user['id_user']; 
-                $_SESSION['user_nombre'] = $user['nombre'];
-                $_SESSION['user_username'] = $user['username'];
-                $_SESSION['user_rol'] = $user['rol'];
 
-                // =================================================================
-                // <-- ¡CORRECCIÓN 1: LLAMADA A LA AUDITORÍA FALTANTE!
-                // Le decimos a la BD (y a los triggers) quiénes somos
-                // Asumimos que setAuditUser() está en tu db.php
-                // NOTA: Tu db.php debe estar incluido ANTES de llamar a esta clase.
-                setAuditUser($this->db, $user['id_user']);
-                // =================================================================
+// El SELECT debe devolver 'id_user'
+$_SESSION['user_id'] = $user['id_user']; 
+$_SESSION['user_nombre'] = $user['nombre'];
+$_SESSION['user_username'] = $user['username'];
+$_SESSION['user_rol'] = $user['rol'];
 
-                header('Location: ' . BASE_URL . 'index.php?controller=' . DEFAULT_CONTROLLER . '&action=' . DEFAULT_ACTION);
-                exit;
+// <-- ¡IMPORTANTE! Hemos ELIMINADO la línea setAuditUser()
+// porque no está definida y no es necesaria.
+
+header('Location: ' . BASE_URL . 'index.php?controller=' . DEFAULT_CONTROLLER . '&action=' . DEFAULT_ACTION);
+exit;
             }
         }
         

@@ -3,16 +3,19 @@
 
 require_once 'models/IngresoModel.php';
 require_once 'models/CategoriaModel.php'; // También usa categorías
+require_once 'models/AuditoriaModel.php';
 
 class IngresoController {
     private $db;
     private $ingresoModel;
     private $categoriaModel;
+    private $auditoriaModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
         $this->ingresoModel = new IngresoModel($dbConnection);
         $this->categoriaModel = new CategoriaModel($dbConnection);
+        $this->auditoriaModel = new AuditoriaModel($dbConnection);
     }
 
     /**
@@ -62,7 +65,8 @@ class IngresoController {
         $response = ['success' => false];
 
         // Validación más completa según la estructura de la tabla ingresos
-        $requiredFields = ['fecha', 'alumno', 'matricula', 'nivel', 'monto', 'metodo_de_pago', 'concepto', 'año', 'programa', 'id_categoria'];
+    // Alinear con los names del formulario (usamos 'anio' en el form, no 'año')
+    $requiredFields = ['fecha', 'alumno', 'matricula', 'nivel', 'monto', 'metodo_de_pago', 'concepto', 'anio', 'programa', 'id_categoria'];
         foreach ($requiredFields as $field) {
             if (empty($data[$field])) {
                 $response['error'] = "El campo '" . ucfirst(str_replace('_', ' ', $field)) . "' es obligatorio.";
@@ -72,7 +76,8 @@ class IngresoController {
         }
         // Validaciones específicas
         if (!is_numeric($data['monto']) || $data['monto'] <= 0) { $response['error'] = 'El monto debe ser un número positivo.'; echo json_encode($response); exit; }
-        if (!filter_var($data['año'], FILTER_VALIDATE_INT) || $data['año'] < 2000 || $data['año'] > 2100) { $response['error'] = 'El año debe ser válido (ej: 2025).'; echo json_encode($response); exit; }
+    // Validar 'anio' (campo enviado por el formulario como 'anio')
+    if (!isset($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) || $data['anio'] < 2000 || $data['anio'] > 2100) { $response['error'] = 'El año debe ser válido (ej: 2025).'; echo json_encode($response); exit; }
         if (isset($data['dia_pago']) && $data['dia_pago'] !== '' && (!filter_var($data['dia_pago'], FILTER_VALIDATE_INT) || $data['dia_pago'] < 1 || $data['dia_pago'] > 31)) { $response['error'] = 'El día de pago debe ser un número entre 1 y 31.'; echo json_encode($response); exit; }
         if (isset($data['grado']) && $data['grado'] !== '' && (!filter_var($data['grado'], FILTER_VALIDATE_INT) || $data['grado'] < 1 || $data['grado'] > 15)) { $response['error'] = 'El grado debe ser un número válido.'; echo json_encode($response); exit; }
         $niveles_validos = ['Licenciatura','Maestría','Doctorado'];
@@ -94,19 +99,27 @@ class IngresoController {
                     // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
                     // El trigger 'trg_ingresos_after_insert_aud' se encarga de esto.
 
+                    if (!$this->auditoriaModel->hasTriggerForTable('ingresos')) {
+                        $det = 'Ingreso creado (folio: ' . $newId . ')';
+                        $this->auditoriaModel->addLog('Ingreso', 'Insercion', $det, null, json_encode($data), null, $newId, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                     $response['newId'] = $newId; // Devolver el nuevo ID por si JS lo necesita
                 } else {
                      $response['error'] = 'No se pudo crear el ingreso en la base de datos.';
                 }
             } else { // Actualizar
-                // Pasamos el folio_ingreso_id (PK) y los datos
+                $oldData = $this->ingresoModel->getIngresoById($folio_ingreso_id);
                 $success = $this->ingresoModel->updateIngreso($folio_ingreso_id, $data);
                  if ($success) {
                     
                     // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
                     // El trigger 'trg_ingresos_after_update' se encarga de esto.
 
+                    if (!$this->auditoriaModel->hasTriggerForTable('ingresos')) {
+                        $det = 'Ingreso actualizado (folio: ' . $folio_ingreso_id . ')';
+                        $this->auditoriaModel->addLog('Ingreso', 'Actualizacion', $det, json_encode($oldData), json_encode($data), null, $folio_ingreso_id, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                  } else {
                      $response['error'] = 'No se pudo actualizar el ingreso en la base de datos.';
@@ -159,12 +172,13 @@ class IngresoController {
 
         if ($folio_ingreso_id > 0) {
             try {
+                $oldData = $this->ingresoModel->getIngresoById($folio_ingreso_id);
                 $success = $this->ingresoModel->deleteIngreso($folio_ingreso_id); // Pasa la PK correcta
                 if ($success) {
-
-                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
-                    // El trigger 'trg_ingresos_before_delete' se encarga de esto.
-                    
+                    if (!$this->auditoriaModel->hasTriggerForTable('ingresos')) {
+                        $det = 'Ingreso eliminado (folio: ' . $folio_ingreso_id . ')';
+                        $this->auditoriaModel->addLog('Ingreso', 'Eliminacion', $det, json_encode($oldData), null, null, $folio_ingreso_id, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar el ingreso de la base de datos.';

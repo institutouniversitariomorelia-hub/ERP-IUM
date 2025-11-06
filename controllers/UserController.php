@@ -2,14 +2,17 @@
 // controllers/UserController.php (CORREGIDO)
 
 require_once 'models/UserModel.php'; // Incluir el modelo
+require_once 'models/AuditoriaModel.php';
 
 class UserController {
     private $db;
     private $userModel;
+    private $auditoriaModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
         $this->userModel = new UserModel($dbConnection);
+        $this->auditoriaModel = new AuditoriaModel($dbConnection);
     }
 
     /**
@@ -64,6 +67,7 @@ class UserController {
         }
 
         try {
+            $oldData = $isUpdate ? $this->userModel->getUserById($id) : null;
             if ($isUpdate) { 
                 if (!empty($data['password'])) {
                     $hash = password_hash($data['password'], PASSWORD_DEFAULT);
@@ -85,11 +89,11 @@ class UserController {
             }
 
             if ($stmt->execute()) {
-                
-                // <-- ¡CORRECCIÓN DE AUDITORÍA! BORRAMOS LA LLAMADA A addAudit()
-                // Los triggers 'trg_usuarios_after_insert_aud' y '..._after_update_aud'
-                // se encargan de esto automáticamente.
-                
+                // Fallback en PHP si no hay triggers para usuarios
+                if (!$this->auditoriaModel->hasTriggerForTable('usuarios')) {
+                    $newData = $this->userModel->getUserById($this->db->insert_id ?: $id);
+                    $this->auditoriaModel->addLog('Usuario', $isUpdate ? 'Actualizacion' : 'Insercion', 'Usuario guardado: ' . ($newData['username'] ?? ''), json_encode($oldData), json_encode($newData), null, null, $_SESSION['user_id'] ?? null);
+                }
                 $response['success'] = true;
             } else {
                 $errorMsg = $stmt->error;
@@ -133,10 +137,11 @@ class UserController {
                 $stmt->bind_param("i", $id);
                 $success = $stmt->execute();
                 if ($success) {
-                    
-                    // <-- ¡CORRECCIÓN DE AUDITORÍA! BORRAMOS LA LLAMADA A addAudit()
-                    // El trigger 'trg_usuarios_before_delete' se encarga de esto.
-
+                    // Registrar old data si es posible
+                    $userToDelete = $this->userModel->getUserById($id);
+                    if (!$this->auditoriaModel->hasTriggerForTable('usuarios')) {
+                        $this->auditoriaModel->addLog('Usuario', 'Eliminacion', 'Usuario eliminado: ' . ($userToDelete['username'] ?? '') . ' (id: ' . $id . ')', json_encode($userToDelete), null, null, null, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar el usuario: ' . $stmt->error;

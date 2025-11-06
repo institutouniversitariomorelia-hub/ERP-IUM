@@ -3,16 +3,19 @@
 
 require_once 'models/PresupuestoModel.php';
 require_once 'models/CategoriaModel.php'; // Necesitamos las categorías
+require_once 'models/AuditoriaModel.php';
 
 class PresupuestoController {
     private $db;
     private $presupuestoModel;
     private $categoriaModel;
+    private $auditoriaModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
         $this->presupuestoModel = new PresupuestoModel($dbConnection);
         $this->categoriaModel = new CategoriaModel($dbConnection);
+        $this->auditoriaModel = new AuditoriaModel($dbConnection);
     }
 
     /**
@@ -48,6 +51,11 @@ class PresupuestoController {
         $response = ['success' => false];
 
         // Validación básica (ajustada a nuestra BD)
+        // El formulario envía el campo como 'monto' (name="monto") — mapear a 'monto_limite' para el modelo
+        if (isset($data['monto'])) {
+            $data['monto_limite'] = $data['monto'];
+        }
+
         if (empty($data['monto_limite']) || empty($data['fecha'])) {
              $response['error'] = 'El monto límite y la fecha son obligatorios.';
              echo json_encode($response);
@@ -64,10 +72,11 @@ class PresupuestoController {
             $success = $this->presupuestoModel->savePresupuesto($data, $id);
 
             if ($success) {
-                // <-- ¡CORRECCIÓN 2: BORRAMOS LA LLAMADA A addAudit()!
-                // Los triggers 'trg_presupuestos_after_insert_aud' y '..._after_update'
-                // se encargan de esto.
-
+                // Si no existen triggers en la BD para presupuestos, hacemos fallback en PHP
+                if (!$this->auditoriaModel->hasTriggerForTable('presupuestos')) {
+                    $det = 'Presupuesto ' . (empty($id) ? 'creado' : 'actualizado') . ': ' . ($data['descripcion'] ?? '') . ' monto: ' . ($data['monto_limite'] ?? '');
+                    $this->auditoriaModel->addLog('Presupuesto', empty($id) ? 'Insercion' : 'Actualizacion', $det, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                }
                 $response['success'] = true;
             } else {
                  $response['error'] = 'No se pudo guardar el presupuesto en la base de datos.';
@@ -112,6 +121,28 @@ class PresupuestoController {
            exit;
       }
 
+     /**
+      * Acción AJAX: Devuelve todos los presupuestos disponibles (ID y monto) en JSON.
+      * Usado por el frontend para permitir asignar un presupuesto a un egreso.
+      */
+     public function getAllPresupuestos() {
+         header('Content-Type: application/json');
+         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+         $pres = $this->presupuestoModel->getAllPresupuestos();
+         // Normalizar salida: id, monto_limite, fecha
+         $out = [];
+         foreach ($pres as $p) {
+             $out[] = [
+                 'id' => $p['id_presupuesto'] ?? ($p['id'] ?? null),
+                 'monto_limite' => $p['monto_limite'] ?? ($p['monto'] ?? null),
+                 'fecha' => $p['fecha'] ?? null
+             ];
+         }
+         echo json_encode($out);
+         exit;
+     }
+
     /**
      * Acción AJAX: Elimina un presupuesto.
      */
@@ -127,11 +158,10 @@ class PresupuestoController {
                 // No necesitamos $presupuesto, el trigger lo hace.
                 $success = $this->presupuestoModel->deletePresupuesto($id);
                 if ($success) {
-                    
-                    // <-- ¡CORRECCIÓN 3: BORRAMOS LA LLAMADA A addAudit()!
-                    // Vamos a crear el trigger 'trg_presupuestos_before_delete'
-                    // para que esto sea automático.
-
+                    if (!$this->auditoriaModel->hasTriggerForTable('presupuestos')) {
+                        $det = 'Presupuesto eliminado (id: ' . $id . ')';
+                        $this->auditoriaModel->addLog('Presupuesto', 'Eliminacion', $det, null, null, null, null, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar el presupuesto de la base de datos.';

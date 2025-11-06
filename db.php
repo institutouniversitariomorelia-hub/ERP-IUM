@@ -1,51 +1,39 @@
 <?php
-// db.php (Conexión a BD y Funciones Auxiliares)
+// db.php (Conexión a BD y Funciones Auxiliares - MODIFICADO PARA TRIGGERS)
 
-// Iniciar sesión si no está iniciada (puede ser redundante con index.php, pero asegura)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Configuración de la conexión
 define('DB_HOST', 'localhost');
-define('DB_USER', 'plataforma');
-define('DB_PASS', '1234'); 
+define('DB_USER', 'root');
+define('DB_PASS', '');
 define('DB_NAME', 'erp_ium');
 
-// Crear la conexión
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 
-// Verificar la conexión
 if ($conn->connect_error) {
-    // Es mejor morir con un error claro si la BD no conecta
-    error_log("Error de conexión a la base de datos: " . $conn->connect_error); // Registrar error real
-    die("Error de conexión con la base de datos. Por favor, intente más tarde."); // Mensaje genérico
+    error_log("Error de conexión a la base de datos: " . $conn->connect_error);
+    die("Error de conexión con la base de datos. Por favor, intente más tarde.");
 }
 
-// Establecer el charset para evitar problemas con acentos y caracteres especiales
 if (!$conn->set_charset("utf8mb4")) {
      error_log("Error al establecer utf8mb4: " . $conn->error);
 }
 
-// Función para registrar en la auditoría
-function addAudit($conn, $seccion, $accion, $detalles) {
-    // Asegurarse de que $conn es un objeto mysqli válido
-    if (!$conn || !($conn instanceof mysqli)) {
-        error_log("Error de auditoría: Conexión a BD no válida.");
-        return;
-    }
-    
-    $usuario = $_SESSION['user_username'] ?? 'Sistema'; // Usar el username de la sesión si está disponible
-    
-    $stmt = $conn->prepare("INSERT INTO auditoria (usuario, seccion, accion, detalles) VALUES (?, ?, ?, ?)");
-    if ($stmt) {
-        $stmt->bind_param("ssss", $usuario, $seccion, $accion, $detalles);
-        if (!$stmt->execute()) {
-             error_log("Error al ejecutar statement de auditoría: " . $stmt->error);
-        }
-        $stmt->close();
-    } else {
-        error_log("Error al preparar statement de auditoría: " . $conn->error);
-    }
+// **CAMBIO IMPORTANTE PARA AUDITORÍA**
+// Establecer la variable de sesión de MySQL para los Triggers de Auditoría.
+// Tus triggers (ej: trg_ingresos_after_insert_aud) usan @auditoria_user_id.
+// El procedimiento (sp_auditar_accion) espera p_user_id, que es alimentado por @auditoria_user_id o NEW.id_user.
+if (isset($_SESSION['user_id'])) {
+    $userId = (int)$_SESSION['user_id'];
+    // Establecemos la variable de sesión de MySQL que usan tus triggers
+    $conn->query("SET @auditoria_user_id = $userId");
+} else {
+    // Si no hay sesión (ej: script de consola), poner un ID por defecto (ej: 0 para 'Sistema')
+     $conn->query("SET @auditoria_user_id = 0"); 
 }
+
+// --- La función addAudit() SE ELIMINA ---
+// Ya no es necesaria, la base de datos (Triggers) se encarga de esto automáticamente.
 ?>

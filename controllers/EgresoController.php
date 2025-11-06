@@ -3,16 +3,19 @@
 
 require_once 'models/EgresoModel.php';
 require_once 'models/CategoriaModel.php';
+require_once 'models/AuditoriaModel.php';
 
 class EgresoController {
     private $db;
     private $egresoModel;
     private $categoriaModel;
+    private $auditoriaModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
         $this->egresoModel = new EgresoModel($dbConnection);
         $this->categoriaModel = new CategoriaModel($dbConnection);
+        $this->auditoriaModel = new AuditoriaModel($dbConnection);
     }
 
     /**
@@ -81,16 +84,26 @@ class EgresoController {
                     // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
                     // El trigger 'trg_egresos_after_insert_aud' se encarga de esto.
 
+                    // Si la BD no tiene triggers para egresos, añadir log desde PHP
+                    if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
+                        $det = 'Egreso creado (folio: ' . $newId . ')';
+                        $this->auditoriaModel->addLog('Egreso', 'Insercion', $det, null, json_encode($data), $newId, null, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                 } else { $response['error'] = 'No se pudo crear el egreso.'; }
             } else { // Actualizar
-                // No necesitamos $oldData para la auditoría, el trigger lo hace solo
+                // intentar obtener datos antiguos para comparar
+                $oldData = $this->egresoModel->getEgresoById($folio_egreso_id);
                 $success = $this->egresoModel->updateEgreso($folio_egreso_id, $data);
                  if ($success) {
                     
                     // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
                     // El trigger 'trg_egresos_after_update' se encarga de esto.
                     
+                    if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
+                        $det = 'Egreso actualizado (folio: ' . $folio_egreso_id . ')';
+                        $this->auditoriaModel->addLog('Egreso', 'Actualizacion', $det, json_encode($oldData), json_encode($data), $folio_egreso_id, null, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                  } else { $response['error'] = 'No se pudo actualizar el egreso.'; }
             }
@@ -129,14 +142,15 @@ class EgresoController {
 
         if ($folio_egreso_id > 0) {
             try {
-                // No necesitamos $oldData, el trigger 'trg_egresos_before_delete' lo hace.
-                $success = $this->egresoModel->deleteEgreso($folio_egreso_id);
+                    // Obtener datos anteriores para el log si no hay trigger
+                    $oldData = $this->egresoModel->getEgresoById($folio_egreso_id);
+                    $success = $this->egresoModel->deleteEgreso($folio_egreso_id);
                 if ($success) {
-                    
-                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
-                    // El trigger 'trg_egresos_before_delete' se encarga de esto.
-                    
-                    $response['success'] = true;
+                        if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
+                            $det = 'Egreso eliminado (folio: ' . $folio_egreso_id . ')';
+                            $this->auditoriaModel->addLog('Egreso', 'Eliminacion', $det, json_encode($oldData), null, $folio_egreso_id, null, $_SESSION['user_id'] ?? null);
+                        }
+                        $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar el egreso de la base de datos.';
                 }

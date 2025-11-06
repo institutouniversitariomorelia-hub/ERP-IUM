@@ -14,15 +14,15 @@ class EgresoModel {
      */
     public function getAllEgresos() {
         // ** CONSULTA MODIFICADA CON LEFT JOIN **
-        $query = "SELECT
-                    e.*,  -- Selecciona todos los campos de egresos (alias e)
-                    c.nombre AS nombre_categoria -- Trae el nombre de categorias (alias c)
-                  FROM
-                    egresos e
-                  LEFT JOIN
-                    categorias c ON e.id_categoria = c.id -- Une por el ID de categoría
-                  ORDER BY
-                    e.fecha DESC, e.folio_egreso DESC"; // Ordena usando alias
+                $query = "SELECT
+                                        e.*,  -- Selecciona todos los campos de egresos (alias e)
+                                        c.nombre AS nombre_categoria -- Trae el nombre de categorias (alias c)
+                                    FROM
+                                        egresos e
+                                    LEFT JOIN
+                                        categorias c ON e.id_categoria = c.id_categoria -- Une por la columna real 'id_categoria'
+                                    ORDER BY
+                                        e.fecha DESC, e.folio_egreso DESC"; // Ordena usando alias
 
         $result = $this->db->query($query);
         if ($result) {
@@ -77,6 +77,29 @@ class EgresoModel {
         $doc_amparo = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
         $id_presupuesto = isset($data['id_presupuesto']) && filter_var($data['id_presupuesto'], FILTER_VALIDATE_INT) ? (int)$data['id_presupuesto'] : null;
 
+        // Si no se proporcionó id_presupuesto, intentar obtenerlo desde la categoría (una sola vez)
+        if (is_null($id_presupuesto) && !empty($data['id_categoria']) && filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) {
+            $catId = (int)$data['id_categoria'];
+            $q = "SELECT id_presupuesto FROM categorias WHERE id_categoria = ? LIMIT 1";
+            $st = $this->db->prepare($q);
+            if ($st) {
+                $st->bind_param('i', $catId);
+                if ($st->execute()) {
+                    $res = $st->get_result();
+                    $row = $res->fetch_assoc();
+                    if ($row && !empty($row['id_presupuesto'])) {
+                        $id_presupuesto = (int)$row['id_presupuesto'];
+                    }
+                }
+                $st->close();
+            }
+        }
+
+        // Si aún no hay id_presupuesto, abortar con mensaje claro porque la columna en BD es NOT NULL
+        if (is_null($id_presupuesto)) {
+            throw new Exception("No existe un presupuesto asignado para esta categoría. Asigne un presupuesto o seleccione uno en el formulario antes de guardar el egreso.");
+        }
+
         if (empty($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
             empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['destinatario']) || empty($data['forma_pago']) ||
@@ -99,7 +122,9 @@ class EgresoModel {
         $stmt = $this->db->prepare($query);
         if (!$stmt) { throw new Exception("Error al preparar consulta INSERT: " . $this->db->error); }
 
-        $bindResult = $stmt->bind_param( "sssds" . "sssiii",
+        // Tipos: proveedor(s), activo_fijo(s), descripcion(s), monto(d), fecha(s),
+        // destinatario(s), forma_pago(s), documento_de_amparo(s), id_user(i), id_presupuesto(i), id_categoria(i)
+        $bindResult = $stmt->bind_param( "" . "sssds" . "sss" . "iii",
             $proveedor, $activo_fijo, $descripcion, $monto, $fecha,
             $destinatario, $forma_pago, $doc_amparo,
             $id_user, $id_presupuesto, $id_categoria

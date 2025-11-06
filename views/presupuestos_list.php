@@ -33,25 +33,33 @@
                         <tr><td colspan="4" class="text-center p-4 text-muted">No hay presupuestos asignados.</td></tr>
                     <?php else: ?>
                         <?php foreach ($presupuestos as $presupuesto):
-                            $montoFormateado = number_format($presupuesto['monto'], 2);
+                            $monto = isset($presupuesto['monto']) ? $presupuesto['monto'] : ($presupuesto['monto_limite'] ?? 0);
+                            $montoFormateado = number_format((float)$monto, 2);
                             try {
-                                $formatter = new NumberFormatter('es-MX', NumberFormatter::CURRENCY);
-                                $montoFormateado = $formatter->formatCurrency($presupuesto['monto'], 'MXN');
+                                if (class_exists('NumberFormatter')) {
+                                    $formatter = new NumberFormatter('es-MX', NumberFormatter::CURRENCY);
+                                    if (is_numeric($monto)) {
+                                        $montoFormateado = $formatter->formatCurrency($monto, 'MXN');
+                                    }
+                                }
                             } catch (Exception $e) { /* Ignorar */ }
+                            $categoria = htmlspecialchars($presupuesto['categoria'] ?? ($presupuesto['cat_nombre'] ?? '-'));
+                            $fechaDisplay = htmlspecialchars($presupuesto['fecha'] ?? '-');
+                            $presId = $presupuesto['id'] ?? ($presupuesto['id_presupuesto'] ?? 0);
                         ?>
                             <tr>
-                                <td><?php echo htmlspecialchars($presupuesto['categoria']); ?></td>
+                                <td><?php echo $categoria; ?></td>
                                 <td class="text-end fw-bold"><?php echo $montoFormateado; ?></td>
-                                <td><?php echo htmlspecialchars($presupuesto['fecha']); ?></td>
+                                <td><?php echo $fechaDisplay; ?></td>
                                 <td class="text-center">
                                     <button class="btn btn-sm btn-warning btn-edit-presupuesto"
-                                            data-id="<?php echo $presupuesto['id']; ?>"
+                                            data-id="<?php echo $presId; ?>"
                                             data-bs-toggle="modal" data-bs-target="#modalPresupuesto"
                                             title="Editar Presupuesto">
                                          <ion-icon name="create-outline"></ion-icon> Editar
                                     </button>
                                     <button class="btn btn-sm btn-danger btn-del-presupuesto"
-                                            data-id="<?php echo $presupuesto['id']; ?>"
+                                            data-id="<?php echo $presId; ?>"
                                             title="Eliminar Presupuesto">
                                         <ion-icon name="trash-outline"></ion-icon> Eliminar
                                     </button>

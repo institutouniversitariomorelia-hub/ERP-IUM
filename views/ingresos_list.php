@@ -95,7 +95,7 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
                                 <td><?php echo $nombreCategoria; ?></td> 
                                 <td><?php echo htmlspecialchars($ingreso['concepto'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($ingreso['mes_correspondiente'] ?? '-'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['año'] ?? 'N/A'); ?></td>
+                                <td><?php echo htmlspecialchars($ingreso['anio'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($ingreso['metodo_de_pago'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($ingreso['dia_pago'] ?? '-'); ?></td>
                                 <td title="<?php echo $observacionesCompleta; ?>">

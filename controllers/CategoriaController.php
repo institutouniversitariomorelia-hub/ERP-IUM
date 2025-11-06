@@ -2,14 +2,17 @@
 // controllers/CategoriaController.php (CORREGIDO)
 
 require_once 'models/CategoriaModel.php';
+require_once 'models/AuditoriaModel.php';
 
 class CategoriaController {
     private $db;
     private $categoriaModel;
+    private $auditoriaModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
         $this->categoriaModel = new CategoriaModel($dbConnection);
+        $this->auditoriaModel = new AuditoriaModel($dbConnection);
     }
 
     /**
@@ -73,6 +76,11 @@ class CategoriaController {
             }
 
             if ($success) {
+                // Añadir log si no hay triggers para categorias
+                if (!$this->auditoriaModel->hasTriggerForTable('categorias')) {
+                    $det = 'Categoría guardada: ' . ($data['nombre'] ?? '');
+                    $this->auditoriaModel->addLog('Categoria', empty($id) ? 'Insercion' : 'Actualizacion', $det, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                }
                 $response['success'] = true;
             } else {
                  $response['error'] = 'No se pudo guardar la categoría en la base de datos.';
@@ -127,10 +135,10 @@ class CategoriaController {
                 // No necesitamos $categoria o $nombreCat, el trigger lo hace.
                 $success = $this->categoriaModel->deleteCategoria($id);
                 if ($success) {
-                    
-                    // <-- ¡CORRECCIÓN 4: BORRAMOS LA LLAMADA A addAudit()!
-                    // El trigger 'trg_categorias_before_delete' se encarga de esto.
-                    
+                    if (!$this->auditoriaModel->hasTriggerForTable('categorias')) {
+                        $det = 'Categoría eliminada (id: ' . $id . ')';
+                        $this->auditoriaModel->addLog('Categoria', 'Eliminacion', $det, null, null, null, null, $_SESSION['user_id'] ?? null);
+                    }
                     $response['success'] = true;
                 } else {
                     $response['error'] = 'No se pudo eliminar la categoría de la base de datos.';

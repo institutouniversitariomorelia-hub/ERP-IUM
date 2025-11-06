@@ -27,11 +27,52 @@ class AuditoriaController {
             'usuario' => $_GET['usuario'] ?? null,
             'fecha_inicio' => $_GET['fecha_inicio'] ?? null,
             'fecha_fin' => $_GET['fecha_fin'] ?? null,
+            'accion' => $_GET['accion'] ?? null,
+            // soporte para filtro por tipo (accion_tipo) desde la UI: Registro/Actualizacion/Eliminacion
+            'accion_tipo' => $_GET['accion_tipo'] ?? null,
+            'q' => $_GET['q'] ?? null,
         ];
 
-        // Pedir datos a los Modelos
-        $auditoriaLogs = $this->auditoriaModel->getAuditoriaLogs($filtros);
-        $usuarios = $this->userModel->getAllUsers(); // Obtener lista de usuarios para el <select>
+        // Mapear nombres legibles de la UI a los valores reales en la BD (evita mismatch por mayúsculas/plurales)
+        $seccionMap = [
+            'Usuario' => 'usuarios',
+            'Egreso' => 'egresos',
+            'Ingreso' => 'ingresos',
+            'Categoria' => 'categorias',
+            'Presupuesto' => 'presupuestos'
+        ];
+        if (!empty($filtros['seccion']) && isset($seccionMap[$filtros['seccion']])) {
+            $filtros['seccion'] = $seccionMap[$filtros['seccion']];
+        }
+
+        // Si se indicó accion_tipo, priorizarlo y normalizar su valor hacia la clave 'accion'
+        if (!empty($filtros['accion_tipo'])) {
+            // Valores esperados: Insercion, Actualizacion, Eliminacion
+            $filtros['accion'] = $filtros['accion_tipo'];
+        }
+
+    // Pedir datos a los Modelos
+    // Soporte de paginación: leer página y tamaño desde GET
+    $filtros['page'] = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+    $filtros['pageSize'] = isset($_GET['pageSize']) ? max(1, min(200, (int)$_GET['pageSize'])) : 50;
+
+    $logsResult = $this->auditoriaModel->getAuditoriaLogs($filtros);
+    if (is_array($logsResult) && array_key_exists('data', $logsResult)) {
+        $auditoriaLogs = $logsResult['data'];
+        $totalLogs = $logsResult['total'] ?? count($auditoriaLogs);
+        $page = $logsResult['page'] ?? $filtros['page'];
+        $pageSize = $logsResult['pageSize'] ?? $filtros['pageSize'];
+    } else {
+        // Compatibilidad: si el modelo devolviera solo un array de filas
+        $auditoriaLogs = is_array($logsResult) ? $logsResult : [];
+        $totalLogs = count($auditoriaLogs);
+        $page = $filtros['page'];
+        $pageSize = $filtros['pageSize'];
+    }
+
+    $usuarios = $this->userModel->getAllUsers(); // Obtener lista de usuarios para el <select>
+    // Últimos movimientos (compacto)
+    $recentLogs = $this->auditoriaModel->getRecentLogs(5);
 
         // Datos para la Vista
         $pageTitle = "Historial de Auditoría";
@@ -41,10 +82,29 @@ class AuditoriaController {
         $this->renderView('auditoria_list', [
             'pageTitle' => $pageTitle,
             'activeModule' => $activeModule,
-            'auditoriaLogs' => $auditoriaLogs,
+        'auditoriaLogs' => $auditoriaLogs,
             'usuarios' => $usuarios, // Pasar usuarios al <select>
-            'filtrosActuales' => $filtros // Pasar filtros actuales para mantenerlos en el form
+            'filtrosActuales' => $filtros, // Pasar filtros actuales para mantenerlos en el form
+            'recentLogs' => $recentLogs
+        ,'totalLogs' => $totalLogs
+        ,'page' => $page
+        ,'pageSize' => $pageSize
         ]);
+    }
+
+    /**
+     * Acción AJAX: Devuelve un registro de auditoría por id en JSON (para el modal).
+     */
+    public function getLogAjax() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+        $id = $_GET['id'] ?? 0;
+        $id = (int)$id;
+        if ($id <= 0) { echo json_encode(['error' => 'ID inválido']); exit; }
+        $log = $this->auditoriaModel->getAuditoriaById($id);
+        if ($log) echo json_encode(['success' => true, 'data' => $log]);
+        else echo json_encode(['success' => false, 'error' => 'Registro no encontrado.']);
+        exit;
     }
     
     /**
