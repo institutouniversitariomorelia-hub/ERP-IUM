@@ -3,15 +3,17 @@
 // Llamada por IngresoController->index()
 // Variables disponibles: $pageTitle, $activeModule, $ingresos, $currentUser (del layout)
 
-// Helper para obtener el nombre de la categoría (necesitamos $categorias del controlador)
-// Nota: Sería más eficiente hacer el JOIN en el Modelo como en Egresos.
+// Helper para obtener el nombre de la categoría (acepta distintos esquemas: 'id'|'id_categoria' y 'nombre'|'nombre_categoria')
+// Nota: Sería más eficiente hacer el JOIN en el Modelo como en Egresos, pero mantenemos esto en la vista
+// para evitar tocar la lógica del controlador por ahora.
 function obtenerNombreCategoria($idCategoria, $categorias) {
+    if (empty($categorias) || !$idCategoria) return 'Desconocida';
     foreach ($categorias as $cat) {
-        if ($cat['id'] == $idCategoria) {
-            return $cat['nombre'];
+        if ((isset($cat['id']) && $cat['id'] == $idCategoria) || (isset($cat['id_categoria']) && $cat['id_categoria'] == $idCategoria)) {
+            return $cat['nombre'] ?? $cat['nombre_categoria'] ?? 'Desconocida';
         }
     }
-    return 'Desconocida'; // O el ID si prefieres: $idCategoria;
+    return 'Desconocida';
 }
 
 // Obtener categorías una vez (asumiendo que el controlador las pasa)
@@ -62,23 +64,22 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
                         <tr><td colspan="18" class="text-center p-4 text-muted">No hay ingresos registrados.</td></tr>
                     <?php else: ?>
                         <?php foreach ($ingresos as $ingreso):
-                            $monto = $ingreso['monto'] ?? 0;
-                            $montoFormateado = number_format($monto, 2);
-                            try {
-                                if (class_exists('NumberFormatter')) {
-                                     $formatter = new NumberFormatter('es-MX', NumberFormatter::CURRENCY);
-                                     if (is_numeric($monto)) {
-                                         $montoFormateado = $formatter->formatCurrency($monto, 'MXN');
-                                     }
-                                }
-                            } catch (Exception $e) { /* Ignorar */ }
+                            $monto = isset($ingreso['monto']) ? (float)$ingreso['monto'] : 0.0;
+                            $montoFormateado = '$ ' . number_format($monto, 2);
+                            if (class_exists('NumberFormatter')) {
+                                try {
+                                    $fmt = new NumberFormatter('es_MX', NumberFormatter::CURRENCY);
+                                    $montoFormateado = $fmt->formatCurrency($monto, 'MXN');
+                                } catch (Exception $e) { /* fallback */ }
+                            }
 
-                            // Obtener nombre de categoría (requiere $categorias)
-                            // **IMPORTANTE**: Para que esto funcione, IngresoController DEBE pasar
-                            // la lista de categorías a esta vista, similar a como lo hace para el modal.
-                            // Si no, mostramos el ID.
-                            // $nombreCategoria = obtenerNombreCategoria($ingreso['id_categoria'] ?? 0, $categorias);
-                            $nombreCategoria = htmlspecialchars($ingreso['id_categoria'] ?? 'N/A'); // Temporal: Muestra ID
+                            // Obtener nombre de categoría si el controlador pasó $categorias
+                            if (!empty($categorias) && isset($ingreso['id_categoria'])) {
+                                $nombreCategoria = obtenerNombreCategoria($ingreso['id_categoria'], $categorias);
+                                $nombreCategoria = htmlspecialchars($nombreCategoria);
+                            } else {
+                                $nombreCategoria = htmlspecialchars($ingreso['id_categoria'] ?? 'N/A');
+                            }
 
                             // Preparar descripción corta con tooltip
                             $observacionesCompleta = htmlspecialchars($ingreso['observaciones'] ?? '');
@@ -120,6 +121,11 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
                                                         title="Eliminar Ingreso">
                                                     <ion-icon name="trash-outline"></ion-icon>
                                                 </button>
+                                            <?php endif; ?>
+                                            <?php if (roleCan('view','ingresos')): ?>
+                                                <a class="btn btn-sm btn-primary ms-1" href="<?php echo 'generate_receipt.php?folio=' . urlencode($ingreso['folio_ingreso'] ?? $ingreso['id'] ?? 0); ?>" target="_blank" title="Generar Recibo">
+                                                    <ion-icon name="document-text-outline"></ion-icon>
+                                                </a>
                                             <?php endif; ?>
                                     </div>
                                 </td>
