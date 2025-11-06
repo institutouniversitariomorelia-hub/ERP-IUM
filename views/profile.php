@@ -12,19 +12,21 @@
     </div>
     <div class="card-body">
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-12 col-md-6">
                 <label class="fw-bold">Nombre</label>
                 <p><?php echo htmlspecialchars($currentUser['nombre']); ?></p> 
             </div>
-            <div class="col-md-6">
+            <div class="col-12 col-md-6">
                 <label class="fw-bold">Rol</label>
                  <p class="text-danger fw-bold"><?php echo htmlspecialchars($currentUser['rol']); ?></p>
             </div>
         </div>
-        <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCambiarPassword" id="btnCambiarMiPassword">Cambiar mi contraseña</button>
-        <?php if ($currentUser['rol'] === 'SU'): ?>
-            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalUsuario" id="btnRegistrarUsuario">Registrar Usuario (SU)</button>
-        <?php endif; ?>
+        <div class="btn-responsive-sm mt-3">
+            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCambiarPassword" id="btnCambiarMiPassword">Cambiar mi contraseña</button>
+            <?php if ($currentUser['rol'] === 'SU'): ?>
+                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalUsuario" id="btnRegistrarUsuario">Registrar Usuario (SU)</button>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
@@ -32,7 +34,7 @@
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover table-striped table-sm mb-0">
                 <thead>
                     <tr class="table-light">
                         <th>Nombre</th>
@@ -51,27 +53,29 @@
                                 <td><?php echo htmlspecialchars($user['username']); ?></td>
                                 <td><span class="badge bg-secondary"><?php echo htmlspecialchars($user['rol']); ?></span></td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-warning btn-edit-user" 
-                                            data-id="<?php echo $user['id']; ?>" 
-                                            data-nombre="<?php echo htmlspecialchars($user['nombre']); ?>"
-                                            data-username="<?php echo htmlspecialchars($user['username']); ?>"
-                                            data-rol="<?php echo htmlspecialchars($user['rol']); ?>"
-                                            data-bs-toggle="modal" data-bs-target="#modalUsuario" 
-                                            title="Editar Usuario">
-                                        <ion-icon name="create-outline"></ion-icon> Editar
-                                    </button>
-                                    <button class="btn btn-sm btn-secondary btn-change-pass" 
-                                            data-username="<?php echo htmlspecialchars($user['username']); ?>" 
-                                            data-bs-toggle="modal" data-bs-target="#modalCambiarPassword"
-                                            title="Cambiar Contraseña">
-                                        <ion-icon name="lock-open-outline"></ion-icon> Contraseña
-                                    </button>
-                                    <button class="btn btn-sm btn-danger btn-delete-user" 
-                                            data-id="<?php echo $user['id']; ?>" 
-                                            <?php echo ($user['id'] == $currentUser['id']) ? 'disabled' : ''; ?> 
-                                            title="Eliminar Usuario">
-                                        <ion-icon name="trash-outline"></ion-icon> Eliminar
-                                    </button>
+                                    <div class="btn-responsive-sm">
+                                        <button class="btn btn-sm btn-warning btn-edit-user" 
+                                                data-id="<?php echo $user['id']; ?>" 
+                                                data-nombre="<?php echo htmlspecialchars($user['nombre']); ?>"
+                                                data-username="<?php echo htmlspecialchars($user['username']); ?>"
+                                                data-rol="<?php echo htmlspecialchars($user['rol']); ?>"
+                                                data-bs-toggle="modal" data-bs-target="#modalUsuario" 
+                                                title="Editar Usuario">
+                                            <ion-icon name="create-outline"></ion-icon> Editar
+                                        </button>
+                                        <button class="btn btn-sm btn-secondary btn-change-pass" 
+                                                data-username="<?php echo htmlspecialchars($user['username']); ?>" 
+                                                data-bs-toggle="modal" data-bs-target="#modalCambiarPassword"
+                                                title="Cambiar Contraseña">
+                                            <ion-icon name="lock-open-outline"></ion-icon> Contraseña
+                                        </button>
+                                        <button class="btn btn-sm btn-danger btn-delete-user" 
+                                                data-id="<?php echo $user['id']; ?>" 
+                                                <?php echo ($user['id'] == $currentUser['id']) ? 'disabled' : ''; ?> 
+                                                title="Eliminar Usuario">
+                                            <ion-icon name="trash-outline"></ion-icon> Eliminar
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

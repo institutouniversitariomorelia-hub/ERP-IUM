@@ -131,10 +131,10 @@
 <!-- Pequeña tabla con los 5 movimientos más recientes -->
 <div class="card shadow-sm mb-4">
     <div class="card-header">Movimientos Recientes</div>
-    <div class="card-body p-2">
+            <div class="card-body p-2">
         <?php if (!empty($recentLogs)): ?>
             <div class="table-responsive">
-                <table class="table table-sm mb-0">
+                <table class="table table-sm table-striped mb-0">
                     <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th><th>Resumen</th></tr></thead>
                     <tbody>
                         <?php foreach($recentLogs as $r):
@@ -154,7 +154,7 @@
                             $summary = htmlspecialchars(mb_strimwidth($r['detalles'] ?? '', 0, 60, '...'));
                             $rowId = htmlspecialchars($r['id_auditoria'] ?? $r['id_auditoria']);
                         ?>
-                            <tr class="aud-row <?php echo $rowClass; ?>" data-id="<?php echo $rowId; ?>" style="cursor:pointer;">
+                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>">
                                 <td><?php echo $dt; ?></td>
                                 <td><?php echo htmlspecialchars($r['usuario'] ?? 'Sistema'); ?></td>
                                 <td><?php echo htmlspecialchars($r['seccion'] ?? '-'); ?></td>
@@ -176,7 +176,7 @@
      <div class="card-header">Historial Global</div>
     <div class="card-body p-0">
                 <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0" style="font-size: 0.9em;">
+            <table class="table table-striped table-hover mb-0">
                 <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th><th>Detalles</th></tr></thead>
                 <tbody id="tablaAuditoria">
                     <?php if (empty($auditoriaLogs)): ?>
@@ -215,7 +215,7 @@
                                 elseif (mb_stripos($actLower, 'actual') !== false || mb_stripos($actLower, 'update') !== false) { $rowClass = 'aud-row-update'; $badgeClass = 'bg-warning text-dark'; $actionLabel = 'Actualización'; }
                                 elseif (mb_stripos($actLower, 'elim') !== false || mb_stripos($actLower, 'delete') !== false) { $rowClass = 'aud-row-delete'; $badgeClass = 'bg-danger'; $actionLabel = 'Eliminación'; }
                             ?>
-                            <tr class="aud-row <?php echo $rowClass; ?>" data-id="<?php echo $rowId; ?>" style="cursor:pointer;">
+                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>">
                                 <td><?php echo $fechaDisplay; ?></td>
                                 <td><?php echo $usuario; ?></td>
                                 <td><?php echo $seccion; ?></td>
@@ -232,7 +232,7 @@
 
 <!-- Modal para ver detalles completos de un registro de auditoría -->
 <div class="modal fade" id="modalAuditoriaDetalle" tabindex="-1" aria-labelledby="modalAuditoriaDetalleLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
         <div class="modal-content">
             <div class="modal-header modal-header-danger">
                 <h5 class="modal-title" id="modalAuditoriaDetalleLabel">Detalle de Movimiento</h5>
@@ -253,7 +253,7 @@
                     <div class="mb-2">
                         <button id="aud_toggle_raw" type="button" class="btn btn-outline-secondary btn-sm">Mostrar consulta completa</button>
                     </div>
-                    <pre id="aud_raw_consulta" style="display:none; white-space:pre-wrap; background:#f8f9fa; padding:10px; border-radius:4px;">-</pre>
+                    <pre id="aud_raw_consulta">-</pre>
                     <div id="aud_compare" class="mt-3"></div>
                 </div>
             </div>
@@ -268,7 +268,7 @@
     <div class="card-header">Historial de Cambios (solo actualizaciones)</div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0" style="font-size: 0.9em;">
+            <table class="table table-striped table-hover mb-0">
                 <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Detalles</th></tr></thead>
                 <tbody id="tablaCambios">
                         <?php 

@@ -31,25 +31,25 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
     <div class="card-body p-0">
         <div class="table-responsive">
             
-            <table class="table table-hover table-sm mb-0" style="font-size: 0.8em; white-space: nowrap;">
+            <table class="table table-hover table-striped table-sm mb-0">
                 <thead>
                     <tr class="table-light">
                         <th>Fecha</th>
-                        <th>ID</th> 
+                        <th class="d-none d-md-table-cell">ID</th>
                         <th>Alumno</th>
-                        <th>Matrícula</th>
-                        <th>Nivel</th>
-                        <th>Programa</th>
-                        <th>Grado</th>
-                        <th>Grupo</th>
-                        <th>Modalidad</th>
-                        <th>Categoría</th> 
+                        <th class="d-none d-md-table-cell">Matrícula</th>
+                        <th class="d-none d-md-table-cell">Nivel</th>
+                        <th class="d-none d-md-table-cell">Programa</th>
+                        <th class="d-none d-md-table-cell">Grado</th>
+                        <th class="d-none d-md-table-cell">Grupo</th>
+                        <th class="d-none d-md-table-cell">Modalidad</th>
+                        <th class="d-none d-md-table-cell">Categoría</th>
                         <th>Concepto</th>
-                        <th>Mes Corresp.</th>
-                        <th>Año</th>
-                        <th>Método Pago</th>
-                        <th>Día Pago</th>
-                        <th>Observaciones</th>
+                        <th class="d-none d-md-table-cell">Mes Corresp.</th>
+                        <th class="d-none d-md-table-cell">Año</th>
+                        <th class="d-none d-md-table-cell">Método Pago</th>
+                        <th class="d-none d-md-table-cell">Día Pago</th>
+                        <th class="d-none d-md-table-cell">Observaciones</th>
                         <th class="text-end">Monto</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -84,37 +84,38 @@ function obtenerNombreCategoria($idCategoria, $categorias) {
                         ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($ingreso['fecha'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 'N/A'); ?></td>
                                 <td><?php echo htmlspecialchars($ingreso['alumno'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['matricula'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['nivel'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['programa'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['grado'] ?? '-'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['grupo'] ?? '-'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['modalidad'] ?? '-'); ?></td>
-                                <td><?php echo $nombreCategoria; ?></td> 
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['matricula'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['nivel'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['programa'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['grado'] ?? '-'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['grupo'] ?? '-'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['modalidad'] ?? '-'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo $nombreCategoria; ?></td> 
                                 <td><?php echo htmlspecialchars($ingreso['concepto'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['mes_correspondiente'] ?? '-'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['anio'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['metodo_de_pago'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($ingreso['dia_pago'] ?? '-'); ?></td>
-                                <td title="<?php echo $observacionesCompleta; ?>">
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['mes_correspondiente'] ?? '-'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['anio'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['metodo_de_pago'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['dia_pago'] ?? '-'); ?></td>
+                                <td class="d-none d-md-table-cell" title="<?php echo $observacionesCompleta; ?>">
                                     <?php echo $observacionesCorta ?: '-'; ?>
                                 </td>
                                 <td class="text-end text-success fw-bold"><?php echo $montoFormateado; ?></td>
                                 <td class="text-center">
-                                    
-                                    <button class="btn btn-sm btn-warning btn-edit-ingreso"
-                                            data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
-                                            data-bs-toggle="modal" data-bs-target="#modalIngreso"
-                                            title="Editar Ingreso">
-                                         <ion-icon name="create-outline"></ion-icon>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger btn-del-ingreso"
-                                            data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
-                                            title="Eliminar Ingreso">
-                                        <ion-icon name="trash-outline"></ion-icon>
-                                    </button>
+                                    <div class="btn-responsive-sm">
+                                        <button class="btn btn-sm btn-warning btn-edit-ingreso"
+                                                data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
+                                                data-bs-toggle="modal" data-bs-target="#modalIngreso"
+                                                title="Editar Ingreso">
+                                             <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger btn-del-ingreso"
+                                                data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
+                                                title="Eliminar Ingreso">
+                                            <ion-icon name="trash-outline"></ion-icon>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

@@ -19,7 +19,7 @@
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover table-striped mb-0">
                 <thead>
                     <tr class="table-light">
                         <th>Categoría</th>
@@ -52,17 +52,19 @@
                                 <td class="text-end fw-bold"><?php echo $montoFormateado; ?></td>
                                 <td><?php echo $fechaDisplay; ?></td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-warning btn-edit-presupuesto"
-                                            data-id="<?php echo $presId; ?>"
-                                            data-bs-toggle="modal" data-bs-target="#modalPresupuesto"
-                                            title="Editar Presupuesto">
-                                         <ion-icon name="create-outline"></ion-icon> Editar
-                                    </button>
-                                    <button class="btn btn-sm btn-danger btn-del-presupuesto"
-                                            data-id="<?php echo $presId; ?>"
-                                            title="Eliminar Presupuesto">
-                                        <ion-icon name="trash-outline"></ion-icon> Eliminar
-                                    </button>
+                                    <div class="btn-responsive-sm">
+                                        <button class="btn btn-sm btn-warning btn-edit-presupuesto"
+                                                data-id="<?php echo $presId; ?>"
+                                                data-bs-toggle="modal" data-bs-target="#modalPresupuesto"
+                                                title="Editar Presupuesto">
+                                             <ion-icon name="create-outline"></ion-icon> Editar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger btn-del-presupuesto"
+                                                data-id="<?php echo $presId; ?>"
+                                                title="Eliminar Presupuesto">
+                                            <ion-icon name="trash-outline"></ion-icon> Eliminar
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

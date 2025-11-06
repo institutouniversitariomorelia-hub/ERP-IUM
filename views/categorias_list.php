@@ -24,10 +24,10 @@
 <div class="card shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover table-striped mb-0">
                 <thead>
                     <tr class="table-light">
-                        <th style="width: 5%;">ID</th>
+                        <th class="col-id">ID</th>
                         <th>Nombre</th>
                         <th>Tipo</th>
                         <th>Descripción</th>
@@ -49,17 +49,19 @@
                                 <td><?php echo $tipoBadge; ?></td>
                                 <td><?php echo htmlspecialchars($categoria['descripcion'] ?: '-'); // Muestra '-' si está vacío ?></td>
                                 <td class="text-center">
-                                    <button class="btn btn-sm btn-warning btn-edit-categoria"
-                                            data-id="<?php echo $categoria['id']; ?>"
-                                            data-bs-toggle="modal" data-bs-target="#modalCategoria"
-                                            title="Editar Categoría">
-                                         <ion-icon name="create-outline"></ion-icon> Editar
-                                    </button>
-                                    <button class="btn btn-sm btn-danger btn-del-categoria"
-                                            data-id="<?php echo $categoria['id']; ?>"
-                                            title="Eliminar Categoría">
-                                        <ion-icon name="trash-outline"></ion-icon> Eliminar
-                                    </button>
+                                    <div class="btn-responsive-sm">
+                                        <button class="btn btn-sm btn-warning btn-edit-categoria"
+                                                data-id="<?php echo $categoria['id']; ?>"
+                                                data-bs-toggle="modal" data-bs-target="#modalCategoria"
+                                                title="Editar Categoría">
+                                             <ion-icon name="create-outline"></ion-icon> Editar
+                                        </button>
+                                        <button class="btn btn-sm btn-danger btn-del-categoria"
+                                                data-id="<?php echo $categoria['id']; ?>"
+                                                title="Eliminar Categoría">
+                                            <ion-icon name="trash-outline"></ion-icon> Eliminar
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
