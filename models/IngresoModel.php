@@ -59,41 +59,37 @@ class IngresoModel {
      * @return bool|int Retorna el ID del nuevo ingreso si tiene éxito, false/Exception en caso contrario.
      */
     public function createIngreso($data) {
-        // Asegurar valores para campos opcionales o con default (normalizar strings vacíos a NULL)
-        $mes_correspondiente = isset($data['mes_correspondiente']) && trim($data['mes_correspondiente']) !== '' ? trim($data['mes_correspondiente']) : null;
-        $observaciones = isset($data['observaciones']) && trim($data['observaciones']) !== '' ? trim($data['observaciones']) : null;
-        $dia_pago = isset($data['dia_pago']) && $data['dia_pago'] !== '' ? (int)$data['dia_pago'] : null;
-        $modalidad = isset($data['modalidad']) && trim($data['modalidad']) !== '' ? trim($data['modalidad']) : null;
-        $grado = isset($data['grado']) && $data['grado'] !== '' ? (int)$data['grado'] : null;
-        $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
-
-        // Validar y convertir tipos obligatorios
+        // Validar campos obligatorios primero
         if (empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['alumno']) || empty($data['matricula']) || empty($data['nivel']) ||
             !isset($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
             empty($data['metodo_de_pago']) || empty($data['concepto']) ||
-            empty($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) || // Corregido a 'anio'
+            empty($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) ||
             empty($data['programa']) ||
             empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT))
         {
              throw new Exception("Datos inválidos o faltantes para crear ingreso.");
         }
          
-         // === CORRECCIÓN: Todos estos son enteros (i) según tu BD ===
-         $id_categoria = (int)$data['id_categoria'];
-         $año = (int)$data['anio']; // Nombre del campo en la BD es 'anio'
-         $dia_pago = !empty($data['dia_pago']) ? (int)$data['dia_pago'] : null;
-         $grado = !empty($data['grado']) ? (int)$data['grado'] : null;
-         // ==========================================================
-
-         $monto = (float)$data['monto'];
-         $fecha = $data['fecha'];
-         $alumno = trim($data['alumno']);
-         $matricula = trim($data['matricula']);
-         $nivel = $data['nivel'];
-         $metodo_de_pago = $data['metodo_de_pago'];
-         $concepto = $data['concepto'];
-         $programa = trim($data['programa']);
+        // Procesar y normalizar TODOS los campos (obligatorios y opcionales)
+        $fecha = $data['fecha'];
+        $alumno = trim($data['alumno']);
+        $matricula = trim($data['matricula']);
+        $nivel = $data['nivel'];
+        $monto = (float)$data['monto'];
+        $metodo_de_pago = $data['metodo_de_pago'];
+        $concepto = $data['concepto'];
+        $año = (int)$data['anio'];
+        $programa = trim($data['programa']);
+        $id_categoria = (int)$data['id_categoria'];
+        
+        // Campos opcionales: normalizar strings vacíos a NULL
+        $mes_correspondiente = isset($data['mes_correspondiente']) && trim($data['mes_correspondiente']) !== '' ? trim($data['mes_correspondiente']) : null;
+        $observaciones = isset($data['observaciones']) && trim($data['observaciones']) !== '' ? trim($data['observaciones']) : null;
+        $dia_pago = isset($data['dia_pago']) && $data['dia_pago'] !== '' ? (int)$data['dia_pago'] : null;
+        $modalidad = isset($data['modalidad']) && trim($data['modalidad']) !== '' ? trim($data['modalidad']) : null;
+        $grado = isset($data['grado']) && $data['grado'] !== '' ? (int)$data['grado'] : null;
+        $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
 
         $query = "INSERT INTO ingresos
                     (fecha, alumno, matricula, nivel, monto, metodo_de_pago, concepto, mes_correspondiente, anio, observaciones, dia_pago, modalidad, grado, programa, grupo, id_categoria)
@@ -150,38 +146,35 @@ class IngresoModel {
      * @return bool True si se actualizó con éxito, false/Exception en caso contrario.
      */
     public function updateIngreso($folio_ingreso, $data) {
-        // Normalizar strings vacíos a NULL para campos opcionales
+        // Validar campos obligatorios
+        if (empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
+            empty($data['alumno']) || empty($data['matricula']) || empty($data['nivel']) ||
+            !isset($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
+            empty($data['metodo_de_pago']) || empty($data['concepto']) ||
+            empty($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) ||
+            empty($data['programa']) ||
+            empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT))
+        { throw new Exception("Datos inválidos o faltantes para actualizar ingreso."); }
+         
+        // Procesar y normalizar TODOS los campos
+        $fecha = $data['fecha'];
+        $alumno = trim($data['alumno']);
+        $matricula = trim($data['matricula']);
+        $nivel = $data['nivel'];
+        $monto = (float)$data['monto'];
+        $metodo_de_pago = $data['metodo_de_pago'];
+        $concepto = $data['concepto'];
+        $año = (int)$data['anio'];
+        $programa = trim($data['programa']);
+        $id_categoria = (int)$data['id_categoria'];
+        
+        // Campos opcionales: normalizar strings vacíos a NULL
         $mes_correspondiente = isset($data['mes_correspondiente']) && trim($data['mes_correspondiente']) !== '' ? trim($data['mes_correspondiente']) : null;
         $observaciones = isset($data['observaciones']) && trim($data['observaciones']) !== '' ? trim($data['observaciones']) : null;
         $dia_pago = isset($data['dia_pago']) && $data['dia_pago'] !== '' ? (int)$data['dia_pago'] : null;
         $modalidad = isset($data['modalidad']) && trim($data['modalidad']) !== '' ? trim($data['modalidad']) : null;
         $grado = isset($data['grado']) && $data['grado'] !== '' ? (int)$data['grado'] : null;
         $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
-
-         if (empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
-             empty($data['alumno']) || empty($data['matricula']) || empty($data['nivel']) ||
-             !isset($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
-             empty($data['metodo_de_pago']) || empty($data['concepto']) ||
-             empty($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) || // Corregido a 'anio'
-             empty($data['programa']) ||
-             empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT))
-         { throw new Exception("Datos inválidos o faltantes para actualizar ingreso."); }
-         
-         // === CORRECCIÓN: Todos estos son enteros (i) según tu BD ===
-         $id_categoria = (int)$data['id_categoria'];
-         $año = (int)$data['anio']; // Nombre del campo en la BD es 'anio'
-         $dia_pago = !empty($data['dia_pago']) ? (int)$data['dia_pago'] : null;
-         $grado = !empty($data['grado']) ? (int)$data['grado'] : null;
-         // ==========================================================
-
-         $monto = (float)$data['monto'];
-         $fecha = $data['fecha'];
-         $alumno = trim($data['alumno']);
-         $matricula = trim($data['matricula']);
-         $nivel = $data['nivel'];
-         $metodo_de_pago = $data['metodo_de_pago'];
-         $concepto = $data['concepto'];
-         $programa = trim($data['programa']);
 
 
         $query = "UPDATE ingresos SET
