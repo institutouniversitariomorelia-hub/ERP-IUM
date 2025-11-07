@@ -85,22 +85,21 @@ CREATE TABLE `categorias` (
   `nombre` varchar(100) NOT NULL,
   `tipo` enum('Ingreso','Egreso') NOT NULL,
   `descripcion` text DEFAULT NULL,
-  `id_user` int(11) NOT NULL,
-  `id_presupuesto` int(11) DEFAULT NULL
+  `id_user` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `categorias`
 --
 
-INSERT INTO `categorias` (`id_categoria`, `nombre`, `tipo`, `descripcion`, `id_user`, `id_presupuesto`) VALUES
-(1, 'goku', 'Ingreso', 'goku', 2, NULL);
+INSERT INTO `categorias` (`id_categoria`, `nombre`, `tipo`, `descripcion`, `id_user`) VALUES
+(1, 'goku', 'Ingreso', 'goku', 2);
 
 --
 -- Disparadores `categorias`
 --
 DELIMITER $$
-CREATE TRIGGER `trg_categorias_after_insert` AFTER INSERT ON `categorias` FOR EACH ROW BEGIN INSERT INTO `erp_ium_espejo`.`categorias` VALUES (NEW.id_categoria, NEW.nombre, NEW.tipo, NEW.descripcion, NEW.id_user, NEW.id_presupuesto); END
+CREATE TRIGGER `trg_categorias_after_insert` AFTER INSERT ON `categorias` FOR EACH ROW BEGIN INSERT INTO `erp_ium_espejo`.`categorias` (`id_categoria`,`nombre`,`tipo`,`descripcion`,`id_user`) VALUES (NEW.id_categoria, NEW.nombre, NEW.tipo, NEW.descripcion, NEW.id_user); END
 $$
 DELIMITER ;
 DELIMITER $$
@@ -112,7 +111,7 @@ CREATE TRIGGER `trg_categorias_after_update` AFTER UPDATE ON `categorias` FOR EA
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_categorias_after_update_espejo` AFTER UPDATE ON `categorias` FOR EACH ROW BEGIN UPDATE `erp_ium_espejo`.`categorias` SET nombre = NEW.nombre, tipo = NEW.tipo, descripcion = NEW.descripcion, id_user = NEW.id_user, id_presupuesto = NEW.id_presupuesto WHERE id_categoria = NEW.id_categoria; END
+CREATE TRIGGER `trg_categorias_after_update_espejo` AFTER UPDATE ON `categorias` FOR EACH ROW BEGIN UPDATE `erp_ium_espejo`.`categorias` SET nombre = NEW.nombre, tipo = NEW.tipo, descripcion = NEW.descripcion, id_user = NEW.id_user WHERE id_categoria = NEW.id_categoria; END
 $$
 DELIMITER ;
 DELIMITER $$
@@ -237,6 +236,7 @@ CREATE TABLE `presupuestos` (
   `id_presupuesto` int(11) NOT NULL,
   `monto_limite` decimal(10,2) NOT NULL,
   `fecha` date NOT NULL,
+  `id_categoria` int(11) NOT NULL,
   `id_user` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -244,19 +244,19 @@ CREATE TABLE `presupuestos` (
 -- Disparadores `presupuestos`
 --
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_insert` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN INSERT INTO `erp_ium_espejo`.`presupuestos` VALUES (NEW.id_presupuesto, NEW.monto_limite, NEW.fecha, NEW.id_user); END
+CREATE TRIGGER `trg_presupuestos_after_insert` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN INSERT INTO `erp_ium_espejo`.`presupuestos` (`id_presupuesto`,`monto_limite`,`fecha`,`id_categoria`,`id_user`) VALUES (NEW.id_presupuesto, NEW.monto_limite, NEW.fecha, NEW.id_categoria, NEW.id_user); END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_insert_aud` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN SET @new_data = JSON_OBJECT('id_presupuesto', NEW.id_presupuesto, 'monto_limite', NEW.monto_limite, 'fecha', NEW.fecha); CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Insercion', NULL, @new_data, NULL, NULL); END
+CREATE TRIGGER `trg_presupuestos_after_insert_aud` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN SET @new_data = JSON_OBJECT('id_presupuesto', NEW.id_presupuesto, 'monto_limite', NEW.monto_limite, 'fecha', NEW.fecha, 'id_categoria', NEW.id_categoria); CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Insercion', NULL, @new_data, NULL, NULL); END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_update` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN SET @old_data = JSON_OBJECT('id_presupuesto', OLD.id_presupuesto, 'monto_limite', OLD.monto_limite, 'fecha', OLD.fecha); SET @new_data = JSON_OBJECT('id_presupuesto', NEW.id_presupuesto, 'monto_limite', NEW.monto_limite, 'fecha', NEW.fecha); CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Actualizacion', @old_data, @new_data, NULL, NULL); END
+CREATE TRIGGER `trg_presupuestos_after_update` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN SET @old_data = JSON_OBJECT('id_presupuesto', OLD.id_presupuesto, 'monto_limite', OLD.monto_limite, 'fecha', OLD.fecha, 'id_categoria', OLD.id_categoria); SET @new_data = JSON_OBJECT('id_presupuesto', NEW.id_presupuesto, 'monto_limite', NEW.monto_limite, 'fecha', NEW.fecha, 'id_categoria', NEW.id_categoria); CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Actualizacion', @old_data, @new_data, NULL, NULL); END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_update_espejo` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN UPDATE `erp_ium_espejo`.`presupuestos` SET monto_limite = NEW.monto_limite, fecha = NEW.fecha, id_user = NEW.id_user WHERE id_presupuesto = NEW.id_presupuesto; END
+CREATE TRIGGER `trg_presupuestos_after_update_espejo` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN UPDATE `erp_ium_espejo`.`presupuestos` SET monto_limite = NEW.monto_limite, fecha = NEW.fecha, id_categoria = NEW.id_categoria, id_user = NEW.id_user WHERE id_presupuesto = NEW.id_presupuesto; END
 $$
 DELIMITER ;
 DELIMITER $$
@@ -401,8 +401,7 @@ ALTER TABLE `auditoria`
 ALTER TABLE `categorias`
   ADD PRIMARY KEY (`id_categoria`),
   ADD UNIQUE KEY `nombre` (`nombre`),
-  ADD KEY `fk_categorias_user` (`id_user`),
-  ADD KEY `fk_categorias_presupuesto` (`id_presupuesto`);
+  ADD KEY `fk_categorias_user` (`id_user`);
 
 --
 -- Indices de la tabla `egresos`
@@ -425,6 +424,7 @@ ALTER TABLE `ingresos`
 --
 ALTER TABLE `presupuestos`
   ADD PRIMARY KEY (`id_presupuesto`),
+  ADD KEY `fk_presupuestos_categoria` (`id_categoria`),
   ADD KEY `fk_presupuestos_user` (`id_user`);
 
 --
@@ -496,7 +496,6 @@ ALTER TABLE `usuarios`
 -- Filtros para la tabla `categorias`
 --
 ALTER TABLE `categorias`
-  ADD CONSTRAINT `fk_categorias_presupuesto` FOREIGN KEY (`id_presupuesto`) REFERENCES `presupuestos` (`id_presupuesto`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_categorias_user` FOREIGN KEY (`id_user`) REFERENCES `usuarios` (`id_user`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
@@ -517,6 +516,7 @@ ALTER TABLE `ingresos`
 -- Filtros para la tabla `presupuestos`
 --
 ALTER TABLE `presupuestos`
+  ADD CONSTRAINT `fk_presupuestos_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id_categoria`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_presupuestos_user` FOREIGN KEY (`id_user`) REFERENCES `usuarios` (`id_user`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --

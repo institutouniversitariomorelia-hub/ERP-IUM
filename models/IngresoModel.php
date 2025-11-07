@@ -59,13 +59,13 @@ class IngresoModel {
      * @return bool|int Retorna el ID del nuevo ingreso si tiene éxito, false/Exception en caso contrario.
      */
     public function createIngreso($data) {
-        // Asegurar valores para campos opcionales o con default
-        $mes_correspondiente = !empty($data['mes_correspondiente']) ? trim($data['mes_correspondiente']) : null;
-        $observaciones = !empty($data['observaciones']) ? trim($data['observaciones']) : null;
-        $dia_pago = !empty($data['dia_pago']) ? (int)$data['dia_pago'] : null;
-        $modalidad = !empty($data['modalidad']) ? $data['modalidad'] : null;
-        $grado = !empty($data['grado']) ? (int)$data['grado'] : null;
-        $grupo = !empty($data['grupo']) ? trim($data['grupo']) : null;
+        // Asegurar valores para campos opcionales o con default (normalizar strings vacíos a NULL)
+        $mes_correspondiente = isset($data['mes_correspondiente']) && trim($data['mes_correspondiente']) !== '' ? trim($data['mes_correspondiente']) : null;
+        $observaciones = isset($data['observaciones']) && trim($data['observaciones']) !== '' ? trim($data['observaciones']) : null;
+        $dia_pago = isset($data['dia_pago']) && $data['dia_pago'] !== '' ? (int)$data['dia_pago'] : null;
+        $modalidad = isset($data['modalidad']) && trim($data['modalidad']) !== '' ? trim($data['modalidad']) : null;
+        $grado = isset($data['grado']) && $data['grado'] !== '' ? (int)$data['grado'] : null;
+        $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
 
         // Validar y convertir tipos obligatorios
         if (empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
@@ -150,12 +150,13 @@ class IngresoModel {
      * @return bool True si se actualizó con éxito, false/Exception en caso contrario.
      */
     public function updateIngreso($folio_ingreso, $data) {
-        $mes_correspondiente = !empty($data['mes_correspondiente']) ? trim($data['mes_correspondiente']) : null;
-        $observaciones = !empty($data['observaciones']) ? trim($data['observaciones']) : null;
-        $dia_pago = !empty($data['dia_pago']) ? (int)$data['dia_pago'] : null;
-        $modalidad = !empty($data['modalidad']) ? $data['modalidad'] : null;
-        $grado = !empty($data['grado']) ? (int)$data['grado'] : null;
-        $grupo = !empty($data['grupo']) ? trim($data['grupo']) : null;
+        // Normalizar strings vacíos a NULL para campos opcionales
+        $mes_correspondiente = isset($data['mes_correspondiente']) && trim($data['mes_correspondiente']) !== '' ? trim($data['mes_correspondiente']) : null;
+        $observaciones = isset($data['observaciones']) && trim($data['observaciones']) !== '' ? trim($data['observaciones']) : null;
+        $dia_pago = isset($data['dia_pago']) && $data['dia_pago'] !== '' ? (int)$data['dia_pago'] : null;
+        $modalidad = isset($data['modalidad']) && trim($data['modalidad']) !== '' ? trim($data['modalidad']) : null;
+        $grado = isset($data['grado']) && $data['grado'] !== '' ? (int)$data['grado'] : null;
+        $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
 
          if (empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
              empty($data['alumno']) || empty($data['matricula']) || empty($data['nivel']) ||

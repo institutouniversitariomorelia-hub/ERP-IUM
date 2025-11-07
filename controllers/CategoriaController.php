@@ -83,7 +83,13 @@ class CategoriaController {
                 }
                 $response['success'] = true;
             } else {
-                 $response['error'] = 'No se pudo guardar la categoría en la base de datos.';
+                 // Exponer error de MySQL para diagnóstico (seguro en entorno interno)
+                 $dbErr = $this->db->error;
+                 if (strpos($dbErr, 'Duplicate') !== false || strpos($dbErr, '1062') !== false) {
+                     $response['error'] = 'El nombre de la categoría ya existe.';
+                 } else {
+                     $response['error'] = 'No se pudo guardar la categoría en la base de datos. ' . ($dbErr ?: '');
+                 }
             }
         } catch (Exception $e) {
             error_log("Error en CategoriaController->save: " . $e->getMessage());
