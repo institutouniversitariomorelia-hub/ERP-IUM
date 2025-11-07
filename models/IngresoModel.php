@@ -98,9 +98,13 @@ class IngresoModel {
         $stmt = $this->db->prepare($query);
         if (!$stmt) { throw new Exception("Error al preparar consulta INSERT Ingreso: " . $this->db->error); }
 
-        // === CORRECCIÓN: Cadena de tipos ajustada a la BD ===
-        // dia_pago(i), grado(i), id_categoria(i)
-        $types = "ssssdssssisisssi"; // 16 caracteres
+    // Cadena de tipos EXACTA para los 16 parámetros en el orden del INSERT
+    // fecha(s), alumno(s), matricula(s), nivel(s), monto(d), metodo(s), concepto(s),
+    // mes_correspondiente(s), anio(i), observaciones(s), dia_pago(i), modalidad(s),
+    // grado(i), programa(s), grupo(s), id_categoria(i)
+    $types = "ssssdsssisisi ssi";
+    // Sin espacios:
+    $types = str_replace(' ', '', $types); // => "ssssdsssisisis si" -> queda "ssssdsssisisi ssi" sin espacios
         // ===============================================
 
         $bindResult = $stmt->bind_param(
@@ -186,8 +190,9 @@ class IngresoModel {
         $stmt = $this->db->prepare($query);
         if (!$stmt) { throw new Exception("Error al preparar consulta UPDATE Ingreso: " . $this->db->error); }
 
-        // === CORRECCIÓN: Cadena de tipos ajustada a la BD (17 caracteres) ===
-        $types = "ssssdssssisisssii"; // 17 caracteres
+    // Cadena de tipos EXACTA para los 17 parámetros en el orden del UPDATE (+ WHERE al final)
+    // (mismos 16 que en INSERT) + folio_ingreso(i)
+    $types = "ssssdsssisisissii"; // 17 caracteres
         // ==========================================================
 
         $bindResult = $stmt->bind_param(
