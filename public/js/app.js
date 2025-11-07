@@ -289,7 +289,18 @@ $('#modalIngreso').on('show.bs.modal', function (event) {
         });
 });
 // Envío de formulario (usa 'anio' del form)
-$(document).on('submit', '#formIngreso', function(e) { e.preventDefault(); ajaxCall('ingreso', 'save', $(this).serialize()).done(r => { if(r.success) window.location.reload(); else alert('Error al guardar: ' + (r.error || 'Verifique datos.')); }).fail((xhr) => mostrarError('guardar ingreso', xhr)); });
+$(document).on('submit', '#formIngreso', function(e) { 
+    e.preventDefault(); 
+    const formData = $(this).serialize();
+    console.log('FormIngreso enviando:', formData);
+    console.log('Modalidad value:', $('#in_modalidad').val());
+    console.log('Observaciones value:', $('#in_observaciones').val());
+    
+    ajaxCall('ingreso', 'save', formData).done(r => { 
+        if(r.success) window.location.reload(); 
+        else alert('Error al guardar: ' + (r.error || 'Verifique datos.')); 
+    }).fail((xhr) => mostrarError('guardar ingreso', xhr)); 
+});
 // Eliminación (usa 'data-id' que es 'folio_ingreso')
 $(document).on('click', '.btn-del-ingreso', function() { const id = $(this).data('id'); if (confirm('¿Eliminar este ingreso?')) { ajaxCall('ingreso', 'delete', { id: id }).done(r => { if(r.success) window.location.reload(); else alert('Error al eliminar: ' + (r.error || 'Error.')); }).fail((xhr) => mostrarError('eliminar ingreso', xhr)); } });
 
@@ -301,10 +312,68 @@ $(document).on('click', '.btn-del-categoria', function() { if (confirm('¿Elimin
 $(document).on('click', '#btnRefrescarCategorias', () => window.location.reload());
 
 // --- Eventos Módulo: Presupuestos ---
-$('#modalPresupuesto').on('show.bs.modal', function(event) { const button = event.relatedTarget; const presId = button ? $(button).data('id') : null; const $form = $('#formPresupuesto'); const $selectCat = $('#pres_categoria'); if (!$form.length) { console.error("Form #formPresupuesto no encontrado."); return; } $form[0].reset(); $('#presupuesto_id').val(''); $selectCat.empty().append('<option>Cargando...</option>').prop('disabled', true); ajaxCall('presupuesto', 'getAllCategorias', {}, 'GET').done(cats => { $selectCat.empty().append('<option value="">Seleccione...</option>'); if (cats && cats.length > 0) { cats.forEach(c => $selectCat.append(`<option value="${c.nombre}">${c.nombre} (${c.tipo})</option>`)); } $selectCat.prop('disabled', false); if (presId) { $('#modalPresupuestoTitle').text('Editar Presupuesto'); ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => { if(data && !data.error) { $('#presupuesto_id').val(data.id_presupuesto); $selectCat.val(data.categoria); $('#pres_monto').val(data.monto_limite); $('#pres_fecha').val(data.fecha); } else { $('#modalPresupuesto').modal('hide'); alert('Error al cargar: '+(data.error||'')); } }).fail((xhr) => {mostrarError('cargar datos presupuesto', xhr); $('#modalPresupuesto').modal('hide');}); } else { $('#modalPresupuestoTitle').text('Asignar/Actualizar'); } }).fail((xhr) => { mostrarError('cargar categorías ppto', xhr); $selectCat.empty().append('<option>Error</option>'); }); });
+$('#modalPresupuesto').on('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const presId = button ? $(button).data('id') : null;
+    const $form = $('#formPresupuesto');
+    const $selectCat = $('#pres_categoria');
+    if (!$form.length) { console.error("Form #formPresupuesto no encontrado."); return; }
+    $form[0].reset();
+    $('#presupuesto_id').val('');
+    $selectCat.empty().append('<option>Cargando...</option>').prop('disabled', true);
+
+    ajaxCall('presupuesto', 'getAllCategorias', {}, 'GET')
+        .done(cats => {
+            $selectCat.empty().append('<option value="">Seleccione...</option>');
+            if (cats && cats.length > 0) {
+                cats.forEach(c => {
+                    // CRÍTICO: usar id_categoria numérico, NO el nombre
+                    const catId = c.id_categoria !== undefined ? c.id_categoria : (c.id || '');
+                    const nombre = c.nombre || (c.cat_nombre || '');
+                    const tipo = c.tipo || '';
+                    // Asegurar que value sea el ID numérico
+                    $selectCat.append($('<option></option>')
+                        .attr('value', catId)
+                        .text(`${nombre}${tipo ? ' ('+tipo+')' : ''}`));
+                });
+            }
+            $selectCat.prop('disabled', false);
+
+            if (presId) {
+                $('#modalPresupuestoTitle').text('Editar Presupuesto');
+                ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
+                    if (data && !data.error) {
+                        $('#presupuesto_id').val(data.id_presupuesto || data.id);
+                        // Esperamos id_categoria con el nuevo backend
+                        if (data.id_categoria) { $selectCat.val(String(data.id_categoria)); }
+                        else if (data.categoria && !isNaN(data.categoria)) { $selectCat.val(String(data.categoria)); }
+                        $('#pres_monto').val(data.monto_limite || data.monto || '');
+                        $('#pres_fecha').val(data.fecha || '');
+                    } else {
+                        $('#modalPresupuesto').modal('hide');
+                        alert('Error al cargar: ' + (data.error || ''));
+                    }
+                }).fail((xhr) => {mostrarError('cargar datos presupuesto', xhr); $('#modalPresupuesto').modal('hide');});
+            } else {
+                $('#modalPresupuestoTitle').text('Asignar/Actualizar');
+            }
+        })
+        .fail((xhr) => { mostrarError('cargar categorías ppto', xhr); $selectCat.empty().append('<option>Error</option>'); });
+});
 // Asegurar que el campo monto del presupuesto sea editable
 ensureNumberEditable('#pres_monto');
-$(document).on('submit', '#formPresupuesto', function(e) { e.preventDefault(); ajaxCall('presupuesto', 'save', $(this).serialize()).done(r => { if(r.success) window.location.reload(); else alert('Error: ' + (r.error || 'Verifique si ya existe.')); }).fail((xhr) => mostrarError('guardar presupuesto', xhr)); });
+$(document).on('submit', '#formPresupuesto', function(e) { 
+    e.preventDefault(); 
+    const formData = $(this).serialize();
+    console.log('=== DEPURACIÓN PRESUPUESTO ===');
+    console.log('FormData serializado:', formData);
+    console.log('Valor select #pres_categoria:', $('#pres_categoria').val());
+    console.log('Texto select #pres_categoria:', $('#pres_categoria option:selected').text());
+    ajaxCall('presupuesto', 'save', formData).done(r => { 
+        if(r.success) window.location.reload(); 
+        else alert('Error: ' + (r.error || 'Verifique si ya existe.')); 
+    }).fail((xhr) => mostrarError('guardar presupuesto', xhr)); 
+});
 $(document).on('click', '.btn-del-presupuesto', function() { if (confirm('¿Eliminar este presupuesto?')) { ajaxCall('presupuesto', 'delete', { id: $(this).data('id') }).done(r => { if(r.success) window.location.reload(); else alert('Error: ' + (r.error || 'Error.')); }).fail((xhr) => mostrarError('eliminar presupuesto', xhr)); } });
 
 // --- Eventos Módulo: Auditoría ---

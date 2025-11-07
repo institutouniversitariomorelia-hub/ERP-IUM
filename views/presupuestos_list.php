@@ -25,7 +25,7 @@
                 <thead>
                     <tr class="table-light">
                         <th>Categoría</th>
-                        <th class="text-end">Monto</th>
+                        <th class="text-end">Monto Límite</th>
                         <th>Fecha Asig.</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -35,7 +35,7 @@
                         <tr><td colspan="4" class="text-center p-4 text-muted">No hay presupuestos asignados.</td></tr>
                     <?php else: ?>
                         <?php foreach ($presupuestos as $presupuesto):
-                            $monto = isset($presupuesto['monto']) ? $presupuesto['monto'] : ($presupuesto['monto_limite'] ?? 0);
+                            $monto = $presupuesto['monto_limite'] ?? ($presupuesto['monto'] ?? 0);
                             $montoFormateado = number_format((float)$monto, 2);
                             try {
                                 if (class_exists('NumberFormatter')) {
@@ -45,9 +45,10 @@
                                     }
                                 }
                             } catch (Exception $e) { /* Ignorar */ }
-                            $categoria = htmlspecialchars($presupuesto['categoria'] ?? ($presupuesto['cat_nombre'] ?? '-'));
+                            $categoria = htmlspecialchars($presupuesto['cat_nombre'] ?? '-');
                             $fechaDisplay = htmlspecialchars($presupuesto['fecha'] ?? '-');
                             $presId = $presupuesto['id'] ?? ($presupuesto['id_presupuesto'] ?? 0);
+                            $catId = $presupuesto['id_categoria'] ?? null;
                         ?>
                             <tr>
                                 <td><?php echo $categoria; ?></td>
@@ -58,6 +59,7 @@
                                         <?php if (roleCan('edit','presupuestos')): ?>
                                             <button class="btn btn-sm btn-warning btn-edit-presupuesto"
                                                     data-id="<?php echo $presId; ?>"
+                                                    data-cat="<?php echo htmlspecialchars($catId); ?>"
                                                     data-bs-toggle="modal" data-bs-target="#modalPresupuesto"
                                                     title="Editar Presupuesto">
                                                  <ion-icon name="create-outline"></ion-icon> Editar

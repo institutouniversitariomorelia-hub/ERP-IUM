@@ -59,6 +59,13 @@ class IngresoController {
          if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
 
         $data = $_POST;
+        
+        // DEBUG: Log para ver qué datos llegan
+        error_log("=== INGRESO SAVE DEBUG ===");
+        error_log("Modalidad recibida: " . var_export($data['modalidad'] ?? 'NO EXISTE', true));
+        error_log("Observaciones recibidas: " . var_export($data['observaciones'] ?? 'NO EXISTE', true));
+        error_log("Todos los datos: " . print_r($data, true));
+        
         // El ID del ingreso (folio_ingreso) viene en $data['id'] si es una actualización
         $folio_ingreso_id = $data['id'] ?? null;
         $isUpdate = !empty($folio_ingreso_id);

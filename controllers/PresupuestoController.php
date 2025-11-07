@@ -56,13 +56,30 @@ class PresupuestoController {
             $data['monto_limite'] = $data['monto'];
         }
 
-        if (empty($data['monto_limite']) || empty($data['fecha'])) {
-             $response['error'] = 'El monto límite y la fecha son obligatorios.';
+        // Normalización robusta de id_categoria
+        // Acepta numérico como string; si viene texto accidental, extrae dígitos
+        if (!isset($data['id_categoria']) && isset($data['categoria'])) {
+            $data['id_categoria'] = $data['categoria'];
+        }
+        $rawCat = $data['id_categoria'] ?? '';
+        if (!is_numeric($rawCat)) {
+            $rawCat = preg_replace('/\D+/', '', (string)$rawCat);
+        }
+        $data['id_categoria'] = (int)($rawCat !== '' ? $rawCat : 0);
+
+        if (empty($data['monto_limite']) || empty($data['fecha']) || empty($data['id_categoria'])) {
+             $response['error'] = 'Categoría, monto límite y fecha son obligatorios.';
              echo json_encode($response);
              exit;
          }
          if (!is_numeric($data['monto_limite']) || $data['monto_limite'] <= 0) {
              $response['error'] = 'El monto debe ser un número positivo.';
+             echo json_encode($response);
+             exit;
+         }
+         // id_categoria ya normalizado a int arriba; si es 0, inválido
+         if ($data['id_categoria'] <= 0) {
+             $response['error'] = 'Categoría inválida.';
              echo json_encode($response);
              exit;
          }
@@ -117,7 +134,7 @@ class PresupuestoController {
            if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
            
            $categorias = $this->categoriaModel->getAllCategorias();
-           echo json_encode($categorias);
+         echo json_encode($categorias);
            exit;
       }
 
@@ -136,7 +153,9 @@ class PresupuestoController {
              $out[] = [
                  'id' => $p['id_presupuesto'] ?? ($p['id'] ?? null),
                  'monto_limite' => $p['monto_limite'] ?? ($p['monto'] ?? null),
-                 'fecha' => $p['fecha'] ?? null
+                 'fecha' => $p['fecha'] ?? null,
+                'id_categoria' => $p['id_categoria'] ?? null,
+                'cat_nombre' => $p['cat_nombre'] ?? ($p['categoria'] ?? null)
              ];
          }
          echo json_encode($out);

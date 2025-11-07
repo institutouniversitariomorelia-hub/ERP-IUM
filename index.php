@@ -14,6 +14,7 @@ define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
 // Incluir archivos necesarios
 require_once 'db.php'; // Conexión BD
 require_once 'password.php'; // Compatibilidad de hash
+require_once 'helpers.php'; // Permisos y utilidades
 
 // Determinar controlador y acción
 $controllerName = $_GET['controller'] ?? (isset($_SESSION['user_id']) ? DEFAULT_CONTROLLER : 'auth');

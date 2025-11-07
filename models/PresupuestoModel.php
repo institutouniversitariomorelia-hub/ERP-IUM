@@ -13,16 +13,18 @@ class PresupuestoModel {
      * @return array Lista de presupuestos.
      */
     public function getAllPresupuestos() {
-        // CORREGIDO: Selecciona de 'presupuestos' y usa 'id_presupuesto'
-        // Damos alias 'id' para compatibilidad con JS
-        $query = "SELECT *, id_presupuesto as id FROM presupuestos ORDER BY fecha DESC";
+        // Nuevo diseño: presupuesto -> id_categoria; un presupuesto pertenece a una categoría
+        $query = "SELECT p.*, p.id_presupuesto AS id,
+                         c.id_categoria, c.nombre AS cat_nombre
+                  FROM presupuestos p
+                  LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+                  ORDER BY p.fecha DESC";
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);
-        } else {
-            error_log("Error al obtener presupuestos: " . $this->db->error);
-            return [];
         }
+        error_log('Error al obtener presupuestos: ' . $this->db->error);
+        return [];
     }
 
     /**
@@ -31,19 +33,22 @@ class PresupuestoModel {
      * @return array|null Datos del presupuesto o null.
      */
     public function getPresupuestoById($id) {
-        // CORREGIDO: Busca por 'id_presupuesto' y da alias 'id'
-        $query = "SELECT *, id_presupuesto as id FROM presupuestos WHERE id_presupuesto = ?";
+        $query = "SELECT p.*, p.id_presupuesto AS id,
+                         c.id_categoria, c.nombre AS cat_nombre
+                  FROM presupuestos p
+                  LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+                  WHERE p.id_presupuesto = ?";
         $stmt = $this->db->prepare($query);
-        if ($stmt) {
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            $stmt->close();
-            return $result->fetch_assoc();
-        } else {
-            error_log("Error al preparar getPresupuestoById: " . $this->db->error);
+        if (!$stmt) {
+            error_log('Error al preparar getPresupuestoById: ' . $this->db->error);
             return null;
         }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $pres = $result->fetch_assoc();
+        $stmt->close();
+        return $pres;
     }
 
     /**
@@ -55,16 +60,22 @@ class PresupuestoModel {
     public function savePresupuesto($data, $id = null) {
         
         // CORREGIDO: Lógica adaptada a la nueva tabla
+        // Validar que venga id_categoria
+        if (empty($data['id_categoria']) || !is_numeric($data['id_categoria'])) {
+            error_log('savePresupuesto: id_categoria faltante o inválido');
+            return false;
+        }
+
         if ($id) { // Actualizar
-            $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_user=? WHERE id_presupuesto=?";
+            $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_categoria=?, id_user=? WHERE id_presupuesto=?";
             $stmt = $this->db->prepare($query);
-            if (!$stmt) { error_log("Error al preparar updatePresupuesto: " . $this->db->error); return false; }
-            $stmt->bind_param("dsii", $data['monto_limite'], $data['fecha'], $data['id_user'], $id);
+            if (!$stmt) { error_log('Error al preparar updatePresupuesto: ' . $this->db->error); return false; }
+            $stmt->bind_param('dsiii', $data['monto_limite'], $data['fecha'], $data['id_categoria'], $data['id_user'], $id);
         } else { // Crear
-            $query = "INSERT INTO presupuestos (monto_limite, fecha, id_user) VALUES (?, ?, ?)";
+            $query = "INSERT INTO presupuestos (monto_limite, fecha, id_categoria, id_user) VALUES (?, ?, ?, ?)";
             $stmt = $this->db->prepare($query);
-             if (!$stmt) { error_log("Error al preparar createPresupuesto: " . $this->db->error); return false; }
-            $stmt->bind_param("dsi", $data['monto_limite'], $data['fecha'], $data['id_user']);
+            if (!$stmt) { error_log('Error al preparar createPresupuesto: ' . $this->db->error); return false; }
+            $stmt->bind_param('dsii', $data['monto_limite'], $data['fecha'], $data['id_categoria'], $data['id_user']);
         }
 
         $success = $stmt->execute();
