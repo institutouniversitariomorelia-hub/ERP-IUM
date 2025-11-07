@@ -123,64 +123,21 @@
             </div>
             <!-- Paginación y tamaño de página (oculto, se puede ajustar) -->
             <input type="hidden" name="page" value="<?php echo (int)($filtrosActuales['page'] ?? 1); ?>">
-            <input type="hidden" name="pageSize" value="<?php echo (int)($filtrosActuales['pageSize'] ?? 50); ?>">
+            <input type="hidden" name="pageSize" value="<?php echo (int)($filtrosActuales['pageSize'] ?? 10); ?>">
         </form>
     </div>
 </div>
 
-<!-- Pequeña tabla con los 5 movimientos más recientes -->
-<div class="card shadow-sm mb-4">
-    <div class="card-header">Movimientos Recientes</div>
-            <div class="card-body p-2">
-        <?php if (!empty($recentLogs)): ?>
-            <div class="table-responsive">
-                <table class="table table-sm table-striped mb-0">
-                    <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th><th>Resumen</th></tr></thead>
-                    <tbody>
-                        <?php foreach($recentLogs as $r):
-                            $dt = '-';
-                            if (!empty($r['fecha'])) {
-                                try { $d = new DateTime($r['fecha']); $dt = $d->format('d/m/Y H:i'); } catch(Exception $e) { $dt = htmlspecialchars($r['fecha']); }
-                            }
-                            // Determinar tipo de acción para badge y clase de fila
-                            $actRaw = $r['accion'] ?? '';
-                            $actLower = mb_strtolower($actRaw);
-                            $actionLabel = htmlspecialchars($actRaw ?: '-');
-                            $rowClass = '';
-                            $badgeClass = 'bg-secondary';
-                            if (mb_stripos($actLower, 'inser') !== false || mb_stripos($actLower, 'registro') !== false) { $rowClass = 'aud-row-insert'; $badgeClass = 'bg-success'; $actionLabel = 'Registro'; }
-                            elseif (mb_stripos($actLower, 'actual') !== false || mb_stripos($actLower, 'update') !== false) { $rowClass = 'aud-row-update'; $badgeClass = 'bg-warning text-dark'; $actionLabel = 'Actualización'; }
-                            elseif (mb_stripos($actLower, 'elim') !== false || mb_stripos($actLower, 'delete') !== false) { $rowClass = 'aud-row-delete'; $badgeClass = 'bg-danger'; $actionLabel = 'Eliminación'; }
-                            $summary = htmlspecialchars(mb_strimwidth($r['detalles'] ?? '', 0, 60, '...'));
-                            $rowId = htmlspecialchars($r['id_auditoria'] ?? $r['id_auditoria']);
-                        ?>
-                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>">
-                                <td><?php echo $dt; ?></td>
-                                <td><?php echo htmlspecialchars($r['usuario'] ?? 'Sistema'); ?></td>
-                                <td><?php echo htmlspecialchars($r['seccion'] ?? '-'); ?></td>
-                                <td><span class="badge aud-action-badge <?php echo $badgeClass; ?>"><?php echo $actionLabel; ?></span></td>
-                                <td><?php echo $summary; ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-            <div class="text-end mt-2"><small class="text-muted">Haz clic en un registro para ver detalles.</small></div>
-        <?php else: ?>
-            <div class="text-muted p-2">No hay movimientos recientes.</div>
-        <?php endif; ?>
-    </div>
-</div>
-
+<!-- Historial Global (PRIMERO) -->
 <div class="card shadow-sm mb-4">
      <div class="card-header">Historial Global</div>
     <div class="card-body p-0">
                 <div class="table-responsive">
             <table class="table table-striped table-hover mb-0">
-                <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th><th>Detalles</th></tr></thead>
+                <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th></tr></thead>
                 <tbody id="tablaAuditoria">
                     <?php if (empty($auditoriaLogs)): ?>
-                        <tr><td colspan="5" class="text-center p-4 text-muted">No se encontraron registros con los filtros aplicados.</td></tr>
+                        <tr><td colspan="4" class="text-center p-4 text-muted">No se encontraron registros con los filtros aplicados.</td></tr>
                     <?php else: ?>
                         <?php foreach ($auditoriaLogs as $log): 
                             // Preparar campos de forma segura para evitar notices
@@ -196,13 +153,6 @@
                             $usuario = htmlspecialchars($log['usuario'] ?? 'Sistema');
                             $seccion = htmlspecialchars($log['seccion'] ?? '-');
                             $accion = htmlspecialchars($log['accion'] ?? '-');
-                            // Crear un resumen limpio para la tabla (preferir new_valor, luego detalles, luego old=>new)
-                            $rawDetails = '';
-                            if (!empty($log['new_valor'])) $rawDetails = $log['new_valor'];
-                            elseif (!empty($log['detalles'])) $rawDetails = $log['detalles'];
-                            elseif (!empty($log['old_valor']) || !empty($log['new_valor'])) $rawDetails = ($log['old_valor'] ?? '') . ' => ' . ($log['new_valor'] ?? '');
-                            $cleanSummary = trim(preg_replace('/[{}\[\]"]+/', '', $rawDetails));
-                            $summary = htmlspecialchars(mb_strimwidth($cleanSummary, 0, 80, '...'));
                             $rowId = htmlspecialchars($log['id_auditoria'] ?? $log['id'] ?? '');
                         ?>
                             <?php
@@ -220,7 +170,6 @@
                                 <td><?php echo $usuario; ?></td>
                                 <td><?php echo $seccion; ?></td>
                                 <td><span class="badge aud-action-badge <?php echo $badgeClass; ?>"><?php echo $actionLabel; ?></span></td>
-                                <td><?php echo $summary; ?></td>
                             </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -230,9 +179,51 @@
     </div>
 </div>
 
+<!-- Movimientos Recientes (SEGUNDO) -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header">Movimientos Recientes</div>
+            <div class="card-body p-2">
+        <?php if (!empty($recentLogs)): ?>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                    <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th></tr></thead>
+                    <tbody>
+                        <?php foreach($recentLogs as $r):
+                            $dt = '-';
+                            if (!empty($r['fecha'])) {
+                                try { $d = new DateTime($r['fecha']); $dt = $d->format('d/m/Y H:i'); } catch(Exception $e) { $dt = htmlspecialchars($r['fecha']); }
+                            }
+                            // Determinar tipo de acción para badge y clase de fila
+                            $actRaw = $r['accion'] ?? '';
+                            $actLower = mb_strtolower($actRaw);
+                            $actionLabel = htmlspecialchars($actRaw ?: '-');
+                            $rowClass = '';
+                            $badgeClass = 'bg-secondary';
+                            if (mb_stripos($actLower, 'inser') !== false || mb_stripos($actLower, 'registro') !== false) { $rowClass = 'aud-row-insert'; $badgeClass = 'bg-success'; $actionLabel = 'Registro'; }
+                            elseif (mb_stripos($actLower, 'actual') !== false || mb_stripos($actLower, 'update') !== false) { $rowClass = 'aud-row-update'; $badgeClass = 'bg-warning text-dark'; $actionLabel = 'Actualización'; }
+                            elseif (mb_stripos($actLower, 'elim') !== false || mb_stripos($actLower, 'delete') !== false) { $rowClass = 'aud-row-delete'; $badgeClass = 'bg-danger'; $actionLabel = 'Eliminación'; }
+                            $rowId = htmlspecialchars($r['id_auditoria'] ?? $r['id_auditoria']);
+                        ?>
+                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>">
+                                <td><?php echo $dt; ?></td>
+                                <td><?php echo htmlspecialchars($r['usuario'] ?? 'Sistema'); ?></td>
+                                <td><?php echo htmlspecialchars($r['seccion'] ?? '-'); ?></td>
+                                <td><span class="badge aud-action-badge <?php echo $badgeClass; ?>"><?php echo $actionLabel; ?></span></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-end mt-2"><small class="text-muted">Haz clic en un registro para ver detalles.</small></div>
+        <?php else: ?>
+            <div class="text-muted p-2">No hay movimientos recientes.</div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <!-- Modal para ver detalles completos de un registro de auditoría -->
 <div class="modal fade" id="modalAuditoriaDetalle" tabindex="-1" aria-labelledby="modalAuditoriaDetalleLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
+    <div class="modal-dialog modal-xl modal-fullscreen-md-down">
         <div class="modal-content">
             <div class="modal-header modal-header-danger">
                 <h5 class="modal-title" id="modalAuditoriaDetalleLabel">Detalle de Movimiento</h5>
@@ -240,69 +231,69 @@
             </div>
             <div class="modal-body">
                 <div id="aud_detalle_body">
-                    <!-- Contenido rellenado vía AJAX -->
-                    <dl class="row">
-                        <dt class="col-sm-3">Fecha</dt><dd class="col-sm-9" id="aud_det_fecha">-</dd>
-                        <dt class="col-sm-3">Usuario</dt><dd class="col-sm-9" id="aud_det_usuario">-</dd>
-                        <dt class="col-sm-3">Sección</dt><dd class="col-sm-9" id="aud_det_seccion">-</dd>
-                        <dt class="col-sm-3">Acción</dt><dd class="col-sm-9" id="aud_det_accion">-</dd>
-                        <dt class="col-sm-3">Detalles</dt><dd class="col-sm-9" id="aud_det_detalles">-</dd>
-                        <dt class="col-sm-3">Old Value</dt><dd class="col-sm-9" id="aud_det_old">-</dd>
-                        <dt class="col-sm-3">New Value</dt><dd class="col-sm-9" id="aud_det_new">-</dd>
-                    </dl>
-                    <div class="mb-2">
-                        <button id="aud_toggle_raw" type="button" class="btn btn-outline-secondary btn-sm">Mostrar consulta completa</button>
+                    <!-- Info básica -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <strong>Fecha:</strong>
+                            <div id="aud_det_fecha" class="text-muted">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Usuario:</strong>
+                            <div id="aud_det_usuario" class="text-muted">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Sección:</strong>
+                            <div id="aud_det_seccion" class="text-muted">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Tipo:</strong>
+                            <div id="aud_det_accion">-</div>
+                        </div>
                     </div>
-                    <pre id="aud_raw_consulta">-</pre>
-                    <div id="aud_compare" class="mt-3"></div>
+                    
+                    <hr>
+                    
+                    <!-- Comparación visual para actualizaciones -->
+                    <div id="aud_compare_container" style="display:none;">
+                        <h6 class="mb-3">Cambios Realizados</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-danger">
+                                    <div class="card-header bg-danger text-white">
+                                        <small>❌ Valores Anteriores</small>
+                                    </div>
+                                    <div class="card-body" id="aud_old_values">-</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-success">
+                                    <div class="card-header bg-success text-white">
+                                        <small>✓ Valores Nuevos</small>
+                                    </div>
+                                    <div class="card-body" id="aud_new_values">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Detalles generales -->
+                    <div id="aud_det_detalles_container">
+                        <h6 class="mb-2">Detalles</h6>
+                        <div id="aud_det_detalles" class="p-3 bg-light rounded">-</div>
+                    </div>
+                    
+                    <!-- Botón para ver JSON raw -->
+                    <div class="mt-3">
+                        <button id="aud_toggle_raw" type="button" class="btn btn-outline-secondary btn-sm">
+                            <ion-icon name="code-outline"></ion-icon> Ver datos técnicos (JSON)
+                        </button>
+                    </div>
+                    <pre id="aud_raw_consulta" style="display:none; max-height:300px; overflow-y:auto;" class="bg-dark text-light p-3 rounded mt-2">-</pre>
                 </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
-</div>
-
-
-
-<div class="card shadow-sm">
-    <div class="card-header">Historial de Cambios (solo actualizaciones)</div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-striped table-hover mb-0">
-                <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Detalles</th></tr></thead>
-                <tbody id="tablaCambios">
-                        <?php 
-                        $cambiosEncontrados = false;
-                        if (!empty($auditoriaLogs)) {
-                            foreach ($auditoriaLogs as $log) {
-                                $accionRaw = $log['accion'] ?? '';
-                                if (stripos($accionRaw, 'actualización') !== false || stripos($accionRaw, 'update') !== false) {
-                                    $fechaDisplay = '-';
-                                    if (!empty($log['fecha'])) {
-                                        try { $dt = new DateTime($log['fecha']); $fechaDisplay = $dt->format('d/m/Y, g:i:s a'); } catch (Exception $e) { $fechaDisplay = htmlspecialchars($log['fecha']); }
-                                    }
-                                    echo "<tr>";
-                                    echo "<td>" . $fechaDisplay . "</td>";
-                                    echo "<td>" . htmlspecialchars($log['usuario'] ?? 'Sistema') . "</td>";
-                                    echo "<td>" . htmlspecialchars($log['seccion'] ?? '-') . "</td>";
-                                    echo "<td>" . htmlspecialchars($log['detalles'] ?? '') . "</td>";
-                                    echo "</tr>";
-                                    $cambiosEncontrados = true;
-                                }
-                            }
-                        }
-                        if (!$cambiosEncontrados): 
-                    ?>
-                        <tr><td colspan="4" class="text-center p-4 text-muted">No se encontraron registros de actualización con los filtros aplicados.</td></tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div class="mt-4">
-     <button class="btn btn-secondary disabled">
-         <ion-icon name="download-outline"></ion-icon> Generar Reporte (CSV)
-    </button>
 </div>

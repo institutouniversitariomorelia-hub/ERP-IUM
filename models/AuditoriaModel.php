@@ -17,8 +17,8 @@ class AuditoriaModel {
     public function getAuditoriaLogs($filtros = []) {
         // Nueva implementación: soporte de filtros más flexible y paginación.
         $page = isset($filtros['page']) ? max(1, (int)$filtros['page']) : 1;
-        $pageSize = isset($filtros['pageSize']) ? (int)$filtros['pageSize'] : 50;
-        if ($pageSize <= 0) $pageSize = 50;
+        $pageSize = isset($filtros['pageSize']) ? (int)$filtros['pageSize'] : 10;
+        if ($pageSize <= 0) $pageSize = 10;
         if ($pageSize > 500) $pageSize = 500; // límite razonable
         $offset = ($page - 1) * $pageSize;
 

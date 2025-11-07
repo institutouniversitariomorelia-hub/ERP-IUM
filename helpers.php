@@ -77,17 +77,4 @@ function h(?string $str): string {
     return htmlspecialchars($str ?? '', ENT_QUOTES, 'UTF-8');
 }
 
-// Obtener nombre de categoría desde una lista de categorías (acepta esquemas: id|id_categoria, nombre|nombre_categoria)
-if (!function_exists('obtenerNombreCategoria')) {
-    function obtenerNombreCategoria($idCategoria, $categorias) {
-        if (empty($categorias) || !$idCategoria) return 'Desconocida';
-        foreach ($categorias as $cat) {
-            if ((isset($cat['id']) && $cat['id'] == $idCategoria) || (isset($cat['id_categoria']) && $cat['id_categoria'] == $idCategoria)) {
-                return $cat['nombre'] ?? $cat['nombre_categoria'] ?? 'Desconocida';
-            }
-        }
-        return 'Desconocida';
-    }
-}
-
 ?>

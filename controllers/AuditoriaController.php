@@ -45,16 +45,19 @@ class AuditoriaController {
             $filtros['seccion'] = $seccionMap[$filtros['seccion']];
         }
 
-        // Si se indicó accion_tipo, priorizarlo y normalizar su valor hacia la clave 'accion'
-        if (!empty($filtros['accion_tipo'])) {
+        // Si se indicó accion_tipo y NO está vacío, priorizarlo (sobreescribe campo 'accion')
+        if (isset($filtros['accion_tipo']) && $filtros['accion_tipo'] !== '') {
             // Valores esperados: Insercion, Actualizacion, Eliminacion
             $filtros['accion'] = $filtros['accion_tipo'];
+        } elseif (isset($filtros['accion_tipo']) && $filtros['accion_tipo'] === '') {
+            // Si es cadena vacía (Todas), limpiar también el campo 'accion' para no filtrar
+            $filtros['accion'] = null;
         }
 
     // Pedir datos a los Modelos
     // Soporte de paginación: leer página y tamaño desde GET
     $filtros['page'] = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-    $filtros['pageSize'] = isset($_GET['pageSize']) ? max(1, min(200, (int)$_GET['pageSize'])) : 50;
+    $filtros['pageSize'] = isset($_GET['pageSize']) ? max(1, min(200, (int)$_GET['pageSize'])) : 10;
 
     $logsResult = $this->auditoriaModel->getAuditoriaLogs($filtros);
     if (is_array($logsResult) && array_key_exists('data', $logsResult)) {

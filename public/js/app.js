@@ -398,163 +398,169 @@ $(document).ready(function() {
 $(document).on('click', '.aud-row', function() {
     const id = $(this).data('id');
     if (!id) return;
+    
+    // Mapa de nombres técnicos a etiquetas legibles en español
+    const fieldLabels = {
+        'id_ingreso': 'ID Ingreso', 'id_egreso': 'ID Egreso', 'id_presupuesto': 'ID Presupuesto',
+        'id_categoria': 'ID Categoría', 'id_usuario': 'ID Usuario',
+        'folio_ingreso': 'Folio Ingreso', 'folio_egreso': 'Folio Egreso',
+        'nombre_completo': 'Nombre Completo', 'apellido_paterno': 'Apellido Paterno', 'apellido_materno': 'Apellido Materno',
+        'matricula': 'Matrícula', 'nivel_academico': 'Nivel Académico', 'programa': 'Programa',
+        'grado': 'Grado', 'grupo': 'Grupo', 'concepto': 'Concepto', 'metodo_pago': 'Método de Pago',
+        'modalidad': 'Modalidad', 'fecha_pago': 'Fecha de Pago', 'mes_pago': 'Mes', 'anio_pago': 'Año',
+        'dia_pago': 'Día de Pago', 'tipo_ingreso': 'Tipo Ingreso', 'observaciones': 'Observaciones',
+        'monto': 'Monto', 'monto_previo': 'Monto Previo', 'numero_factura': 'No. Factura',
+        'proveedor': 'Proveedor', 'descripcion': 'Descripción', 'fecha_egreso': 'Fecha Egreso',
+        'categoria': 'Categoría', 'periodo_inicio': 'Periodo Inicio', 'periodo_fin': 'Periodo Fin',
+        'monto_total': 'Monto Total', 'monto_gastado': 'Monto Gastado', 'estado': 'Estado',
+        'nombre_usuario': 'Usuario', 'email': 'Email', 'rol': 'Rol', 'activo': 'Activo',
+        'fecha_creacion': 'Fecha Creación', 'ultima_modificacion': 'Última Modificación'
+    };
+    
     // Mostrar modal inmediatamente
     $('#modalAuditoriaDetalle').modal('show');
-    // Limpiar contenido
-    $('#aud_det_fecha').text('Cargando...');
-    $('#aud_det_usuario').text('Cargando...');
-    $('#aud_det_seccion').text('Cargando...');
-    $('#aud_det_accion').text('Cargando...');
-    $('#aud_det_detalles').text('Cargando...');
-    $('#aud_det_old').text('-');
-    $('#aud_det_new').text('-');
+    $('#aud_det_fecha, #aud_det_usuario, #aud_det_seccion').text('Cargando...');
+    $('#aud_det_accion').text('');
+    $('#aud_compare_container, #aud_det_detalles_container, #aud_raw_consulta').hide();
 
     ajaxCall('auditoria', 'getLogAjax', { id: id }, 'GET')
         .done(res => {
             if (res && res.success && res.data) {
                 const d = res.data;
+                
+                // Formatear fecha
                 let fecha = d.fecha || '';
-                try { fecha = new Date(fecha).toLocaleString(); } catch(e) {}
+                try { fecha = new Date(fecha).toLocaleString('es-MX'); } catch(e) {}
                 $('#aud_det_fecha').text(fecha);
                 $('#aud_det_usuario').text(d.usuario || 'Sistema');
                 $('#aud_det_seccion').text(d.seccion || '-');
-                // Mostrar acción con badge de color según tipo
-                (function(){
-                    const actRaw = d.accion || '-';
-                    const actLower = String(actRaw).toLowerCase();
-                    let badgeClass = 'bg-secondary';
-                    let label = actRaw;
-                    if (actLower.indexOf('inser') !== -1 || actLower.indexOf('registro') !== -1) { badgeClass = 'bg-success'; label = 'Registro'; }
-                    else if (actLower.indexOf('actual') !== -1 || actLower.indexOf('update') !== -1) { badgeClass = 'bg-warning text-dark'; label = 'Actualización'; }
-                    else if (actLower.indexOf('elim') !== -1 || actLower.indexOf('delete') !== -1) { badgeClass = 'bg-danger'; label = 'Eliminación'; }
-                    $('#aud_det_accion').html(`<span class="badge aud-action-badge ${badgeClass}">${escapeHtml(label)}</span>`);
-                })();
-                // Render limpio y amigable para el usuario
-                // Helpers locales
-                function renderKVList(obj) {
-                    const $dl = $('<dl class="row mb-0">');
-                    Object.keys(obj).forEach(k => {
-                        const v = obj[k];
-                        const display = formatValue(v);
-                        $dl.append(`<dt class="col-sm-3">${escapeHtml(k)}</dt><dd class="col-sm-9">${escapeHtml(display)}</dd>`);
-                    });
-                    return $dl;
+                
+                // Badge de acción con colores
+                const actRaw = d.accion || '-';
+                const actLower = String(actRaw).toLowerCase();
+                let badgeClass = 'bg-secondary', label = actRaw;
+                if (actLower.indexOf('inser') !== -1 || actLower.indexOf('registro') !== -1) {
+                    badgeClass = 'bg-success'; label = 'Registro';
+                } else if (actLower.indexOf('actual') !== -1 || actLower.indexOf('update') !== -1) {
+                    badgeClass = 'bg-warning text-dark'; label = 'Actualización';
+                } else if (actLower.indexOf('elim') !== -1 || actLower.indexOf('delete') !== -1) {
+                    badgeClass = 'bg-danger'; label = 'Eliminación';
                 }
-
+                $('#aud_det_accion').html(`<span class="badge ${badgeClass}">${escapeHtml(label)}</span>`);
+                
+                // Helpers locales
+                function getFieldLabel(key) {
+                    return fieldLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                }
+                
                 function formatValue(v) {
                     if (v === null || v === undefined || v === '') return '-';
                     if (typeof v === 'object') {
                         try {
                             const parts = [];
-                            Object.keys(v).forEach(k => parts.push(k + ': ' + String(v[k])));
-                            return parts.join(' — ');
+                            Object.keys(v).forEach(k => parts.push(getFieldLabel(k) + ': ' + String(v[k])));
+                            return parts.join(', ');
                         } catch(e) { return JSON.stringify(v); }
                     }
                     return String(v);
                 }
-
-                // Parsear old/new si son JSON
+                
+                function renderSimpleList(obj) {
+                    const $dl = $('<dl class="row mb-0">');
+                    Object.keys(obj).forEach(k => {
+                        const v = obj[k];
+                        $dl.append(`<dt class="col-sm-5 text-muted">${escapeHtml(getFieldLabel(k))}</dt><dd class="col-sm-7">${escapeHtml(formatValue(v))}</dd>`);
+                    });
+                    return $dl;
+                }
+                
+                // Parsear JSON
                 let oldObj = null, newObj = null;
-                try { if (d.old_valor) oldObj = JSON.parse(d.old_valor); } catch(e) { oldObj = null; }
-                try { if (d.new_valor) newObj = JSON.parse(d.new_valor); } catch(e) { newObj = null; }
-
-                // Mostrar detalles según la acción para que sea entendible por cualquier usuario
-                $('#aud_det_detalles').empty();
-                const actionLower = (d.accion || '').toLowerCase();
-                if (actionLower.indexOf('inser') !== -1 && newObj && typeof newObj === 'object') {
-                    // Inserción: mostrar los campos nuevos (sin corchetes/comillas)
-                    $('#aud_det_detalles').append('<strong>Campos añadidos:</strong>');
-                    $('#aud_det_detalles').append(renderKVList(newObj));
-                } else if (actionLower.indexOf('elim') !== -1 && oldObj && typeof oldObj === 'object') {
-                    // Eliminación: mostrar los valores antiguos
-                    $('#aud_det_detalles').append('<strong>Valores eliminados:</strong>');
-                    $('#aud_det_detalles').append(renderKVList(oldObj));
-                } else if (actionLower.indexOf('actual') !== -1 && oldObj && newObj && typeof oldObj === 'object' && typeof newObj === 'object') {
-                    // Actualización: mostrar resumen y tabla comparativa abajo
-                    $('#aud_det_detalles').append('<strong>Resumen cambios:</strong>');
-                    const summary = {};
-                    Object.keys(Object.assign({}, oldObj, newObj)).forEach(k => {
+                try { if (d.old_valor) oldObj = JSON.parse(d.old_valor); } catch(e) {}
+                try { if (d.new_valor) newObj = JSON.parse(d.new_valor); } catch(e) {}
+                
+                // Limpiar contenedores
+                $('#aud_old_values, #aud_new_values, #aud_det_detalles').empty();
+                
+                // Decisión de layout según tipo de acción
+                if (actLower.indexOf('actual') !== -1 && oldObj && newObj && typeof oldObj === 'object' && typeof newObj === 'object') {
+                    // ACTUALIZACIÓN: Comparación lado a lado
+                    $('#aud_compare_container').show();
+                    $('#aud_det_detalles_container').hide();
+                    
+                    // Obtener solo los campos que cambiaron
+                    const changedKeys = [];
+                    const allKeys = Array.from(new Set(Object.keys(oldObj).concat(Object.keys(newObj))));
+                    allKeys.forEach(k => {
                         const ov = oldObj[k] === undefined ? '' : oldObj[k];
                         const nv = newObj[k] === undefined ? '' : newObj[k];
-                        if (String(ov) === String(nv)) summary[k] = String(nv); else summary[k] = String(ov) + ' => ' + String(nv);
+                        if (String(ov) !== String(nv)) changedKeys.push(k);
                     });
-                    $('#aud_det_detalles').append(renderKVList(summary));
+                    
+                    // Si hay cambios, mostrar solo esos
+                    const keysToShow = changedKeys.length > 0 ? changedKeys : allKeys;
+                    
+                    const $oldDl = $('<dl class="row mb-0">');
+                    const $newDl = $('<dl class="row mb-0">');
+                    
+                    keysToShow.forEach(k => {
+                        const ov = oldObj[k] === undefined ? '' : oldObj[k];
+                        const nv = newObj[k] === undefined ? '' : newObj[k];
+                        const label = getFieldLabel(k);
+                        
+                        $oldDl.append(`<dt class="col-12 text-muted small">${escapeHtml(label)}</dt><dd class="col-12">${escapeHtml(formatValue(ov))}</dd>`);
+                        $newDl.append(`<dt class="col-12 text-muted small">${escapeHtml(label)}</dt><dd class="col-12">${escapeHtml(formatValue(nv))}</dd>`);
+                    });
+                    
+                    $('#aud_old_values').append($oldDl);
+                    $('#aud_new_values').append($newDl);
+                    
+                } else if (actLower.indexOf('inser') !== -1 && newObj && typeof newObj === 'object') {
+                    // INSERCIÓN: Solo valores nuevos
+                    $('#aud_compare_container').hide();
+                    $('#aud_det_detalles_container').show();
+                    $('#aud_det_detalles').html('<div class="text-success mb-2"><strong>✓ Registro Creado</strong></div>').append(renderSimpleList(newObj));
+                    
+                } else if (actLower.indexOf('elim') !== -1 && oldObj && typeof oldObj === 'object') {
+                    // ELIMINACIÓN: Solo valores antiguos
+                    $('#aud_compare_container').hide();
+                    $('#aud_det_detalles_container').show();
+                    $('#aud_det_detalles').html('<div class="text-danger mb-2"><strong>✗ Registro Eliminado</strong></div>').append(renderSimpleList(oldObj));
+                    
                 } else {
-                    // Fallback: si hay newObj/oldObj, mostrar los más relevantes
+                    // FALLBACK: Mostrar lo que haya
+                    $('#aud_compare_container').hide();
+                    $('#aud_det_detalles_container').show();
                     if (newObj && typeof newObj === 'object') {
-                        $('#aud_det_detalles').append('<strong>Valores nuevos:</strong>');
-                        $('#aud_det_detalles').append(renderKVList(newObj));
+                        $('#aud_det_detalles').append(renderSimpleList(newObj));
                     } else if (oldObj && typeof oldObj === 'object') {
-                        $('#aud_det_detalles').append('<strong>Valores previos:</strong>');
-                        $('#aud_det_detalles').append(renderKVList(oldObj));
+                        $('#aud_det_detalles').append(renderSimpleList(oldObj));
                     } else {
-                        // Si no hay JSON, mostrar detalles como texto limpio (quitar llaves/comillas)
-                        const raw = d.detalles || ((d.old_valor || '') + ' => ' + (d.new_valor || '')) || '-';
-                        const cleaned = String(raw).replace(/[{}\[\]"]+/g, '').replace(/\s*,\s*/g, '; ');
+                        const raw = d.detalles || ((d.old_valor || '') + ' → ' + (d.new_valor || '')) || '-';
+                        const cleaned = String(raw).replace(/[{}\[\]"]+/g, '').replace(/\s*,\s*/g, ', ');
                         $('#aud_det_detalles').text(cleaned);
                     }
                 }
-
-                // Rellenar old/new cortos para cabecera
-                $('#aud_det_old').text(oldObj ? '(ver detalle)' : (d.old_valor ? (d.old_valor.length > 200 ? d.old_valor.substring(0,200)+'...' : d.old_valor) : '-'));
-                $('#aud_det_new').text(newObj ? '(ver detalle)' : (d.new_valor ? (d.new_valor.length > 200 ? d.new_valor.substring(0,200)+'...' : d.new_valor) : '-'));
-
-                // Construir comparación más legible si ambos son objetos
-                $('#aud_compare').empty();
-                if (oldObj && newObj && typeof oldObj === 'object' && typeof newObj === 'object') {
-                    const keys = Array.from(new Set(Object.keys(oldObj).concat(Object.keys(newObj))));
-                    const $tbl = $('<table class="table table-sm table-bordered">');
-                    $tbl.append('<thead><tr class="table-light"><th>Campo</th><th>Antes</th><th>Ahora</th></tr></thead>');
-                    const $b = $('<tbody>');
-                    keys.forEach(k => {
-                        const ov = oldObj[k] === undefined ? '' : oldObj[k];
-                        const nv = newObj[k] === undefined ? '' : newObj[k];
-                        const changed = String(ov) !== String(nv);
-                        const $tr = $('<tr>');
-                        $tr.append(`<td>${escapeHtml(k)}</td>`);
-                        $tr.append(`<td>${escapeHtml(formatValue(ov))}</td>`);
-                        $tr.append(`<td>${escapeHtml(formatValue(nv))}</td>`);
-                        if (changed) {
-                            $tr.css('background-color', '#fff3cd');
-                        }
-                        $b.append($tr);
-                        // Si cambió, añadir ícono indicador al valor nuevo
-                        if (changed) {
-                            try {
-                                $tr.find('td').eq(2).append(' <span class="text-danger ms-1" title="Valor cambiado">&#8594;</span>');
-                                $tr.find('td').eq(2).css('font-weight', '600');
-                            } catch (e) { }
-                        }
-                    });
-                    $tbl.append($b);
-                    $('#aud_compare').append('<h6>Comparación de cambios</h6>');
-                    $('#aud_compare').append($tbl);
-                } else if (oldObj || newObj) {
-                    if (oldObj) $('#aud_compare').append('<h6>Valor anterior (detallado)</h6>').append(renderKVList(oldObj));
-                    if (newObj) $('#aud_compare').append('<h6>Valor nuevo (detallado)</h6>').append(renderKVList(newObj));
-                }
-
-                // Rellenar el bloque con la consulta completa (raw) y configurar toggle
-                try {
-                    const raw = (d.detalles && d.detalles.length) ? d.detalles : ((d.old_valor || '') + ' => ' + (d.new_valor || ''));
-                    const cleanedRaw = String(raw).replace(/\s*=>\s*/g, ' => ');
-                    $('#aud_raw_consulta').text(cleanedRaw || '-');
-                    $('#aud_raw_consulta').hide();
-                    $('#aud_toggle_raw').off('click.aud').on('click.aud', function() {
-                        const $pre = $('#aud_raw_consulta');
-                        if ($pre.is(':visible')) { $pre.slideUp(); $(this).text('Mostrar consulta completa'); }
-                        else { $pre.slideDown(); $(this).text('Ocultar consulta completa'); }
-                    });
-                } catch (e) {
-                    console.warn('No se pudo preparar raw consulta', e);
-                    $('#aud_raw_consulta').text('-').hide();
-                    $('#aud_toggle_raw').hide();
-                }
+                
+                // Preparar toggle para JSON raw
+                const raw = (d.detalles && d.detalles.length) ? d.detalles : ((d.old_valor || '') + ' → ' + (d.new_valor || ''));
+                $('#aud_raw_consulta').text(String(raw) || '-').hide();
+                $('#aud_toggle_raw').off('click.aud').on('click.aud', function() {
+                    const $pre = $('#aud_raw_consulta');
+                    if ($pre.is(':visible')) {
+                        $pre.slideUp();
+                        $(this).html('<ion-icon name="code-outline"></ion-icon> Ver datos técnicos (JSON)');
+                    } else {
+                        $pre.slideDown();
+                        $(this).html('<ion-icon name="code-outline"></ion-icon> Ocultar datos técnicos');
+                    }
+                });
+                
             } else {
                 $('#aud_detalle_body').html('<div class="alert alert-warning">No se pudo cargar el registro.</div>');
             }
         }).fail(xhr => {
-            $('#aud_detalle_body').html('<div class="alert alert-danger">Error al cargar. Revisa la consola.</div>');
+            $('#aud_detalle_body').html('<div class="alert alert-danger">Error al cargar el detalle.</div>');
             mostrarError('cargar detalle auditoría', xhr);
         });
 });

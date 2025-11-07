@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 5.2.2
 -- https://www.phpmyadmin.net/
 --
--- Servidor: 127.0.0.1
--- Tiempo de generación: 07-11-2025 a las 21:33:07
--- Versión del servidor: 10.4.32-MariaDB
--- Versión de PHP: 8.2.12
+-- Servidor: localhost:3306
+-- Tiempo de generación: 03-11-2025 a las 17:35:28
+-- Versión del servidor: 10.11.13-MariaDB-0ubuntu0.24.04.1
+-- Versión de PHP: 8.4.11
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -64,43 +64,7 @@ INSERT INTO `auditoria` (`id_auditoria`, `fecha_hora`, `seccion`, `accion`, `old
 (4, '2025-10-27 22:18:02', 'usuarios', 'Actualizacion', '{\"id_user\": 2, \"nombre\": \"Super Administrador\", \"username\": \"su_admin\", \"rol\": \"SU\"}', '{\"id_user\": 2, \"nombre\": \"Super Administrador\", \"username\": \"su_admin\", \"rol\": \"SU\"}', NULL, NULL),
 (5, '2025-10-28 16:26:47', 'categorias', 'Insercion', NULL, '{\"id_categoria\": 1, \"nombre\": \"goku\", \"tipo\": \"Ingreso\"}', NULL, NULL),
 (6, '2025-11-03 17:12:41', 'usuarios', 'Insercion', NULL, '{\"id_user\": 3, \"nombre\": \"Lupe\", \"username\": \"Regresa Lupe\", \"rol\": \"ADM\"}', NULL, NULL),
-(7, '2025-11-03 17:13:16', 'usuarios', 'Eliminacion', '{\"id_user\": 3, \"nombre\": \"Lupe\", \"username\": \"Regresa Lupe\", \"rol\": \"ADM\"}', NULL, NULL, NULL),
-(8, '2025-11-05 17:50:55', 'usuarios', 'Insercion', NULL, '{\"id_user\": 4, \"nombre\": \"Lupe\", \"username\": \"SU-LUPE \", \"rol\": \"SU\"}', NULL, NULL),
-(9, '2025-11-05 17:57:26', 'categorias', 'Insercion', NULL, '{\"id_categoria\": 2, \"nombre\": \"Lupe\", \"tipo\": \"Egreso\"}', NULL, NULL),
-(10, '2025-11-05 17:57:39', 'presupuestos', 'Insercion', NULL, '{\"id_presupuesto\": 1, \"monto_limite\": 1234523.00, \"fecha\": \"2025-11-05\"}', NULL, NULL),
-(11, '2025-11-05 17:59:40', 'presupuestos', 'Actualizacion', '{\"id_presupuesto\": 1, \"monto_limite\": 1234523.00, \"fecha\": \"2025-11-05\"}', '{\"id_presupuesto\": 1, \"monto_limite\": 1234523.00, \"fecha\": \"2025-11-05\"}', NULL, NULL),
-(12, '2025-11-05 18:11:58', 'categorias', 'Insercion', NULL, '{\"id_categoria\": 3, \"nombre\": \"fgfdgfgf\", \"tipo\": \"Egreso\"}', NULL, NULL),
-(13, '2025-11-05 18:19:59', 'categorias', 'Actualizacion', '{\"id_categoria\": 3, \"nombre\": \"fgfdgfgf\", \"tipo\": \"Egreso\"}', '{\"id_categoria\": 3, \"nombre\": \"fgfdgfgf\", \"tipo\": \"Egreso\"}', NULL, NULL),
-(14, '2025-11-05 18:20:36', 'egresos', 'Insercion', NULL, '{\"folio_egreso\": 1, \"proveedor\": \"qwerth\", \"monto\": 123456.00, \"fecha\": \"2025-11-05\", \"id_categoria\": 1}', 1, NULL),
-(15, '2025-11-05 18:28:06', 'ingresos', 'Insercion', NULL, '{\"folio_ingreso\": 1, \"alumno\": \"angel\", \"monto\": 1234567.00, \"fecha\": \"2025-11-05\", \"concepto\": \"Credenciales\", \"id_categoria\": 1}', NULL, 1),
-(16, '2025-11-05 18:54:17', 'egresos', 'Eliminacion', '{\"folio_egreso\": 1, \"proveedor\": \"qwerth\", \"monto\": 123456.00, \"fecha\": \"2025-11-05\", \"id_categoria\": 1}', NULL, 1, NULL),
-(17, '2025-11-05 18:54:43', 'usuarios', 'Insercion', NULL, '{\"id_user\": 6, \"nombre\": \"goku\", \"username\": \"goku\", \"rol\": \"ADM\"}', NULL, NULL),
-(18, '2025-11-05 20:18:56', 'egresos', 'Insercion', NULL, '{\"folio_egreso\": 2, \"proveedor\": \"qwerth\", \"monto\": 1234567.00, \"fecha\": \"2025-11-05\", \"id_categoria\": 1}', 2, NULL),
-(19, '2025-11-05 21:56:27', 'usuarios', 'Insercion', NULL, '{\"id_user\": 7, \"nombre\": \"bryan\", \"username\": \"bryan_su\", \"rol\": \"SU\"}', NULL, NULL),
-(20, '2025-11-05 21:56:33', 'usuarios', 'Eliminacion', '{\"id_user\": 4, \"nombre\": \"Lupe\", \"username\": \"SU-LUPE \", \"rol\": \"SU\"}', NULL, NULL, NULL),
-(21, '2025-11-05 21:57:15', 'egresos', 'Insercion', NULL, '{\"folio_egreso\": 3, \"proveedor\": \"qwerth\", \"monto\": 1234567.00, \"fecha\": \"2025-11-05\", \"id_categoria\": 1}', 3, NULL),
-(22, '2025-11-06 16:47:35', 'presupuestos', 'Actualizacion', '{\"id_presupuesto\": 1, \"monto_limite\": 1234523.00, \"fecha\": \"2025-11-05\"}', '{\"id_presupuesto\": 1, \"monto_limite\": 1234523.00, \"fecha\": \"2025-11-05\"}', NULL, NULL),
-(23, '2025-11-06 18:25:53', 'presupuestos', 'Insercion', NULL, '{\"id_presupuesto\": 2, \"monto_limite\": 15000.00, \"fecha\": \"2025-11-06\"}', NULL, NULL),
-(24, '2025-11-07 19:25:21', 'presupuestos', 'Actualizacion', '{\"id_presupuesto\": 1, \"monto_limite\": 1234523.00, \"fecha\": \"2025-11-05\"}', '{\"id_presupuesto\": 1, \"monto_limite\": 1234523.00, \"fecha\": \"2025-11-05\"}', NULL, NULL),
-(25, '2025-11-07 19:25:21', 'presupuestos', 'Actualizacion', '{\"id_presupuesto\": 2, \"monto_limite\": 15000.00, \"fecha\": \"2025-11-06\"}', '{\"id_presupuesto\": 2, \"monto_limite\": 15000.00, \"fecha\": \"2025-11-06\"}', NULL, NULL),
-(26, '2025-11-07 19:36:18', 'categorias', 'Insercion', NULL, '{\"id_categoria\": 4, \"nombre\": \"Jitomate\", \"tipo\": \"Ingreso\"}', NULL, NULL),
-(27, '2025-11-07 19:36:28', 'categorias', 'Actualizacion', '{\"id_categoria\": 3, \"nombre\": \"fgfdgfgf\", \"tipo\": \"Egreso\"}', '{\"id_categoria\": 3, \"nombre\": \"fgfdgf\", \"tipo\": \"Ingreso\"}', NULL, NULL),
-(28, '2025-11-07 19:50:22', 'presupuestos', 'Insercion', NULL, '{\"id_presupuesto\": 3, \"monto_limite\": 15000.00, \"fecha\": \"2025-11-07\", \"id_categoria\": 1}', NULL, NULL),
-(29, '2025-11-07 19:50:45', 'presupuestos', 'Insercion', NULL, '{\"id_presupuesto\": 4, \"monto_limite\": 5.00, \"fecha\": \"2025-11-29\", \"id_categoria\": 4}', NULL, NULL),
-(30, '2025-11-07 19:50:55', 'presupuestos', 'Actualizacion', '{\"id_presupuesto\": 4, \"monto_limite\": 5.00, \"fecha\": \"2025-11-29\", \"id_categoria\": 4}', '{\"id_presupuesto\": 4, \"monto_limite\": 15005.00, \"fecha\": \"2025-11-29\", \"id_categoria\": 4}', NULL, NULL),
-(31, '2025-11-07 19:51:01', 'presupuestos', 'Eliminacion', '{\"id_presupuesto\": 4, \"monto_limite\": 15005.00, \"fecha\": \"2025-11-29\"}', NULL, NULL, NULL),
-(32, '2025-11-07 19:51:03', 'presupuestos', 'Eliminacion', '{\"id_presupuesto\": 3, \"monto_limite\": 15000.00, \"fecha\": \"2025-11-07\"}', NULL, NULL, NULL),
-(33, '2025-11-07 19:51:14', 'categorias', 'Actualizacion', '{\"id_categoria\": 3, \"nombre\": \"fgfdgf\", \"tipo\": \"Ingreso\"}', '{\"id_categoria\": 3, \"nombre\": \"fgfdgfdddgf\", \"tipo\": \"Egreso\"}', NULL, NULL),
-(34, '2025-11-07 19:51:25', 'categorias', 'Insercion', NULL, '{\"id_categoria\": 5, \"nombre\": \"RPTech\", \"tipo\": \"Egreso\"}', NULL, NULL),
-(35, '2025-11-07 19:52:42', 'ingresos', 'Insercion', NULL, '{\"folio_ingreso\": 2, \"alumno\": \"jose miguel perez hernadez\", \"monto\": 852.00, \"fecha\": \"2025-11-07\", \"concepto\": \"Inscripción\", \"id_categoria\": 1}', NULL, 2),
-(36, '2025-11-07 19:53:27', 'ingresos', 'Actualizacion', '{\"folio_ingreso\": 2, \"monto\": 852.00}', '{\"folio_ingreso\": 2, \"monto\": 850.00}', NULL, 2),
-(37, '2025-11-07 19:54:14', 'egresos', 'Insercion', NULL, '{\"folio_egreso\": 4, \"proveedor\": \"pkpkpk\", \"monto\": 8000.00, \"fecha\": \"2025-11-29\", \"id_categoria\": 1}', 4, NULL),
-(38, '2025-11-07 19:54:49', 'egresos', 'Actualizacion', '{\"folio_egreso\": 4, \"proveedor\": \"pkpkpk\", \"monto\": 8000.00, \"fecha\": \"2025-11-29\", \"id_categoria\": 1}', '{\"folio_egreso\": 4, \"proveedor\": \"pkpkpk\", \"monto\": 800.00, \"fecha\": \"2025-11-29\", \"id_categoria\": 1}', 4, NULL),
-(39, '2025-11-07 19:55:19', 'egresos', 'Eliminacion', '{\"folio_egreso\": 2, \"proveedor\": \"qwerth\", \"monto\": 1234567.00, \"fecha\": \"2025-11-05\", \"id_categoria\": 1}', NULL, 2, NULL),
-(40, '2025-11-07 20:10:56', 'ingresos', 'Insercion', NULL, '{\"folio_ingreso\": 3, \"alumno\": \"jose miguel perez hernadez\", \"monto\": 8000.00, \"fecha\": \"2025-11-07\", \"concepto\": \"Credenciales\", \"id_categoria\": 4}', NULL, 3),
-(41, '2025-11-07 20:19:46', 'ingresos', 'Insercion', NULL, '{\"folio_ingreso\": 4, \"alumno\": \"andres jorge chueco\", \"monto\": 7000.00, \"fecha\": \"2025-11-07\", \"concepto\": \"Constancia con calificaciones\", \"id_categoria\": 4}', NULL, 4),
-(42, '2025-11-07 20:24:47', 'ingresos', 'Actualizacion', '{\"folio_ingreso\": 2, \"monto\": 850.00}', '{\"folio_ingreso\": 2, \"monto\": 850.00}', NULL, 2),
-(43, '2025-11-07 20:25:39', 'ingresos', 'Insercion', NULL, '{\"folio_ingreso\": 5, \"alumno\": \"jose miguel perez hernadez\", \"monto\": 5000.00, \"fecha\": \"2025-11-07\", \"concepto\": \"Historiales\", \"id_categoria\": 1}', NULL, 5);
+(7, '2025-11-03 17:13:16', 'usuarios', 'Eliminacion', '{\"id_user\": 3, \"nombre\": \"Lupe\", \"username\": \"Regresa Lupe\", \"rol\": \"ADM\"}', NULL, NULL, NULL);
 
 --
 -- Disparadores `auditoria`
@@ -121,26 +85,21 @@ CREATE TABLE `categorias` (
   `nombre` varchar(100) NOT NULL,
   `tipo` enum('Ingreso','Egreso') NOT NULL,
   `descripcion` text DEFAULT NULL,
-  `id_user` int(11) NOT NULL,
-  `id_presupuesto` int(11) DEFAULT NULL
+  `id_user` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Volcado de datos para la tabla `categorias`
 --
 
-INSERT INTO `categorias` (`id_categoria`, `nombre`, `tipo`, `descripcion`, `id_user`, `id_presupuesto`) VALUES
-(1, 'goku', 'Ingreso', 'goku', 2, NULL),
-(2, 'Lupe', 'Egreso', '12345', 2, NULL),
-(3, 'fgfdgfdddgf', 'Egreso', 'ssdañ', 2, NULL),
-(4, 'Jitomate', 'Ingreso', 'kmk ', 2, NULL),
-(5, 'RPTech', 'Egreso', 'kmelkfcl d', 2, NULL);
+INSERT INTO `categorias` (`id_categoria`, `nombre`, `tipo`, `descripcion`, `id_user`) VALUES
+(1, 'goku', 'Ingreso', 'goku', 2);
 
 --
 -- Disparadores `categorias`
 --
 DELIMITER $$
-CREATE TRIGGER `trg_categorias_after_insert` AFTER INSERT ON `categorias` FOR EACH ROW BEGIN INSERT INTO `erp_ium_espejo`.`categorias` VALUES (NEW.id_categoria, NEW.nombre, NEW.tipo, NEW.descripcion, NEW.id_user, NEW.id_presupuesto); END
+CREATE TRIGGER `trg_categorias_after_insert` AFTER INSERT ON `categorias` FOR EACH ROW BEGIN INSERT INTO `erp_ium_espejo`.`categorias` (`id_categoria`,`nombre`,`tipo`,`descripcion`,`id_user`) VALUES (NEW.id_categoria, NEW.nombre, NEW.tipo, NEW.descripcion, NEW.id_user); END
 $$
 DELIMITER ;
 DELIMITER $$
@@ -152,7 +111,7 @@ CREATE TRIGGER `trg_categorias_after_update` AFTER UPDATE ON `categorias` FOR EA
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_categorias_after_update_espejo` AFTER UPDATE ON `categorias` FOR EACH ROW BEGIN UPDATE `erp_ium_espejo`.`categorias` SET nombre = NEW.nombre, tipo = NEW.tipo, descripcion = NEW.descripcion, id_user = NEW.id_user, id_presupuesto = NEW.id_presupuesto WHERE id_categoria = NEW.id_categoria; END
+CREATE TRIGGER `trg_categorias_after_update_espejo` AFTER UPDATE ON `categorias` FOR EACH ROW BEGIN UPDATE `erp_ium_espejo`.`categorias` SET nombre = NEW.nombre, tipo = NEW.tipo, descripcion = NEW.descripcion, id_user = NEW.id_user WHERE id_categoria = NEW.id_categoria; END
 $$
 DELIMITER ;
 DELIMITER $$
@@ -184,14 +143,6 @@ CREATE TABLE `egresos` (
   `id_presupuesto` int(11) NOT NULL,
   `id_categoria` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `egresos`
---
-
-INSERT INTO `egresos` (`folio_egreso`, `proveedor`, `activo_fijo`, `descripcion`, `monto`, `fecha`, `destinatario`, `forma_pago`, `documento_de_amparo`, `id_user`, `id_presupuesto`, `id_categoria`) VALUES
-(3, 'qwerth', 'SI', 'asdfghjklñ{', 1234567.00, '2025-11-05', 'qasdfgh', 'Transferencia', 'factura', 2, 1, 1),
-(4, 'pkpkpk', 'NO', 'kkkkoo', 800.00, '2025-11-29', 'k, ,', 'Cheque', 'lomlo', 2, 2, 1);
 
 --
 -- Disparadores `egresos`
@@ -248,17 +199,6 @@ CREATE TABLE `ingresos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Volcado de datos para la tabla `ingresos`
---
-
-INSERT INTO `ingresos` (`folio_ingreso`, `fecha`, `alumno`, `matricula`, `nivel`, `monto`, `metodo_de_pago`, `concepto`, `mes_correspondiente`, `anio`, `observaciones`, `dia_pago`, `modalidad`, `grado`, `programa`, `grupo`, `id_categoria`) VALUES
-(1, '2025-11-05', 'angel', '12345', 'Licenciatura', 1234567.00, 'Efectivo', 'Credenciales', 'octubre', 2025, '0', 12, '', 5, 'derecho', '101a', 1),
-(2, '2025-11-29', 'jose miguel perez hernadez', 'chemamike1234', 'Maestría', 850.00, 'Transferencia', 'Reinscripción', 'enero', 2026, 'oooooop', 30, 'Semestral', 5, 'lic en drerecho', '1', 4),
-(3, '2025-11-07', 'jose miguel perez hernadez', 'chemamike123', 'Doctorado', 8000.00, 'Depósito', 'Credenciales', 'noviembre', 2026, '0', 31, '', 5, 'lic en drerecho', '1', 4),
-(4, '2025-11-07', 'andres jorge chueco', 'chueco22', 'Doctorado', 7000.00, 'Transferencia', 'Constancia con calificaciones', 'mayo', 2027, '0', 30, '', 5, 'lic en izquierdo', '4', 4),
-(5, '2025-11-07', 'jose miguel perez hernadez', 'chemamike123', 'Doctorado', 5000.00, 'Depósito', 'Historiales', 'noviembre', 2028, 'muchas', 4, 'Cuatrimestral', 4, 'lic en izquierdo', '4', 1);
-
---
 -- Disparadores `ingresos`
 --
 DELIMITER $$
@@ -301,62 +241,22 @@ CREATE TABLE `presupuestos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
--- Volcado de datos para la tabla `presupuestos`
---
-
-INSERT INTO `presupuestos` (`id_presupuesto`, `monto_limite`, `fecha`, `id_categoria`, `id_user`) VALUES
-(1, 1234523.00, '2025-11-05', 1, 2),
-(2, 15000.00, '2025-11-06', 1, 2);
-
---
 -- Disparadores `presupuestos`
 --
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_insert` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN
-    INSERT INTO `erp_ium_espejo`.`presupuestos` (`id_presupuesto`,`monto_limite`,`fecha`,`id_categoria`,`id_user`)
-    VALUES (NEW.id_presupuesto, NEW.monto_limite, NEW.fecha, NEW.id_categoria, NEW.id_user);
-END
+CREATE TRIGGER `trg_presupuestos_after_insert` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN INSERT INTO `erp_ium_espejo`.`presupuestos` (`id_presupuesto`,`monto_limite`,`fecha`,`id_categoria`,`id_user`) VALUES (NEW.id_presupuesto, NEW.monto_limite, NEW.fecha, NEW.id_categoria, NEW.id_user); END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_insert_aud` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN
-    SET @new_data = JSON_OBJECT(
-        'id_presupuesto', NEW.id_presupuesto, 
-        'monto_limite', NEW.monto_limite, 
-        'fecha', NEW.fecha, 
-        'id_categoria', NEW.id_categoria
-    );
-    CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Insercion', NULL, @new_data, NULL, NULL);
-END
+CREATE TRIGGER `trg_presupuestos_after_insert_aud` AFTER INSERT ON `presupuestos` FOR EACH ROW BEGIN SET @new_data = JSON_OBJECT('id_presupuesto', NEW.id_presupuesto, 'monto_limite', NEW.monto_limite, 'fecha', NEW.fecha, 'id_categoria', NEW.id_categoria); CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Insercion', NULL, @new_data, NULL, NULL); END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_update` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN
-    SET @old_data = JSON_OBJECT(
-        'id_presupuesto', OLD.id_presupuesto, 
-        'monto_limite', OLD.monto_limite, 
-        'fecha', OLD.fecha, 
-        'id_categoria', OLD.id_categoria
-    );
-    SET @new_data = JSON_OBJECT(
-        'id_presupuesto', NEW.id_presupuesto, 
-        'monto_limite', NEW.monto_limite, 
-        'fecha', NEW.fecha, 
-        'id_categoria', NEW.id_categoria
-    );
-    CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Actualizacion', @old_data, @new_data, NULL, NULL);
-END
+CREATE TRIGGER `trg_presupuestos_after_update` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN SET @old_data = JSON_OBJECT('id_presupuesto', OLD.id_presupuesto, 'monto_limite', OLD.monto_limite, 'fecha', OLD.fecha, 'id_categoria', OLD.id_categoria); SET @new_data = JSON_OBJECT('id_presupuesto', NEW.id_presupuesto, 'monto_limite', NEW.monto_limite, 'fecha', NEW.fecha, 'id_categoria', NEW.id_categoria); CALL sp_auditar_accion(@auditoria_user_id, 'presupuestos', 'Actualizacion', @old_data, @new_data, NULL, NULL); END
 $$
 DELIMITER ;
 DELIMITER $$
-CREATE TRIGGER `trg_presupuestos_after_update_espejo` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN
-    UPDATE `erp_ium_espejo`.`presupuestos`
-    SET monto_limite = NEW.monto_limite, 
-        fecha = NEW.fecha, 
-        id_categoria = NEW.id_categoria, 
-        id_user = NEW.id_user
-    WHERE id_presupuesto = NEW.id_presupuesto;
-END
+CREATE TRIGGER `trg_presupuestos_after_update_espejo` AFTER UPDATE ON `presupuestos` FOR EACH ROW BEGIN UPDATE `erp_ium_espejo`.`presupuestos` SET monto_limite = NEW.monto_limite, fecha = NEW.fecha, id_categoria = NEW.id_categoria, id_user = NEW.id_user WHERE id_presupuesto = NEW.id_presupuesto; END
 $$
 DELIMITER ;
 DELIMITER $$
@@ -401,9 +301,7 @@ CREATE TABLE `usuarios` (
 
 INSERT INTO `usuarios` (`id_user`, `nombre`, `username`, `password`, `rol`) VALUES
 (1, 'Super Administrador', 'super.admin', '$2y$10$mmjNR96vpa65C4d6wlswx.ME2vyQWXtgehKPCYh/FOoSlLeH0wQyK', 'SU'),
-(2, 'Super Administrador', 'su_admin', '$2y$10$mmjNR96vpa65C4d6wlswx.ME2vyQWXtgehKPCYh/FOoSlLeH0wQyK', 'SU'),
-(6, 'goku', 'goku', '$2y$10$rs/BVBAkdAeU7hmaOzn3V.M93wJn894SzfshaIelC4IafsukbJlle', 'ADM'),
-(7, 'bryan', 'bryan_su', '$2y$10$iBxrkSHZb2iYa/ttp5N18uMoXlDOl3us0Xc/fmW2pZ4WZzC44u8fq', 'SU');
+(2, 'Super Administrador', 'su_admin', '$2y$10$mmjNR96vpa65C4d6wlswx.ME2vyQWXtgehKPCYh/FOoSlLeH0wQyK', 'SU');
 
 --
 -- Disparadores `usuarios`
@@ -454,44 +352,8 @@ INSERT INTO `usuario_historial` (`id_ha`, `id_user`) VALUES
 (5, NULL),
 (6, NULL),
 (7, NULL),
-(8, NULL),
-(24, NULL),
-(25, NULL),
 (1, 1),
-(2, 2),
-(9, 2),
-(10, 2),
-(11, 2),
-(12, 2),
-(13, 2),
-(14, 2),
-(15, 2),
-(16, 2),
-(18, 2),
-(20, 2),
-(21, 2),
-(22, 2),
-(23, 2),
-(26, 2),
-(27, 2),
-(28, 2),
-(29, 2),
-(30, 2),
-(31, 2),
-(32, 2),
-(33, 2),
-(34, 2),
-(35, 2),
-(36, 2),
-(37, 2),
-(38, 2),
-(39, 2),
-(40, 2),
-(41, 2),
-(42, 2),
-(43, 2),
-(17, 6),
-(19, 7);
+(2, 2);
 
 --
 -- Disparadores `usuario_historial`
@@ -539,8 +401,7 @@ ALTER TABLE `auditoria`
 ALTER TABLE `categorias`
   ADD PRIMARY KEY (`id_categoria`),
   ADD UNIQUE KEY `nombre` (`nombre`),
-  ADD KEY `fk_categorias_user` (`id_user`),
-  ADD KEY `fk_categorias_presupuesto` (`id_presupuesto`);
+  ADD KEY `fk_categorias_user` (`id_user`);
 
 --
 -- Indices de la tabla `egresos`
@@ -563,8 +424,8 @@ ALTER TABLE `ingresos`
 --
 ALTER TABLE `presupuestos`
   ADD PRIMARY KEY (`id_presupuesto`),
-  ADD KEY `fk_presupuestos_user` (`id_user`),
-  ADD KEY `fk_presupuestos_categoria` (`id_categoria`);
+  ADD KEY `fk_presupuestos_categoria` (`id_categoria`),
+  ADD KEY `fk_presupuestos_user` (`id_user`);
 
 --
 -- Indices de la tabla `usuarios`
@@ -595,37 +456,37 @@ ALTER TABLE `usuario_ingreso`
 -- AUTO_INCREMENT de la tabla `auditoria`
 --
 ALTER TABLE `auditoria`
-  MODIFY `id_auditoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `id_auditoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT de la tabla `categorias`
 --
 ALTER TABLE `categorias`
-  MODIFY `id_categoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id_categoria` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT de la tabla `egresos`
 --
 ALTER TABLE `egresos`
-  MODIFY `folio_egreso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `folio_egreso` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `ingresos`
 --
 ALTER TABLE `ingresos`
-  MODIFY `folio_ingreso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `folio_ingreso` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `presupuestos`
 --
 ALTER TABLE `presupuestos`
-  MODIFY `id_presupuesto` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id_presupuesto` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  MODIFY `id_user` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `id_user` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Restricciones para tablas volcadas
@@ -635,7 +496,6 @@ ALTER TABLE `usuarios`
 -- Filtros para la tabla `categorias`
 --
 ALTER TABLE `categorias`
-  ADD CONSTRAINT `fk_categorias_presupuesto` FOREIGN KEY (`id_presupuesto`) REFERENCES `presupuestos` (`id_presupuesto`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_categorias_user` FOREIGN KEY (`id_user`) REFERENCES `usuarios` (`id_user`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
@@ -656,7 +516,7 @@ ALTER TABLE `ingresos`
 -- Filtros para la tabla `presupuestos`
 --
 ALTER TABLE `presupuestos`
-  ADD CONSTRAINT `fk_presupuestos_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id_categoria`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_presupuestos_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id_categoria`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_presupuestos_user` FOREIGN KEY (`id_user`) REFERENCES `usuarios` (`id_user`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
