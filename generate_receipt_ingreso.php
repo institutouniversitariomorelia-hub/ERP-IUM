@@ -55,7 +55,7 @@ if (class_exists('NumberFormatter')) {
 }
 
 // Campos para el recibo
-$logoPath = 'assets/img/ium_logo.png';
+$logoPath = 'public/logo ium blanco.png';
 $fecha = htmlspecialchars($ingreso['fecha'] ?? '');
 $folioEsc = htmlspecialchars($ingreso['folio_ingreso'] ?? '');
 $alumno = htmlspecialchars($ingreso['alumno'] ?? '');

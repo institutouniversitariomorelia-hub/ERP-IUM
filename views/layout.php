@@ -27,21 +27,44 @@ $currentUser = [
     <style>
          :root { --c-primario: #B80000; --c-primario-hover: #9A0000; --c-fondo: #f4f6f9; --c-blanco: #ffffff; --c-texto-principal: #343a40; --c-texto-secundario: #6c757d; --sombra-suave: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
         body { background-color: var(--c-fondo); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-    #sidebar { width: 250px; height: 100vh; position: fixed; background-color: var(--c-primario); background-image: linear-gradient(180deg, #c50000 0%, #a00000 100%); padding: 0; z-index: 1000; box-shadow: 0 0 20px rgba(0,0,0,0.2); display: flex; flex-direction: column; transition: transform 0.25s ease-in-out, left 0.25s ease-in-out; }
-        #sidebar .logo-container { padding: 1rem; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-        #sidebar .logo-container img { max-height: 55px; margin-bottom: 10px; }
-        #sidebar .nav { flex-grow: 1; }
-        #sidebar .nav-link { color: rgba(255, 255, 255, 0.8); padding: 12px 20px; border-left: 4px solid transparent; transition: all 0.2s ease-in-out; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; }
-        #sidebar .nav-link ion-icon { font-size: 1.2rem; vertical-align: middle; margin-right: 10px; min-width: 20px; }
-        #sidebar .nav-link:hover { background-color: var(--c-primario-hover); color: var(--c-blanco); border-left-color: var(--c-blanco); }
-        #sidebar .nav-link.active { background-color: var(--c-primario-hover); border-left-color: var(--c-blanco); color: var(--c-blanco); font-weight: bold; }
-        #sidebar .nav-item.mt-auto { margin-top: auto; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-    #main-content { margin-left: 250px; width: calc(100% - 250px); transition: margin-left 0.25s ease-in-out; }
+    #sidebar { width: 280px; height: 100vh; position: fixed; background: linear-gradient(180deg, #B80000 0%, #950000 50%, #800000 100%); padding: 0; z-index: 1000; box-shadow: 2px 0 15px rgba(0,0,0,0.15); display: flex; flex-direction: column; transition: transform 0.25s ease-in-out, left 0.25s ease-in-out; overflow-y: auto; }
+        
+        /* Logo Container */
+        #sidebar .logo-container { padding: 1.5rem 1rem; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.15); background: rgba(255, 255, 255, 0.05); }
+        #sidebar .sidebar-logo { max-height: 50px; width: auto; margin-bottom: 8px; filter: brightness(1.1); }
+        #sidebar .sidebar-title { color: white; font-size: 1.1rem; font-weight: 600; margin: 0; margin-bottom: 2px; }
+        #sidebar .sidebar-subtitle { color: rgba(255, 255, 255, 0.7); font-size: 0.75rem; margin: 0; line-height: 1.2; }
+        
+        /* Sidebar Sections */
+        #sidebar .sidebar-section { margin-bottom: 1.5rem; }
+        #sidebar .sidebar-section-title { padding: 0.5rem 1rem; color: rgba(255, 255, 255, 0.6); font-size: 0.7rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 0.5rem; }
+        
+        /* Navigation Links */
+        #sidebar .sidebar-nav { padding: 0; }
+        #sidebar .nav-link { color: rgba(255, 255, 255, 0.85); padding: 0.75rem 1rem; margin: 0 0.5rem; border-radius: 8px; transition: all 0.3s ease; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; text-decoration: none; position: relative; }
+        #sidebar .nav-link ion-icon { font-size: 1.1rem; margin-right: 12px; min-width: 20px; }
+        #sidebar .nav-link span { flex: 1; }
+        #sidebar .nav-link:hover { background: rgba(255, 255, 255, 0.1); color: white; transform: translateX(2px); }
+        #sidebar .nav-link.active { background: rgba(255, 255, 255, 0.15); color: white; font-weight: 500; }
+        #sidebar .nav-link.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: white; border-radius: 0 3px 3px 0; }
+        
+        /* Sidebar Footer */
+        #sidebar .sidebar-footer { margin-top: auto; padding: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.1); }
+        #sidebar .user-info { display: flex; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; }
+        #sidebar .user-avatar { margin-right: 12px; }
+        #sidebar .user-avatar ion-icon { font-size: 2rem; color: rgba(255, 255, 255, 0.8); }
+        #sidebar .user-details { flex: 1; min-width: 0; }
+        #sidebar .user-name { color: white; font-size: 0.85rem; font-weight: 500; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #sidebar .user-role { color: rgba(255, 255, 255, 0.6); font-size: 0.75rem; margin: 0; }
+        #sidebar .sidebar-logout { display: flex; align-items: center; padding: 0.75rem; color: rgba(255, 255, 255, 0.8); text-decoration: none; border-radius: 8px; transition: all 0.3s ease; font-size: 0.9rem; }
+        #sidebar .sidebar-logout ion-icon { font-size: 1.1rem; margin-right: 10px; }
+        #sidebar .sidebar-logout:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+    #main-content { margin-left: 280px; width: calc(100% - 280px); transition: margin-left 0.25s ease-in-out; }
     /* Sidebar collapsed / mobile behaviour */
     #sidebar.open { transform: translateX(0); left: 0; }
     #sidebar.closed { transform: translateX(-100%); left: -100%; }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:900; }
-        .top-header { background-color: var(--c-blanco); color: var(--c-texto-principal); padding: 10px 30px; font-size: 1.1rem; border-bottom: 1px solid #dee2e6; box-shadow: var(--sombra-suave); position: sticky; top: 0; z-index: 999; display: flex; justify-content: space-between; align-items: center; }
+        .top-header { background-color: var(--c-primario); color: white; padding: 10px 30px; font-size: 1.1rem; border-bottom: 1px solid #dee2e6; box-shadow: var(--sombra-suave); position: sticky; top: 0; z-index: 999; display: flex; justify-content: space-between; align-items: center; }
         #view-container { padding: 30px; }
         .card { border: none; border-radius: 8px; box-shadow: var(--sombra-suave); margin-bottom: 1.5rem; }
         .card-header { background-color: var(--c-blanco); font-weight: bold; border-bottom: 1px solid #f0f0f0; padding: 1rem 1.25rem; }
@@ -117,42 +140,113 @@ $currentUser = [
 </head>
 <body>
     <div id="sidebar">
+        <!-- Header del Sidebar -->
         <div class="logo-container">
-            <img src="<?php echo BASE_URL; ?>public/logo ium blanco.png" alt="Logo IUM Blanco" class="img-fluid">
-            <p class="text-white small mt-1 mb-0 opacity-75">Navegación Principal</p>
+            <img src="<?php echo BASE_URL; ?>public/logo ium blanco.png" alt="Logo IUM" class="sidebar-logo">
+            <h6 class="sidebar-title">Sistema ERP</h6>
+            <p class="sidebar-subtitle">Instituto Universitario Morelia</p>
         </div>
-        <ul class="nav flex-column">
-             <?php $activeModule = $activeModule ?? ''; ?>
-            <?php if (roleCanViewModule('profile')): ?>
-                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'profile' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=user&action=profile"><ion-icon name="person-circle-outline"></ion-icon> Mi Perfil</a></li>
-            <?php endif; ?>
-            <?php if (roleCanViewModule('egresos')): ?>
-                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'egresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=egreso&action=index"><ion-icon name="trending-down-outline"></ion-icon> Egresos</a></li>
-            <?php endif; ?>
-            <?php if (roleCanViewModule('ingresos')): ?>
-                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'ingresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=ingreso&action=index"><ion-icon name="trending-up-outline"></ion-icon> Ingresos</a></li>
-            <?php endif; ?>
-            <?php if (roleCanViewModule('categorias')): ?>
-                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'categorias' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=categoria&action=index"><ion-icon name="pricetags-outline"></ion-icon> Categorías</a></li>
-            <?php endif; ?>
-            <?php if (roleCanViewModule('presupuestos')): ?>
-                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'presupuestos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=presupuesto&action=index"><ion-icon name="wallet-outline"></ion-icon> Presupuestos</a></li>
-            <?php endif; ?>
-            <?php if (roleCanViewModule('auditoria')): ?>
-                <li class="nav-item"><a class="nav-link <?php echo $activeModule === 'auditoria' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=auditoria&action=index"><ion-icon name="layers-outline"></ion-icon> Historial Auditoría</a></li>
-            <?php endif; ?>
-        </ul>
-        <ul class="nav flex-column mt-auto">
-             <li class="nav-item"><a class="nav-link" href="<?php echo BASE_URL; ?>index.php?controller=auth&action=logout"><ion-icon name="log-out-outline"></ion-icon> Cerrar Sesión</a></li>
-        </ul>
+        
+        <!-- Navegación Principal -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <span>MENÚ PRINCIPAL</span>
+            </div>
+            <ul class="nav flex-column sidebar-nav">
+                <?php $activeModule = $activeModule ?? ''; ?>
+                <?php if (roleCanViewModule('profile')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'profile' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=user&action=profile">
+                            <ion-icon name="person-circle-outline"></ion-icon>
+                            <span>Mi Perfil</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+
+        <!-- Sección Financiera -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <span>GESTIÓN FINANCIERA</span>
+            </div>
+            <ul class="nav flex-column sidebar-nav">
+                <?php if (roleCanViewModule('ingresos')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'ingresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=ingreso&action=index">
+                            <ion-icon name="trending-up-outline"></ion-icon>
+                            <span>Ingresos</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+                <?php if (roleCanViewModule('egresos')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'egresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=egreso&action=index">
+                            <ion-icon name="trending-down-outline"></ion-icon>
+                            <span>Egresos</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+                <?php if (roleCanViewModule('presupuestos')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'presupuestos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=presupuesto&action=index">
+                            <ion-icon name="wallet-outline"></ion-icon>
+                            <span>Presupuestos</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+
+        <!-- Sección Configuración -->
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">
+                <span>CONFIGURACIÓN</span>
+            </div>
+            <ul class="nav flex-column sidebar-nav">
+                <?php if (roleCanViewModule('categorias')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'categorias' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=categoria&action=index">
+                            <ion-icon name="pricetags-outline"></ion-icon>
+                            <span>Categorías</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+                <?php if (roleCanViewModule('auditoria')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'auditoria' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=auditoria&action=index">
+                            <ion-icon name="layers-outline"></ion-icon>
+                            <span>Historial Auditoría</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+
+        <!-- Footer del Sidebar -->
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <ion-icon name="person-circle"></ion-icon>
+                </div>
+                <div class="user-details">
+                    <div class="user-name"><?php echo htmlspecialchars($currentUser['nombre']); ?></div>
+                    <div class="user-role"><?php echo htmlspecialchars($currentUser['rol']); ?></div>
+                </div>
+            </div>
+            <a class="sidebar-logout" href="<?php echo BASE_URL; ?>index.php?controller=auth&action=logout">
+                <ion-icon name="log-out-outline"></ion-icon>
+                <span>Cerrar Sesión</span>
+            </a>
+        </div>
     </div>
 
     <div id="main-content">
         <header class="top-header d-flex align-items-center">
-            <button id="btnToggleSidebar" class="btn btn-sm btn-outline-secondary d-lg-none me-2" type="button" aria-label="Abrir menú">
+            <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto">SISTEMA DE CONTROL DE EGRESOS Y INGRESOS IUM</span>
+            <span class="me-auto fw-bold">SISTEMA DE CONTROL DE EGRESOS Y INGRESOS IUM</span>
             <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
         </header>
         <main id="view-container" class="p-4">
@@ -325,7 +419,7 @@ $currentUser = [
             // Initialize closed on small screens
             function adaptOnResize() {
                 if (window.innerWidth < 992) { sidebar.classList.add('closed'); sidebar.classList.remove('open'); document.getElementById('main-content').style.marginLeft = '0'; }
-                else { sidebar.classList.remove('closed'); sidebar.classList.remove('open'); overlay.style.display = 'none'; document.getElementById('main-content').style.marginLeft = sidebar.style.width || '250px'; document.getElementById('main-content').style.marginLeft = '250px'; }
+                else { sidebar.classList.remove('closed'); sidebar.classList.remove('open'); overlay.style.display = 'none'; document.getElementById('main-content').style.marginLeft = '280px'; }
             }
             if (btn) btn.addEventListener('click', function(){ if (sidebar.classList.contains('open')) closeSidebar(); else openSidebar(); });
             if (overlay) overlay.addEventListener('click', closeSidebar);
