@@ -14,6 +14,7 @@ class IngresoModel {
     public function getAllIngresos() {
         // Añadir alias 'id' para consistencia con JS (data-id)
         // Y hacer JOIN con categorias para obtener el nombre
+        // Ordenar por folio_ingreso DESC (de mayor a menor)
         $query = "SELECT 
                     i.*, 
                     i.folio_ingreso as id, 
@@ -23,7 +24,7 @@ class IngresoModel {
                   LEFT JOIN 
                     categorias c ON i.id_categoria = c.id_categoria
                   ORDER BY 
-                    i.fecha DESC, i.folio_ingreso DESC";
+                    i.folio_ingreso DESC";
         
         $result = $this->db->query($query);
         if ($result) {

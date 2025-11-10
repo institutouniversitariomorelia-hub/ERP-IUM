@@ -48,17 +48,9 @@ $currentUser = [
         #sidebar .nav-link.active { background: rgba(255, 255, 255, 0.15); color: white; font-weight: 500; }
         #sidebar .nav-link.active::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: white; border-radius: 0 3px 3px 0; }
         
-        /* Sidebar Footer */
-        #sidebar .sidebar-footer { margin-top: auto; padding: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.15); background: rgba(0, 0, 0, 0.1); }
-        #sidebar .user-info { display: flex; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px; }
-        #sidebar .user-avatar { margin-right: 12px; }
-        #sidebar .user-avatar ion-icon { font-size: 2rem; color: rgba(255, 255, 255, 0.8); }
-        #sidebar .user-details { flex: 1; min-width: 0; }
-        #sidebar .user-name { color: white; font-size: 0.85rem; font-weight: 500; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        #sidebar .user-role { color: rgba(255, 255, 255, 0.6); font-size: 0.75rem; margin: 0; }
-        #sidebar .sidebar-logout { display: flex; align-items: center; padding: 0.75rem; color: rgba(255, 255, 255, 0.8); text-decoration: none; border-radius: 8px; transition: all 0.3s ease; font-size: 0.9rem; }
-        #sidebar .sidebar-logout ion-icon { font-size: 1.1rem; margin-right: 10px; }
-        #sidebar .sidebar-logout:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+        /* User Profile Link - Special styling */
+        #sidebar .nav-link .user-avatar { color: rgba(255, 255, 255, 0.9); }
+        
     #main-content { margin-left: 280px; width: calc(100% - 280px); transition: margin-left 0.25s ease-in-out; }
     /* Sidebar collapsed / mobile behaviour */
     #sidebar.open { transform: translateX(0); left: 0; }
@@ -141,27 +133,30 @@ $currentUser = [
 <body>
     <div id="sidebar">
         <!-- Header del Sidebar -->
-        <div class="logo-container">
+        <div class="logo-container" id="logoContainer" style="cursor: pointer;">
             <img src="<?php echo BASE_URL; ?>public/logo ium blanco.png" alt="Logo IUM" class="sidebar-logo">
             <h6 class="sidebar-title">Sistema ERP</h6>
             <p class="sidebar-subtitle">Instituto Universitario Morelia</p>
         </div>
         
-        <!-- Navegación Principal -->
+        <!-- User Info Section (Moved from Footer) -->
         <div class="sidebar-section">
             <div class="sidebar-section-title">
                 <span>MENÚ PRINCIPAL</span>
             </div>
             <ul class="nav flex-column sidebar-nav">
                 <?php $activeModule = $activeModule ?? ''; ?>
-                <?php if (roleCanViewModule('profile')): ?>
-                    <li class="nav-item">
-                        <a class="nav-link <?php echo $activeModule === 'profile' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=user&action=profile">
-                            <ion-icon name="person-circle-outline"></ion-icon>
-                            <span>Mi Perfil</span>
-                        </a>
-                    </li>
-                <?php endif; ?>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo $activeModule === 'profile' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=user&action=profile">
+                        <div class="user-avatar" style="display: inline-block; margin-right: 12px;">
+                            <ion-icon name="person-circle" style="font-size: 2rem; vertical-align: middle;"></ion-icon>
+                        </div>
+                        <div style="display: inline-block; vertical-align: middle;">
+                            <div style="font-weight: 500; font-size: 0.9rem;"><?php echo htmlspecialchars($currentUser['nombre']); ?></div>
+                            <div style="font-size: 0.75rem; opacity: 0.8;"><?php echo htmlspecialchars($currentUser['rol']); ?></div>
+                        </div>
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -171,6 +166,14 @@ $currentUser = [
                 <span>GESTIÓN FINANCIERA</span>
             </div>
             <ul class="nav flex-column sidebar-nav">
+                <?php if (roleCanViewModule('dashboard')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'dashboard' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=dashboard&action=index">
+                            <ion-icon name="stats-chart-outline"></ion-icon>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <?php if (roleCanViewModule('ingresos')): ?>
                     <li class="nav-item">
                         <a class="nav-link <?php echo $activeModule === 'ingresos' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=ingreso&action=index">
@@ -223,22 +226,6 @@ $currentUser = [
             </ul>
         </div>
 
-        <!-- Footer del Sidebar -->
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">
-                    <ion-icon name="person-circle"></ion-icon>
-                </div>
-                <div class="user-details">
-                    <div class="user-name"><?php echo htmlspecialchars($currentUser['nombre']); ?></div>
-                    <div class="user-role"><?php echo htmlspecialchars($currentUser['rol']); ?></div>
-                </div>
-            </div>
-            <a class="sidebar-logout" href="<?php echo BASE_URL; ?>index.php?controller=auth&action=logout">
-                <ion-icon name="log-out-outline"></ion-icon>
-                <span>Cerrar Sesión</span>
-            </a>
-        </div>
     </div>
 
     <div id="main-content">
@@ -259,27 +246,191 @@ $currentUser = [
 
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+    <!-- Modal: Editar Mi Perfil -->
+    <div class="modal fade" id="modalEditarMiPerfil" tabindex="-1" aria-labelledby="modalEditarMiPerfilLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-sm-down">
-            <div class="modal-content"><form id="formUsuario"><div class="modal-header modal-header-danger"><h5 class="modal-title" id="modalUsuarioTitle">Registrar/Editar Usuario</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="usuario_id" name="id"><div class="mb-3"><label for="usuario_nombre" class="form-label">Nombre</label><input id="usuario_nombre" name="nombre" type="text" class="form-control" required></div><div class="mb-3"><label for="usuario_username" class="form-label">Usuario (username)</label><input id="usuario_username" name="username" type="text" class="form-control" required></div><div class="mb-3"><label for="usuario_password" class="form-label">Contraseña</label><input id="usuario_password" name="password" type="password" class="form-control"><div class="form-text">Dejar en blanco para no cambiar. Obligatorio para usuarios nuevos.</div></div><div class="mb-3"><label for="usuario_rol" class="form-label">Asignar Rol</label><select id="usuario_rol" name="rol" class="form-select" required><option value="ADM">Administración (ADM)</option><option value="COB">Cobranzas (COB)</option><option value="REC">Rectoría (REC)</option><option value="SU">SUPER USUARIO (SU)</option></select></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Guardar Usuario</button></div></form></div>
+            <div class="modal-content">
+                <form id="formEditarMiPerfil">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalEditarMiPerfilTitle">Editar Mi Perfil</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="perfil_id" name="id">
+                        <div class="mb-3">
+                            <label for="perfil_nombre" class="form-label">Nombre Completo</label>
+                            <input id="perfil_nombre" name="nombre" type="text" class="form-control" required>
+                        </div>
+                        <?php if ($currentUser['rol'] === 'SU'): ?>
+                            <!-- Solo el Super Usuario puede cambiar username y rol -->
+                            <div class="mb-3">
+                                <label for="perfil_username" class="form-label">Usuario (username)</label>
+                                <input id="perfil_username" name="username" type="text" class="form-control" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="perfil_rol" class="form-label">Rol Asignado</label>
+                                <select id="perfil_rol" name="rol" class="form-select" required>
+                                    <option value="ADM">Administración (ADM)</option>
+                                    <option value="COB">Cobranzas (COB)</option>
+                                    <option value="REC">Rectoría (REC)</option>
+                                    <option value="SU">SUPER USUARIO (SU)</option>
+                                </select>
+                            </div>
+                        <?php else: ?>
+                            <!-- Otros roles: campos de solo lectura -->
+                            <div class="mb-3">
+                                <label for="perfil_username_readonly" class="form-label">Usuario (username)</label>
+                                <input id="perfil_username_readonly" type="text" class="form-control" readonly disabled>
+                                <input type="hidden" id="perfil_username" name="username">
+                            </div>
+                            <div class="mb-3">
+                                <label for="perfil_rol_readonly" class="form-label">Rol Asignado</label>
+                                <input id="perfil_rol_readonly" type="text" class="form-control" readonly disabled>
+                                <input type="hidden" id="perfil_rol" name="rol">
+                            </div>
+                        <?php endif; ?>
+                        <hr>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-outline-secondary" id="btnAbrirCambiarPassword">
+                                <ion-icon name="key-outline" style="vertical-align: middle;"></ion-icon> Cambiar Contraseña
+                            </button>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
+    <!-- Modal: Registrar Nuevo Usuario -->
+    <div class="modal fade" id="modalUsuario" tabindex="-1" aria-labelledby="modalUsuarioLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <form id="formUsuario">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalUsuarioTitle">Registrar Nuevo Usuario</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="usuario_id" name="id">
+                        <div class="mb-3">
+                            <label for="usuario_nombre" class="form-label">Nombre Completo</label>
+                            <input id="usuario_nombre" name="nombre" type="text" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="usuario_username" class="form-label">Usuario (username)</label>
+                            <input id="usuario_username" name="username" type="text" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="usuario_password" class="form-label">Contraseña</label>
+                            <input id="usuario_password" name="password" type="password" class="form-control" required>
+                            <div class="form-text">Obligatorio para usuarios nuevos.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="usuario_rol" class="form-label">Asignar Rol</label>
+                            <select id="usuario_rol" name="rol" class="form-select" required>
+                                <option value="ADM">Administración (ADM)</option>
+                                <option value="COB">Cobranzas (COB)</option>
+                                <option value="REC">Rectoría (REC)</option>
+                                <option value="SU">SUPER USUARIO (SU)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Crear Usuario</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cambiar Contraseña (Nueva Versión) -->
+    <div class="modal fade" id="modalCambiarPasswordNuevo" tabindex="-1" aria-labelledby="modalCambiarPasswordNuevoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <form id="formCambiarPasswordNuevo">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalCambiarPasswordNuevoLabel">Cambiar Contraseña</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="changepass_username" name="username">
+                        <div class="mb-3">
+                            <label for="password_actual" class="form-label">Contraseña Actual</label>
+                            <div class="input-group">
+                                <input id="password_actual" name="password_actual" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordActual">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_nueva" class="form-label">Contraseña Nueva</label>
+                            <div class="input-group">
+                                <input id="password_nueva" name="password_nueva" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordNueva">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password_confirmar" class="form-label">Confirmar Contraseña Nueva</label>
+                            <div class="input-group">
+                                <input id="password_confirmar" name="password_confirmar" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirmar">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </button>
+                            </div>
+                            <div class="form-text" id="passwordMatchMessage"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger" id="btnGuardarPasswordNueva">Cambiar Contraseña</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cambiar Contraseña (Versión Antigua para Admin) -->
     <div class="modal fade" id="modalCambiarPassword" tabindex="-1" aria-labelledby="modalCambiarPasswordLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-sm-down">
-            <div class="modal-content"><form id="formCambiarPassword"><div class="modal-header modal-header-danger"><h5 class="modal-title" id="modalCambiarPasswordLabel">Cambiar Contraseña</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="change_pass_username" name="username"><div class="mb-3"><label class="form-label">Nueva Contraseña para <strong id="username_display"></strong></label><input id="change_pass_password" name="password" type="password" class="form-control" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Guardar Contraseña</button></div></form></div>
+            <div class="modal-content">
+                <form id="formCambiarPassword">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalCambiarPasswordLabel">Cambiar Contraseña</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="change_pass_username" name="username">
+                        <div class="mb-3">
+                            <label class="form-label">Nueva Contraseña para <strong id="username_display"></strong></label>
+                            <input id="change_pass_password" name="password" type="password" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Guardar Contraseña</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <div class="modal fade" id="modalEgreso" tabindex="-1" aria-labelledby="modalEgresoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
+        <div class="modal-dialog modal-lg modal-fullscreen-sm-down modal-dialog-scrollable">
             <div class="modal-content">
                             <form id="formEgreso">
                                 <div class="modal-header modal-header-danger">
                                     <h5 class="modal-title" id="modalEgresoTitle">Registrar/Editar Egreso</h5>
                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
-                                <div class="modal-body">
+                                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                                     <input type="hidden" id="egreso_id" name="id">
                                     <input type="hidden" name="id_user" value="<?php echo htmlspecialchars($currentUser['id']); ?>">
                                     <div class="row g-3">
@@ -353,14 +504,14 @@ $currentUser = [
     </div>
 
     <div class="modal fade" id="modalIngreso" tabindex="-1" aria-labelledby="modalIngresoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
+        <div class="modal-dialog modal-lg modal-fullscreen-sm-down modal-dialog-scrollable">
             <div class="modal-content">
                 <form id="formIngreso">
                     <div class="modal-header modal-header-danger">
                         <h5 class="modal-title" id="modalIngresoTitle">Registrar/Editar Ingreso</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                         <input type="hidden" id="ingreso_id" name="id">
                         <div class="row g-3">
                             <div class="col-md-4"><label for="in_fecha" class="form-label">Fecha Pago <span class="text-danger">*</span></label><input id="in_fecha" name="fecha" type="date" class="form-control form-control-sm" required></div>
@@ -404,11 +555,230 @@ $currentUser = [
         </div>
     </div>
 
+    <!-- Modal: Detalle de Auditoría -->
+    <div class="modal fade" id="modalAuditoriaDetalle" tabindex="-1" aria-labelledby="modalAuditoriaDetalleLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <div class="modal-header modal-header-danger">
+                    <h5 class="modal-title" id="modalAuditoriaDetalleLabel">Detalle de Auditoría</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="aud_detalle_body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <small class="text-muted">Fecha</small>
+                            <p class="mb-0" id="aud_det_fecha">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Usuario</small>
+                            <p class="mb-0" id="aud_det_usuario">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted">Sección</small>
+                            <p class="mb-0" id="aud_det_seccion">-</p>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Acción</small>
+                        <p class="mb-0" id="aud_det_accion">-</p>
+                    </div>
+                    <hr>
+                    <!-- Comparación lado a lado (para actualizaciones) -->
+                    <div id="aud_compare_container" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted">Valores Anteriores</h6>
+                                <div id="aud_old_values" class="border p-2 rounded bg-light" style="max-height: 300px; overflow-y: auto;"></div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted">Valores Nuevos</h6>
+                                <div id="aud_new_values" class="border p-2 rounded bg-light" style="max-height: 300px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Detalles simples (para inserciones/eliminaciones) -->
+                    <div id="aud_det_detalles_container" style="display: none;">
+                        <h6 class="text-muted">Detalles</h6>
+                        <div id="aud_det_detalles" class="border p-2 rounded bg-light" style="max-height: 400px; overflow-y: auto;"></div>
+                    </div>
+                    <hr>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="aud_toggle_raw">
+                        <ion-icon name="code-outline"></ion-icon> Ver datos técnicos (JSON)
+                    </button>
+                    <pre id="aud_raw_consulta" class="mt-2" style="display: none;"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Desarrolladores (Easter Egg) -->
+    <div class="modal fade" id="modalDesarrolladores" tabindex="-1" aria-labelledby="modalDesarrolladoresLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content" style="border-radius: 15px; border: 3px solid #B80000;">
+                <div class="modal-header" style="background: linear-gradient(135deg, #B80000 0%, #8b1d2b 100%); color: white; border-radius: 12px 12px 0 0;">
+                    <h5 class="modal-title" id="modalDesarrolladoresLabel">
+                        <ion-icon name="code-slash-outline" style="vertical-align: middle; font-size: 1.5rem;"></ion-icon>
+                        Desarrolladores del Proyecto
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="background: #f8f9fa; padding: 2rem;">
+                    <div class="text-center mb-4">
+                        <h4 class="text-danger fw-bold">Sistema ERP - IUM</h4>
+                        <p class="text-muted">Desarrollado con 💻 y ☕</p>
+                    </div>
+                    <div class="row g-4">
+                        <!-- Desarrollador 1: Angel -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="card shadow-sm h-100" style="border-radius: 15px; overflow: hidden; border: 2px solid #e0e0e0; transition: transform 0.3s;">
+                                <div class="card-body text-center p-4">
+                                    <div class="mb-3">
+                                        <img src="<?php echo BASE_URL; ?>public/images/angel.jpg" alt="Angel" 
+                                             style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #B80000; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22%3E%3Crect fill=%22%23B80000%22 width=%22120%22 height=%22120%22/%3E%3Ctext fill=%22white%22 font-size=%2250%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EA%3C/text%3E%3C/svg%3E'">
+                                    </div>
+                                    <h5 class="fw-bold text-dark">Angel</h5>
+                                    <p class="text-muted mb-2 small">Frontend Developer</p>
+                                    <a href="https://instagram.com/villa_a607" target="_blank" class="text-decoration-none" style="color: #E1306C;">
+                                        <ion-icon name="logo-instagram" style="vertical-align: middle; font-size: 1.2rem;"></ion-icon>
+                                        <small>@villa_a607</small>
+                                    </a>
+                                    <div class="mt-3">
+                                        <span class="badge bg-primary">JavaScript</span>
+                                        <span class="badge bg-secondary">Bootstrap</span>
+                                        <span class="badge bg-success">UI/UX</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Desarrollador 2: Boris -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="card shadow-sm h-100" style="border-radius: 15px; overflow: hidden; border: 2px solid #e0e0e0; transition: transform 0.3s;">
+                                <div class="card-body text-center p-4">
+                                    <div class="mb-3">
+                                        <img src="<?php echo BASE_URL; ?>public/images/boris.jpg" alt="Boris" 
+                                             style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #B80000; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22%3E%3Crect fill=%22%23B80000%22 width=%22120%22 height=%22120%22/%3E%3Ctext fill=%22white%22 font-size=%2250%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EB%3C/text%3E%3C/svg%3E'">
+                                    </div>
+                                    <h5 class="fw-bold text-dark">Boris</h5>
+                                    <p class="text-muted mb-2 small">Full Stack Developer</p>
+                                    <a href="https://instagram.com/f_jimen9z" target="_blank" class="text-decoration-none" style="color: #E1306C;">
+                                        <ion-icon name="logo-instagram" style="vertical-align: middle; font-size: 1.2rem;"></ion-icon>
+                                        <small>@f_jimen9z</small>
+                                    </a>
+                                    <div class="mt-3">
+                                        <span class="badge bg-danger">PHP</span>
+                                        <span class="badge bg-primary">JavaScript</span>
+                                        <span class="badge bg-success">MySQL</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Desarrollador 3: Chris -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="card shadow-sm h-100" style="border-radius: 15px; overflow: hidden; border: 2px solid #e0e0e0; transition: transform 0.3s;">
+                                <div class="card-body text-center p-4">
+                                    <div class="mb-3">
+                                        <img src="<?php echo BASE_URL; ?>public/images/chris.jpg" alt="Chris" 
+                                             style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #B80000; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22%3E%3Crect fill=%22%23B80000%22 width=%22120%22 height=%22120%22/%3E%3Ctext fill=%22white%22 font-size=%2250%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3EC%3C/text%3E%3C/svg%3E'">
+                                    </div>
+                                    <h5 class="fw-bold text-dark">Chris</h5>
+                                    <p class="text-muted mb-2 small">Apoyo Moral 😄</p>
+                                    <a href="https://instagram.com/ricardo_.gmzx" target="_blank" class="text-decoration-none" style="color: #E1306C;">
+                                        <ion-icon name="logo-instagram" style="vertical-align: middle; font-size: 1.2rem;"></ion-icon>
+                                        <small>@ricardo_.gmzx</small>
+                                    </a>
+                                    <div class="mt-3">
+                                        <span class="badge bg-warning text-dark">Risas</span>
+                                        <span class="badge bg-info">Motivación</span>
+                                        <span class="badge" style="background-color: #ff69b4;">Buen Humor</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Desarrollador 4: Doctor -->
+                        <div class="col-md-6 col-lg-3">
+                            <div class="card shadow-sm h-100" style="border-radius: 15px; overflow: hidden; border: 2px solid #e0e0e0; transition: transform 0.3s;">
+                                <div class="card-body text-center p-4">
+                                    <div class="mb-3">
+                                        <img src="<?php echo BASE_URL; ?>public/images/doctor.jpg" alt="Doctor" 
+                                             style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid #B80000; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                                             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22120%22%3E%3Crect fill=%22%23B80000%22 width=%22120%22 height=%22120%22/%3E%3Ctext fill=%22white%22 font-size=%2250%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22%3ED%3C/text%3E%3C/svg%3E'">
+                                    </div>
+                                    <h5 class="fw-bold text-dark">Doctor</h5>
+                                    <p class="text-muted mb-2 small">Backend Specialist</p>
+                                    <a href="https://instagram.com/mane.jandro1002" target="_blank" class="text-decoration-none" style="color: #E1306C;">
+                                        <ion-icon name="logo-instagram" style="vertical-align: middle; font-size: 1.2rem;"></ion-icon>
+                                        <small>@mane.jandro1002</small>
+                                    </a>
+                                    <div class="mt-3">
+                                        <span class="badge bg-danger">PHP</span>
+                                        <span class="badge bg-info">Database</span>
+                                        <span class="badge bg-warning text-dark">API</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4">
+                        <p class="text-muted small mb-0">
+                            <ion-icon name="heart" style="color: #B80000; vertical-align: middle;"></ion-icon>
+                            Creado para Instituto Universitario Morelia - 2025
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const BASE_URL = '<?php echo BASE_URL; ?>';
         const CURRENT_USER = <?php echo json_encode($currentUser); ?>;
     </script>
     <script>
+        // Easter Egg: 5 clics en el logo para ver desarrolladores
+        (function() {
+            let clickCount = 0;
+            let resetTimer = null;
+            const logoContainer = document.getElementById('logoContainer');
+            
+            if (logoContainer) {
+                logoContainer.addEventListener('click', function() {
+                    clickCount++;
+                    
+                    // Visual feedback
+                    this.style.transform = 'scale(0.95)';
+                    setTimeout(() => { this.style.transform = 'scale(1)'; }, 100);
+                    
+                    // Reset counter after 2 seconds of inactivity
+                    clearTimeout(resetTimer);
+                    resetTimer = setTimeout(() => { clickCount = 0; }, 2000);
+                    
+                    // Show modal on 5th click
+                    if (clickCount === 5) {
+                        clickCount = 0;
+                        const modal = new bootstrap.Modal(document.getElementById('modalDesarrolladores'));
+                        modal.show();
+                        
+                        // Easter egg sound effect (optional)
+                        try {
+                            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLaiTcIGWi77eefTRAMUKfj8LZjHAY4ktfyynksheB');
+                        } catch(e) {}
+                    }
+                });
+                
+                // Smooth transition
+                logoContainer.style.transition = 'transform 0.1s ease';
+            }
+        })();
+        
         // Responsive enhancements: toggle sidebar on small screens and make modals fullscreen-sm-down
         (function(){
             const sidebar = document.getElementById('sidebar');
@@ -434,6 +804,8 @@ $currentUser = [
     </script>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Chart.js para gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="<?php echo BASE_URL; ?>public/js/app.js"></script>
 </body>
 </html>

@@ -197,6 +197,62 @@ class PresupuestoController {
         exit;
     }
 
+    /**
+     * Acción AJAX: Obtiene datos para la gráfica Presupuesto vs Gastado
+     * Retorna JSON con categorías, presupuestos y gastos
+     */
+    public function getGraficaPresupuestoVsGastado() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { 
+            echo json_encode(['success' => false, 'error' => 'No autorizado']); 
+            exit; 
+        }
+
+        try {
+            $query = "SELECT 
+                        c.nombre as categoria,
+                        p.monto_limite as presupuesto,
+                        COALESCE(
+                            (SELECT SUM(e.monto) 
+                             FROM egresos e 
+                             WHERE e.id_categoria = p.id_categoria), 
+                            0
+                        ) as gastado
+                     FROM presupuestos p
+                     INNER JOIN categorias c ON c.id_categoria = p.id_categoria
+                     WHERE p.monto_limite > 0
+                     ORDER BY c.nombre ASC";
+            
+            $result = $this->db->query($query);
+            $categorias = [];
+            $presupuestos = [];
+            $gastados = [];
+            $porcentajes = [];
+            
+            while ($row = $result->fetch_assoc()) {
+                $presupuesto = floatval($row['presupuesto']);
+                $gastado = floatval($row['gastado']);
+                $porcentaje = $presupuesto > 0 ? round(($gastado / $presupuesto) * 100, 2) : 0;
+                
+                $categorias[] = $row['categoria'];
+                $presupuestos[] = $presupuesto;
+                $gastados[] = $gastado;
+                $porcentajes[] = $porcentaje;
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'categorias' => $categorias,
+                'presupuestos' => $presupuestos,
+                'gastados' => $gastados,
+                'porcentajes' => $porcentajes
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
      /**
      * Función helper para renderizar vistas.
      */

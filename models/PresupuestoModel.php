@@ -18,7 +18,7 @@ class PresupuestoModel {
                          c.id_categoria, c.nombre AS cat_nombre
                   FROM presupuestos p
                   LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
-                  ORDER BY p.fecha DESC";
+                  ORDER BY p.id_presupuesto DESC";
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);

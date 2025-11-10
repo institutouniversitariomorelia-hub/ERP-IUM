@@ -50,12 +50,21 @@ class UserController {
     public function save() {
         header('Content-Type: application/json');
         if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
-        if ($_SESSION['user_rol'] !== 'SU') { echo json_encode(['success' => false, 'error' => 'Permiso denegado.']); exit; }
 
         $data = $_POST;
-        $id = $data['id'] ?? null; // Este 'id' viene del alias 'id_user as id' del modelo
+        $id = $data['id'] ?? null;
         $isUpdate = !empty($id);
         $response = ['success' => false];
+        
+        // Verificar si el usuario está editando su propio perfil o es SU
+        $isOwnProfile = ($id == $_SESSION['user_id']);
+        $isSuperUser = ($_SESSION['user_rol'] === 'SU');
+        
+        // Solo SU puede crear usuarios o editar otros perfiles
+        if (!$isOwnProfile && !$isSuperUser) {
+            echo json_encode(['success' => false, 'error' => 'Permiso denegado.']); 
+            exit;
+        }
 
         if (empty($data['nombre']) || empty($data['username']) || empty($data['rol'])) {
             $response['error'] = 'Nombre, Usuario y Rol son obligatorios.';
@@ -71,12 +80,10 @@ class UserController {
             if ($isUpdate) { 
                 if (!empty($data['password'])) {
                     $hash = password_hash($data['password'], PASSWORD_DEFAULT);
-                    // <-- ¡CORRECCIÓN DE BD!
                     $stmt = $this->db->prepare("UPDATE usuarios SET nombre=?, username=?, password=?, rol=? WHERE id_user=?");
                     if(!$stmt) throw new Exception("Error al preparar update (con pass): ".$this->db->error);
                     $stmt->bind_param("ssssi", $data['nombre'], $data['username'], $hash, $data['rol'], $id);
                 } else {
-                    // <-- ¡CORRECCIÓN DE BD!
                     $stmt = $this->db->prepare("UPDATE usuarios SET nombre=?, username=?, rol=? WHERE id_user=?");
                      if(!$stmt) throw new Exception("Error al preparar update (sin pass): ".$this->db->error);
                     $stmt->bind_param("sssi", $data['nombre'], $data['username'], $data['rol'], $id);
@@ -89,6 +96,13 @@ class UserController {
             }
 
             if ($stmt->execute()) {
+                // Si el usuario editó su propio perfil, actualizar la sesión
+                if ($isOwnProfile) {
+                    $_SESSION['user_nombre'] = $data['nombre'];
+                    $_SESSION['user_username'] = $data['username'];
+                    $_SESSION['user_rol'] = $data['rol'];
+                }
+                
                 // Fallback en PHP si no hay triggers para usuarios
                 if (!$this->auditoriaModel->hasTriggerForTable('usuarios')) {
                     $newData = $this->userModel->getUserById($this->db->insert_id ?: $id);
