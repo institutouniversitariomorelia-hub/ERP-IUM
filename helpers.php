@@ -13,22 +13,32 @@ if (!function_exists('currentUserRole')) {
 // COB: Cobranzas.
 // REC: Rectoría.
 $ROLE_MODULES = [
-    'SU'  => ['profile','egresos','ingresos','categorias','presupuestos','auditoria'],
-    'ADM' => ['profile','egresos','ingresos','categorias','presupuestos','auditoria'],
-    'COB' => ['profile','ingresos','egresos','categorias','presupuestos'],
-    'REC' => ['profile','ingresos','egresos','categorias','presupuestos']
+    'SU'  => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria'],
+    'ADM' => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria'],
+    'COB' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos'],
+    'REC' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos']
 ];
 
 // Permisos de acciones CRUD por (rol -> módulo -> acciones permitidas)
 $ROLE_ACTIONS = [
-    'SU'  => ['*' => ['view','add','edit','delete']],
-    'ADM' => ['*' => ['view','add','edit','delete']],
+    'SU'  => ['*' => ['view','add','edit','delete','change_pass']],
+    'ADM' => [
+        'ingresos' => ['view','add','edit','delete'],
+        'egresos' => ['view','add','edit','delete'],
+        'categorias' => ['view','add','edit','delete'],
+        'presupuestos' => ['view','add','edit','delete'],
+        'auditoria' => ['view'],
+        'dashboard' => ['view'],
+        'profile' => ['view','change_pass']
+        // 'user' removido - ADM no gestiona usuarios
+    ],
     'COB' => [
         'ingresos' => ['view','add','edit'],
         'egresos'  => ['view','add','edit'],
         'categorias' => ['view'],
         'presupuestos' => ['view'],
         'profile' => ['view']
+        // 'user' removido - COB no gestiona usuarios
     ],
     'REC' => [
         'ingresos' => ['view','add','edit'],
@@ -36,6 +46,7 @@ $ROLE_ACTIONS = [
         'categorias' => ['view'],
         'presupuestos' => ['view'],
         'profile' => ['view']
+        // 'user' removido - Rectoría no gestiona usuarios
     ]
 ];
 

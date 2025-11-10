@@ -95,11 +95,293 @@ function ensureNumberEditable(selector) {
    ========================================================================== */
 
 // --- Eventos Módulo: Mi Perfil ---
-$('#modalUsuario').on('show.bs.modal', function (event) { const button = event.relatedTarget; const userId = button ? $(button).data('id') : null; const $form = $('#formUsuario'); if (!$form.length) { console.error("Form #formUsuario no encontrado."); return; } $form[0].reset(); $('#usuario_id').val(''); if (userId) { $('#modalUsuarioTitle').text('Editar Usuario'); $('#usuario_password').prop('required', false).attr('placeholder', 'Dejar en blanco para no cambiar'); $('#usuario_id').val(userId); $('#usuario_nombre').val($(button).data('nombre')); $('#usuario_username').val($(button).data('username')); $('#usuario_rol').val($(button).data('rol')); } else { $('#modalUsuarioTitle').text('Registrar Nuevo Usuario'); $('#usuario_password').prop('required', true).attr('placeholder', 'Contraseña (obligatoria)'); } });
-$(document).on('submit', '#formUsuario', function(e) { e.preventDefault(); ajaxCall('user', 'save', $(this).serialize()).done(r => { if (r.success) window.location.reload(); else alert('Error al guardar: ' + (r.error || 'Verifique datos.')); }).fail((xhr) => mostrarError('guardar usuario', xhr)); });
-$(document).on('click', '.btn-delete-user', function() { const id = $(this).data('id'); if (confirm('¿Eliminar este usuario?')) { ajaxCall('user', 'delete', { id: id }).done(r => { if (r.success) window.location.reload(); else alert('Error al eliminar: ' + (r.error || 'No se pudo eliminar.')); }).fail((xhr) => mostrarError('eliminar usuario', xhr)); }});
-$('#modalCambiarPassword').on('show.bs.modal', function (event) { const button = event.relatedTarget; const username = button ? $(button).data('username') || CURRENT_USER.username : CURRENT_USER.username; const $form = $('#formCambiarPassword'); if(!$form.length) { console.error("Form #formCambiarPassword no encontrado."); return; } $form[0].reset(); $('#change_pass_username').val(username); $('#username_display').text(username); });
-$(document).on('submit', '#formCambiarPassword', function(e) { e.preventDefault(); ajaxCall('auth', 'changePassword', $(this).serialize()).done(r => { if (r.success) { $('#modalCambiarPassword').modal('hide'); alert('Contraseña actualizada.'); } else { alert('Error: ' + (r.error || 'No se pudo cambiar.')); } }).fail((xhr) => mostrarError('cambiar contraseña', xhr)); });
+
+// Toggle de la tabla de usuarios registrados
+$(document).ready(function() {
+    $('#btnToggleUsuarios').on('click', function(e) {
+        e.preventDefault();
+        console.log('Toggle button clicked!');
+        
+        var $seccion = $('#seccionUsuariosRegistrados');
+        var $icon = $('#toggleUsuariosIcon');
+        var $text = $('#toggleUsuariosText');
+        
+        console.log('Sección encontrada:', $seccion.length);
+        console.log('Visible actualmente:', $seccion.is(':visible'));
+        
+        if ($seccion.is(':visible')) {
+            console.log('Ocultando sección...');
+            $seccion.slideUp(300);
+            $icon.attr('name', 'chevron-down-outline');
+            $text.text('Ver Usuarios Registrados');
+        } else {
+            console.log('Mostrando sección...');
+            $seccion.slideDown(300);
+            $icon.attr('name', 'chevron-up-outline');
+            $text.text('Ocultar Usuarios Registrados');
+        }
+    });
+    
+    // También registrar con $(document).on por si acaso
+    $(document).off('click.toggleUsuarios').on('click.toggleUsuarios', '#btnToggleUsuarios', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Event delegation toggle clicked');
+    });
+});
+
+// Modal: Editar Mi Perfil
+$('#modalEditarMiPerfil').on('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const userId = button ? $(button).data('id') : CURRENT_USER.id;
+    const $form = $('#formEditarMiPerfil');
+    
+    if (!$form.length) { console.error("Form #formEditarMiPerfil no encontrado."); return; }
+    
+    $form[0].reset();
+    $('#perfil_id').val('');
+    
+    // Si viene de editar otro usuario desde la tabla
+    if (userId && userId != CURRENT_USER.id) {
+        $('#modalEditarMiPerfilTitle').text('Editar Usuario');
+        $('#perfil_id').val(userId);
+        $('#perfil_nombre').val($(button).data('nombre'));
+        $('#perfil_username').val($(button).data('username'));
+        $('#perfil_rol').val($(button).data('rol'));
+        // Llenar campos readonly si existen
+        if ($('#perfil_username_readonly').length) {
+            $('#perfil_username_readonly').val($(button).data('username'));
+        }
+        if ($('#perfil_rol_readonly').length) {
+            $('#perfil_rol_readonly').val($(button).data('rol'));
+        }
+    } else {
+        // Editar mi propio perfil
+        $('#modalEditarMiPerfilTitle').text('Editar Mi Perfil');
+        $('#perfil_id').val(CURRENT_USER.id);
+        $('#perfil_nombre').val(CURRENT_USER.nombre);
+        $('#perfil_username').val(CURRENT_USER.username);
+        $('#perfil_rol').val(CURRENT_USER.rol);
+        // Llenar campos readonly si existen (usuarios no-SU)
+        if ($('#perfil_username_readonly').length) {
+            $('#perfil_username_readonly').val(CURRENT_USER.username);
+        }
+        if ($('#perfil_rol_readonly').length) {
+            $('#perfil_rol_readonly').val(CURRENT_USER.rol);
+        }
+    }
+});
+
+// Submit: Editar Mi Perfil
+$(document).on('submit', '#formEditarMiPerfil', function(e) {
+    e.preventDefault();
+    ajaxCall('user', 'save', $(this).serialize())
+        .done(r => {
+            if (r.success) {
+                $('#modalEditarMiPerfil').modal('hide');
+                window.location.reload();
+            } else {
+                alert('Error al guardar: ' + (r.error || 'Verifique datos.'));
+            }
+        })
+        .fail((xhr) => mostrarError('guardar perfil', xhr));
+});
+
+// Botón para abrir modal de cambiar contraseña desde el modal de editar perfil
+$(document).ready(function() {
+    $('#btnAbrirCambiarPassword, #modalEditarMiPerfil').on('click', '#btnAbrirCambiarPassword', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Botón cambiar contraseña clickeado!');
+        
+        // Cerrar el modal de editar perfil
+        var modalEditarPerfil = bootstrap.Modal.getInstance(document.getElementById('modalEditarMiPerfil'));
+        if (modalEditarPerfil) {
+            modalEditarPerfil.hide();
+        } else {
+            $('#modalEditarMiPerfil').modal('hide');
+        }
+        
+        // Esperar a que se cierre y abrir el de cambiar contraseña
+        setTimeout(function() {
+            console.log('Abriendo modal de cambiar contraseña...');
+            $('#changepass_username').val(CURRENT_USER.user_username || CURRENT_USER.username);
+            $('#modalCambiarPasswordNuevo').modal('show');
+        }, 500);
+    });
+    
+    // Event delegation adicional
+    $(document).off('click.cambiarPass').on('click.cambiarPass', '#btnAbrirCambiarPassword', function(e) {
+        e.preventDefault();
+        console.log('Event delegation - cambiar password');
+    });
+});
+
+// Modal: Cambiar Contraseña (Nueva Versión con 3 campos)
+$('#modalCambiarPasswordNuevo').on('show.bs.modal', function (event) {
+    const $form = $('#formCambiarPasswordNuevo');
+    if(!$form.length) { console.error("Form #formCambiarPasswordNuevo no encontrado."); return; }
+    
+    $form[0].reset();
+    // Si no se estableció antes, usar el usuario actual
+    if (!$('#changepass_username').val()) {
+        $('#changepass_username').val(CURRENT_USER.user_username || CURRENT_USER.username);
+    }
+    $('#passwordMatchMessage').text('').removeClass('text-success text-danger');
+    $('#btnGuardarPasswordNueva').prop('disabled', false);
+});
+
+// Toggle mostrar/ocultar contraseñas
+$(document).on('click', '#togglePasswordActual', function() {
+    const $input = $('#password_actual');
+    const $icon = $(this).find('ion-icon');
+    if ($input.attr('type') === 'password') {
+        $input.attr('type', 'text');
+        $icon.attr('name', 'eye-off-outline');
+    } else {
+        $input.attr('type', 'password');
+        $icon.attr('name', 'eye-outline');
+    }
+});
+
+$(document).on('click', '#togglePasswordNueva', function() {
+    const $input = $('#password_nueva');
+    const $icon = $(this).find('ion-icon');
+    if ($input.attr('type') === 'password') {
+        $input.attr('type', 'text');
+        $icon.attr('name', 'eye-off-outline');
+    } else {
+        $input.attr('type', 'password');
+        $icon.attr('name', 'eye-outline');
+    }
+});
+
+$(document).on('click', '#togglePasswordConfirmar', function() {
+    const $input = $('#password_confirmar');
+    const $icon = $(this).find('ion-icon');
+    if ($input.attr('type') === 'password') {
+        $input.attr('type', 'text');
+        $icon.attr('name', 'eye-off-outline');
+    } else {
+        $input.attr('type', 'password');
+        $icon.attr('name', 'eye-outline');
+    }
+});
+
+// Validación en tiempo real de contraseñas coincidentes
+$(document).on('input', '#password_nueva, #password_confirmar', function() {
+    const nueva = $('#password_nueva').val();
+    const confirmar = $('#password_confirmar').val();
+    const $message = $('#passwordMatchMessage');
+    const $btnSubmit = $('#btnGuardarPasswordNueva');
+    
+    if (confirmar.length > 0) {
+        if (nueva === confirmar) {
+            $message.text('✓ Las contraseñas coinciden').removeClass('text-danger').addClass('text-success');
+            $btnSubmit.prop('disabled', false);
+        } else {
+            $message.text('✗ Las contraseñas no coinciden').removeClass('text-success').addClass('text-danger');
+            $btnSubmit.prop('disabled', true);
+        }
+    } else {
+        $message.text('').removeClass('text-success text-danger');
+        $btnSubmit.prop('disabled', false);
+    }
+});
+
+// Submit: Cambiar Contraseña (Nueva Versión)
+$(document).on('submit', '#formCambiarPasswordNuevo', function(e) {
+    e.preventDefault();
+    console.log('Formulario de cambiar contraseña enviado');
+    
+    const passwordActual = $('#password_actual').val();
+    const passwordNueva = $('#password_nueva').val();
+    const passwordConfirmar = $('#password_confirmar').val();
+    
+    console.log('Validando contraseñas...');
+    
+    if (passwordNueva !== passwordConfirmar) {
+        alert('Las contraseñas no coinciden.');
+        return;
+    }
+    
+    if (!passwordActual || !passwordNueva) {
+        alert('Todos los campos son requeridos.');
+        return;
+    }
+    
+    console.log('Enviando petición al servidor...');
+    
+    ajaxCall('auth', 'changePasswordWithValidation', $(this).serialize())
+        .done(r => {
+            console.log('Respuesta recibida:', r);
+            if (r.success) {
+                $('#modalCambiarPasswordNuevo').modal('hide');
+                alert('Contraseña actualizada correctamente.');
+                // Si cambió su propia contraseña, redirigir al login
+                window.location.href = BASE_URL + 'index.php?controller=auth&action=logout';
+            } else {
+                alert('Error: ' + (r.error || 'No se pudo cambiar la contraseña.'));
+            }
+        })
+        .fail((xhr) => mostrarError('cambiar contraseña', xhr));
+});
+
+// Modal: Registrar Nuevo Usuario (formulario separado)
+$('#modalUsuario').on('show.bs.modal', function (event) {
+    const $form = $('#formUsuario');
+    if (!$form.length) { console.error("Form #formUsuario no encontrado."); return; }
+    
+    $form[0].reset();
+    $('#usuario_id').val('');
+    $('#usuario_password').prop('required', true);
+});
+
+$(document).on('submit', '#formUsuario', function(e) { 
+    e.preventDefault(); 
+    ajaxCall('user', 'save', $(this).serialize()).done(r => { 
+        if (r.success) {
+            $('#modalUsuario').modal('hide');
+            window.location.reload();
+        } else {
+            alert('Error al guardar: ' + (r.error || 'Verifique datos.')); 
+        }
+    }).fail((xhr) => mostrarError('guardar usuario', xhr)); 
+});
+
+// Eliminar usuario
+$(document).on('click', '.btn-delete-user', function() { 
+    const id = $(this).data('id'); 
+    if (confirm('¿Eliminar este usuario?')) { 
+        ajaxCall('user', 'delete', { id: id }).done(r => { 
+            if (r.success) window.location.reload(); 
+            else alert('Error al eliminar: ' + (r.error || 'No se pudo eliminar.')); 
+        }).fail((xhr) => mostrarError('eliminar usuario', xhr)); 
+    }
+});
+
+// Modal: Cambiar Contraseña (Versión Admin - para otros usuarios)
+$('#modalCambiarPassword').on('show.bs.modal', function (event) { 
+    const button = event.relatedTarget; 
+    const username = button ? $(button).data('username') || CURRENT_USER.username : CURRENT_USER.username; 
+    const $form = $('#formCambiarPassword'); 
+    if(!$form.length) { console.error("Form #formCambiarPassword no encontrado."); return; } 
+    $form[0].reset(); 
+    $('#change_pass_username').val(username); 
+    $('#username_display').text(username); 
+});
+
+$(document).on('submit', '#formCambiarPassword', function(e) { 
+    e.preventDefault(); 
+    ajaxCall('auth', 'changePassword', $(this).serialize()).done(r => { 
+        if (r.success) { 
+            $('#modalCambiarPassword').modal('hide'); 
+            alert('Contraseña actualizada.'); 
+        } else { 
+            alert('Error: ' + (r.error || 'No se pudo cambiar.')); 
+        } 
+    }).fail((xhr) => mostrarError('cambiar contraseña', xhr)); 
+});
 
 // --- Eventos Módulo: Egresos ---
 $('#modalEgreso').on('show.bs.modal', function (event) {
@@ -381,7 +663,33 @@ $(document).on('click', '.btn-del-presupuesto', function() { if (confirm('¿Elim
 
 /* ========================   INICIALIZACIÓN   ======================== */
 $(document).ready(function() {
-    console.log("ERP MVC: app.js cargado y listo.");
+    console.log("=== ERP MVC: app.js cargado y listo ===");
+    console.log("jQuery version:", $.fn.jquery);
+    console.log("Bootstrap disponible:", typeof bootstrap !== 'undefined');
+    console.log("CURRENT_USER:", CURRENT_USER);
+    console.log("BASE_URL:", BASE_URL);
+    
+    // Verificar que los elementos existen
+    setTimeout(function() {
+        console.log("\n=== Verificando elementos del DOM ===");
+        console.log("Botón toggle usuarios (#btnToggleUsuarios):", $('#btnToggleUsuarios').length);
+        console.log("Sección usuarios registrados (#seccionUsuariosRegistrados):", $('#seccionUsuariosRegistrados').length);
+        console.log("Botón abrir cambiar password (#btnAbrirCambiarPassword):", $('#btnAbrirCambiarPassword').length);
+        console.log("Modal editar perfil (#modalEditarMiPerfil):", $('#modalEditarMiPerfil').length);
+        console.log("Modal cambiar password (#modalCambiarPasswordNuevo):", $('#modalCambiarPasswordNuevo').length);
+        
+        // Agregar eventos de click para debugging
+        if ($('#btnToggleUsuarios').length === 0) {
+            console.error("ERROR: Botón toggle usuarios NO encontrado!");
+        } else {
+            console.log("✓ Botón toggle usuarios encontrado");
+        }
+        
+        if ($('#btnAbrirCambiarPassword').length === 0) {
+            console.warn("ADVERTENCIA: Botón cambiar contraseña no encontrado (normal si no está en el modal abierto)");
+        }
+    }, 1000);
+    
     // Si el usuario pulsa un link del sidebar en móvil, cerrar el sidebar para mostrar contenido
     $('body').on('click', '#sidebar .nav-link', function() {
         try {
@@ -390,7 +698,7 @@ $(document).ready(function() {
                 $('#sidebarOverlay').hide();
                 document.body.style.overflow = '';
             }
-        } catch(e) { }
+        } catch(e) { console.error('Error en sidebar:', e); }
     });
 });
 
@@ -570,3 +878,183 @@ function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+
+/* ==========================================================================
+   BUSCADORES EN TIEMPO REAL
+   ========================================================================== */
+
+/**
+ * Buscador para el módulo de Ingresos
+ * Filtra por: Folio y Alumno
+ */
+$(document).ready(function() {
+    const $searchInput = $('#searchIngresos');
+    const $clearBtn = $('#clearSearchIngresos');
+    const $resultCount = $('#resultCountIngresos');
+    const $tableBody = $('#tablaIngresos');
+    
+    if ($searchInput.length) {
+        console.log('Buscador de Ingresos inicializado');
+        
+        // Evento de búsqueda en tiempo real
+        $searchInput.on('keyup', function() {
+            const searchTerm = $(this).val().toLowerCase().trim();
+            console.log('Búsqueda Ingresos:', searchTerm);
+            
+            if (searchTerm.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+            
+            let visibleCount = 0;
+            let totalCount = 0;
+            
+            $tableBody.find('tr').each(function() {
+                const $row = $(this);
+                
+                // Saltar la fila de "no hay registros"
+                if ($row.find('td[colspan]').length > 0) {
+                    return;
+                }
+                
+                totalCount++;
+                
+                // Obtener solo Alumno (primera columna visible)
+                const $cells = $row.find('td');
+                const alumno = $cells.eq(0).text().toLowerCase();
+                
+                // Obtener el folio desde el botón de editar o eliminar
+                let folio = '';
+                const $editBtn = $row.find('.btn-edit-ingreso');
+                if ($editBtn.length) {
+                    folio = $editBtn.data('id').toString().toLowerCase();
+                }
+                
+                // Buscar SOLO en folio y alumno
+                const searchableText = folio + ' ' + alumno;
+                
+                if (searchableText.includes(searchTerm)) {
+                    $row.show();
+                    visibleCount++;
+                } else {
+                    $row.hide();
+                }
+            });
+            
+            // Actualizar contador de resultados
+            if (searchTerm.length > 0) {
+                if (visibleCount === 0) {
+                    $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados');
+                    $resultCount.addClass('text-danger').removeClass('text-success');
+                } else {
+                    $resultCount.html(`<ion-icon name="checkmark-circle-outline" style="vertical-align:middle;"></ion-icon> Mostrando ${visibleCount} de ${totalCount} ingresos`);
+                    $resultCount.addClass('text-success').removeClass('text-danger');
+                }
+            } else {
+                $resultCount.html('');
+                $resultCount.removeClass('text-success text-danger');
+            }
+        });
+        
+        // Botón para limpiar búsqueda
+        $clearBtn.on('click', function() {
+            $searchInput.val('').trigger('keyup').focus();
+        });
+        
+        // Limpiar con tecla ESC
+        $searchInput.on('keydown', function(e) {
+            if (e.key === 'Escape') {
+                $(this).val('').trigger('keyup');
+            }
+        });
+    }
+});
+
+/**
+ * Buscador para el módulo de Egresos
+ * Filtra por: Folio y Destinatario
+ */
+$(document).ready(function() {
+    const $searchInput = $('#searchEgresos');
+    const $clearBtn = $('#clearSearchEgresos');
+    const $resultCount = $('#resultCountEgresos');
+    const $tableBody = $('#tablaEgresos');
+    
+    if ($searchInput.length) {
+        console.log('Buscador de Egresos inicializado');
+        
+        // Evento de búsqueda en tiempo real
+        $searchInput.on('keyup', function() {
+            const searchTerm = $(this).val().toLowerCase().trim();
+            console.log('Búsqueda Egresos:', searchTerm);
+            
+            if (searchTerm.length > 0) {
+                $clearBtn.show();
+            } else {
+                $clearBtn.hide();
+            }
+            
+            let visibleCount = 0;
+            let totalCount = 0;
+            
+            $tableBody.find('tr').each(function() {
+                const $row = $(this);
+                
+                // Saltar la fila de "no hay registros"
+                if ($row.find('td[colspan]').length > 0) {
+                    return;
+                }
+                
+                totalCount++;
+                
+                // Obtener el destinatario (tercera columna: Fecha, Categoría, Destinatario)
+                const $cells = $row.find('td');
+                const destinatario = $cells.eq(2).text().toLowerCase();
+                
+                // Obtener el folio desde el botón de editar o eliminar
+                let folio = '';
+                const $editBtn = $row.find('.btn-edit-egreso');
+                if ($editBtn.length) {
+                    folio = $editBtn.data('id').toString().toLowerCase();
+                }
+                
+                // Buscar SOLO en folio y destinatario
+                const searchableText = folio + ' ' + destinatario;
+                
+                if (searchableText.includes(searchTerm)) {
+                    $row.show();
+                    visibleCount++;
+                } else {
+                    $row.hide();
+                }
+            });
+            
+            // Actualizar contador de resultados
+            if (searchTerm.length > 0) {
+                if (visibleCount === 0) {
+                    $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados');
+                    $resultCount.addClass('text-danger').removeClass('text-success');
+                } else {
+                    $resultCount.html(`<ion-icon name="checkmark-circle-outline" style="vertical-align:middle;"></ion-icon> Mostrando ${visibleCount} de ${totalCount} egresos`);
+                    $resultCount.addClass('text-success').removeClass('text-danger');
+                }
+            } else {
+                $resultCount.html('');
+                $resultCount.removeClass('text-success text-danger');
+            }
+        });
+        
+        // Botón para limpiar búsqueda
+        $clearBtn.on('click', function() {
+            $searchInput.val('').trigger('keyup').focus();
+        });
+        
+        // Limpiar con tecla ESC
+        $searchInput.on('keydown', function(e) {
+            if (e.key === 'Escape') {
+                $(this).val('').trigger('keyup');
+            }
+        });
+    }
+});

@@ -4,13 +4,40 @@
 // Variables disponibles: $pageTitle, $activeModule, $egresos, $currentUser (del layout)
 ?>
 
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
     <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle ?? 'Egresos'); ?>: Historial Reciente</h3>
-    <?php if (roleCan('add','egresos')): ?>
-        <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalEgreso" id="btnNuevoEgreso">
-            <ion-icon name="add-circle-outline" class="me-1"></ion-icon> Agregar Egreso
+    <div class="d-flex gap-2 w-100 w-md-auto">
+        <button class="btn btn-outline-danger btn-sm flex-grow-1 flex-md-grow-0" id="btnVerGraficasEgresos">
+            <ion-icon name="pie-chart-outline" style="vertical-align: middle;"></ion-icon> 
+            <span class="d-none d-sm-inline">Ver Gráficas</span>
+            <span class="d-inline d-sm-none">Gráficas</span>
         </button>
-    <?php endif; ?>
+        <?php if (roleCan('add','egresos')): ?>
+            <button class="btn btn-danger btn-sm flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#modalEgreso" id="btnNuevoEgreso">
+                <ion-icon name="add-circle-outline" class="me-1"></ion-icon> 
+                <span class="d-none d-sm-inline">Agregar Egreso</span>
+                <span class="d-inline d-sm-none">Agregar</span>
+            </button>
+        <?php endif; ?>
+    </div>
+</div>
+
+<!-- Buscador de Egresos -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0">
+                <ion-icon name="search-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
+            </span>
+            <input type="text" class="form-control border-start-0 ps-0" id="searchEgresos" placeholder="Buscar por folio o destinatario...">
+            <button class="btn btn-outline-secondary" type="button" id="clearSearchEgresos" style="display:none;">
+                <ion-icon name="close-outline"></ion-icon>
+            </button>
+        </div>
+        <small class="text-muted d-block mt-1">
+            <span id="resultCountEgresos"></span>
+        </small>
+    </div>
 </div>
 
 <div class="card shadow-sm">
@@ -21,9 +48,9 @@
                 <thead>
                     <tr class="table-light">
                         <th>Fecha</th>
-                        <th>Categoría</th>
+                        <th class="d-none d-lg-table-cell">Categoría</th>
                         <th>Destinatario</th>
-                        <th>Forma de Pago</th>
+                        <th class="d-none d-md-table-cell">Forma de Pago</th>
                         <th class="text-end">Monto</th>
                         <th class="text-center">Acciones</th>
                     </tr>
@@ -51,12 +78,16 @@
                         ?>
                             <tr>
                                 <td><?php echo htmlspecialchars($egreso['fecha'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($egreso['nombre_categoria'] ?? 'Sin categoría'); ?></td>
-                                <td><?php echo htmlspecialchars($egreso['destinatario'] ?? 'N/A'); ?></td>
-                                <td><?php echo htmlspecialchars($egreso['forma_pago'] ?? 'N/A'); ?></td>
+                                <td class="d-none d-lg-table-cell"><?php echo htmlspecialchars($egreso['nombre_categoria'] ?? 'Sin categoría'); ?></td>
+                                <td>
+                                    <?php echo htmlspecialchars($egreso['destinatario'] ?? 'N/A'); ?>
+                                    <br class="d-md-none">
+                                    <small class="d-md-none text-muted"><?php echo htmlspecialchars($egreso['forma_pago'] ?? 'N/A'); ?></small>
+                                </td>
+                                <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($egreso['forma_pago'] ?? 'N/A'); ?></td>
                                 <td class="text-end text-danger fw-bold"><?php echo $montoFormateado; ?></td>
                 <td class="text-center align-middle" style="vertical-align:middle;">
-                  <div class="btn-responsive-sm justify-content-center align-items-center" style="gap:0.5rem; display:flex;">
+                  <div class="d-flex flex-column flex-sm-row gap-1 justify-content-center align-items-center">
                                         <?php if (roleCan('edit','egresos')): ?>
                                             <button class="btn btn-sm btn-warning btn-edit-egreso"
                                                     data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
@@ -169,3 +200,227 @@
         </div>
   <?php endforeach; ?>
 <?php endif; ?>
+
+<!-- Modal de Gráficas de Egresos -->
+<div class="modal fade" id="modalGraficasEgresos" tabindex="-1" aria-labelledby="modalGraficasEgresosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background-color: #dc3545; color: white;">
+                <h5 class="modal-title" id="modalGraficasEgresosLabel">
+                    <ion-icon name="analytics-outline" style="vertical-align: middle; font-size: 1.5rem;"></ion-icon>
+                    Análisis de Egresos
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background-color: #f8f9fa;">
+                <div class="row">
+                    <!-- Gráfica de Pastel: Distribución por Categoría -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-white">
+                                <h6 class="mb-0">
+                                    <ion-icon name="pie-chart-outline" style="vertical-align: middle; color: #dc3545;"></ion-icon>
+                                    Distribución por Categoría
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chartEgresosCategoria" style="max-height: 350px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfica de Barras: Egresos por Mes -->
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-white">
+                                <h6 class="mb-0">
+                                    <ion-icon name="bar-chart-outline" style="vertical-align: middle; color: #dc3545;"></ion-icon>
+                                    Egresos Mensuales (Últimos 6 Meses)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="chartEgresosMes" style="max-height: 350px;"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Variables globales para las gráficas de egresos
+let chartEgresosCategoriaInstance = null;
+let chartEgresosMesInstance = null;
+
+// Usar vanilla JavaScript para el evento inicial (antes de que jQuery se cargue)
+(function() {
+    // Esperar a que el DOM esté listo Y jQuery esté cargado
+    function initEgresosGraficas() {
+        if (typeof jQuery === 'undefined') {
+            console.log('jQuery aún no cargado para egresos, esperando...');
+            setTimeout(initEgresosGraficas, 100);
+            return;
+        }
+        
+        console.log('Script de egresos inicializado con jQuery');
+        
+        // Evento para abrir el modal y cargar las gráficas
+        jQuery('#btnVerGraficasEgresos').on('click', function() {
+            console.log('Botón Ver Gráficas Egresos clickeado');
+            jQuery('#modalGraficasEgresos').modal('show');
+            cargarGraficasEgresos();
+        });
+
+        // Limpiar gráficas al cerrar el modal
+        jQuery('#modalGraficasEgresos').on('hidden.bs.modal', function() {
+            if (chartEgresosCategoriaInstance) {
+                chartEgresosCategoriaInstance.destroy();
+                chartEgresosCategoriaInstance = null;
+            }
+            if (chartEgresosMesInstance) {
+                chartEgresosMesInstance.destroy();
+                chartEgresosMesInstance = null;
+            }
+        });
+    }
+    
+    // Iniciar cuando el DOM esté listo
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initEgresosGraficas);
+    } else {
+        initEgresosGraficas();
+    }
+})();
+
+function cargarGraficasEgresos() {
+    console.log('Cargando gráficas de egresos...');
+    // Cargar gráfica de categorías
+    ajaxCall('egreso', 'getGraficaEgresosPorCategoria', {}, 'GET')
+        .done(function(data) {
+            if (data.success && data.categorias.length > 0) {
+                if (chartEgresosCategoriaInstance) {
+                    chartEgresosCategoriaInstance.destroy();
+                }
+
+                const ctx = document.getElementById('chartEgresosCategoria').getContext('2d');
+                chartEgresosCategoriaInstance = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: data.categorias,
+                        datasets: [{
+                            data: data.montos,
+                            backgroundColor: [
+                                'rgba(220, 53, 69, 0.8)',
+                                'rgba(253, 126, 20, 0.8)',
+                                'rgba(255, 193, 7, 0.8)',
+                                'rgba(108, 117, 125, 0.8)',
+                                'rgba(111, 66, 193, 0.8)',
+                                'rgba(220, 53, 140, 0.8)'
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += new Intl.NumberFormat('es-MX', {
+                                            style: 'currency',
+                                            currency: 'MXN'
+                                        }).format(context.parsed);
+                                        
+                                        // Calcular porcentaje
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                        label += ` (${percentage}%)`;
+                                        
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('chartEgresosCategoria').parentElement.innerHTML = 
+                    '<p class="text-center text-muted py-5">No hay datos de egresos por categoría</p>';
+            }
+        })
+        .fail(function(xhr) {
+            console.error('Error al cargar gráfica egresos por categoría:', xhr);
+        });
+
+    // Cargar gráfica de meses
+    ajaxCall('egreso', 'getGraficaEgresosPorMes', {}, 'GET')
+        .done(function(data) {
+            if (data.success && data.meses.length > 0) {
+                if (chartEgresosMesInstance) {
+                    chartEgresosMesInstance.destroy();
+                }
+
+                const ctx = document.getElementById('chartEgresosMes').getContext('2d');
+                chartEgresosMesInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.meses,
+                        datasets: [{
+                            label: 'Egresos',
+                            data: data.montos,
+                            backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                            borderColor: 'rgba(220, 53, 69, 1)',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return 'Egresos: ' + new Intl.NumberFormat('es-MX', {
+                                            style: 'currency',
+                                            currency: 'MXN'
+                                        }).format(context.parsed.y);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toLocaleString('es-MX');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                document.getElementById('chartEgresosMes').parentElement.innerHTML = 
+                    '<p class="text-center text-muted py-5">No hay datos de egresos mensuales</p>';
+            }
+        })
+        .fail(function(xhr) {
+            console.error('Error al cargar gráfica egresos por mes:', xhr);
+        });
+}
+</script>

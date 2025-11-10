@@ -202,6 +202,87 @@ class IngresoController {
         exit;
     }
 
+    /**
+     * Acción AJAX: Obtiene datos para gráfica de ingresos por categoría
+     */
+    public function getGraficaIngresosPorCategoria() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { 
+            echo json_encode(['success' => false, 'error' => 'No autorizado']); 
+            exit; 
+        }
+
+        try {
+            $query = "SELECT c.nombre, COALESCE(SUM(i.monto), 0) as total
+                     FROM categorias c
+                     LEFT JOIN ingresos i ON i.id_categoria = c.id_categoria
+                     WHERE c.tipo = 'Ingreso'
+                     GROUP BY c.id_categoria, c.nombre
+                     HAVING total > 0
+                     ORDER BY total DESC";
+            
+            $result = $this->db->query($query);
+            $categorias = [];
+            $montos = [];
+            
+            while ($row = $result->fetch_assoc()) {
+                $categorias[] = $row['nombre'];
+                $montos[] = floatval($row['total']);
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'categorias' => $categorias,
+                'montos' => $montos
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * Acción AJAX: Obtiene datos para gráfica de ingresos por mes (últimos 6 meses)
+     */
+    public function getGraficaIngresosPorMes() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { 
+            echo json_encode(['success' => false, 'error' => 'No autorizado']); 
+            exit; 
+        }
+
+        try {
+            $meses = [];
+            $montos = [];
+            
+            for ($i = 5; $i >= 0; $i--) {
+                $mes = date('Y-m', strtotime("-$i months"));
+                $nombreMes = date('M Y', strtotime("-$i months"));
+                
+                $query = "SELECT COALESCE(SUM(monto), 0) as total 
+                         FROM ingresos 
+                         WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                $stmt = $this->db->prepare($query);
+                $stmt->bind_param('s', $mes);
+                $stmt->execute();
+                $total = $stmt->get_result()->fetch_assoc()['total'];
+                $stmt->close();
+                
+                $meses[] = $nombreMes;
+                $montos[] = floatval($total);
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'meses' => $meses,
+                'montos' => $montos
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
      /**
      * Función helper para renderizar vistas.
      */

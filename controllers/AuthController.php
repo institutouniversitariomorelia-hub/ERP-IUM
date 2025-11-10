@@ -132,5 +132,83 @@ exit;
         exit;
     } // <- Cierre del método changePassword
     
+    /**
+     * Acción AJAX: Cambia la contraseña del usuario con validación de contraseña actual.
+     */
+    public function changePasswordWithValidation() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { 
+            echo json_encode(['success' => false, 'error' => 'No autorizado']); 
+            exit; 
+        }
+
+        $username = $_POST['username'] ?? '';
+        $passwordActual = $_POST['password_actual'] ?? '';
+        $passwordNueva = $_POST['password_nueva'] ?? '';
+        $response = ['success' => false];
+
+        if (empty($username) || empty($passwordActual) || empty($passwordNueva)) {
+            $response['error'] = 'Todos los campos son requeridos.';
+            echo json_encode($response); 
+            exit;
+        }
+
+        try {
+            // Verificar que el usuario exista y obtener su contraseña actual
+            $stmt = $this->db->prepare("SELECT password FROM usuarios WHERE username = ?");
+            if (!$stmt) {
+                $response['error'] = 'Error al preparar la consulta.';
+                error_log("Error en changePasswordWithValidation prepare: " . $this->db->error);
+                echo json_encode($response); 
+                exit;
+            }
+            
+            $stmt->bind_param("s", $username);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            
+            if ($user = $result->fetch_assoc()) {
+                // Verificar que la contraseña actual sea correcta
+                if (!password_verify($passwordActual, $user['password'])) {
+                    $response['error'] = 'La contraseña actual es incorrecta.';
+                    echo json_encode($response);
+                    $stmt->close();
+                    exit;
+                }
+                
+                $stmt->close();
+                
+                // Actualizar con la nueva contraseña
+                $hashedPassword = password_hash($passwordNueva, PASSWORD_DEFAULT);
+                $stmtUpdate = $this->db->prepare("UPDATE usuarios SET password = ? WHERE username = ?");
+                
+                if ($stmtUpdate) {
+                    $stmtUpdate->bind_param("ss", $hashedPassword, $username);
+                    $success = $stmtUpdate->execute();
+                    
+                    if ($success) {
+                        $response['success'] = true;
+                    } else {
+                        $response['error'] = 'Error al actualizar la contraseña: ' . $stmtUpdate->error;
+                        error_log("Error al ejecutar changePasswordWithValidation update: " . $stmtUpdate->error);
+                    }
+                    $stmtUpdate->close();
+                } else {
+                    $response['error'] = 'Error al preparar la actualización: ' . $this->db->error;
+                    error_log("Error al preparar changePasswordWithValidation update: " . $this->db->error);
+                }
+            } else {
+                $response['error'] = 'Usuario no encontrado.';
+                $stmt->close();
+            }
+        } catch (Exception $e) {
+            error_log("Excepción en AuthController->changePasswordWithValidation: " . $e->getMessage());
+            $response['error'] = 'Error interno del servidor al cambiar contraseña.';
+        }
+        
+        echo json_encode($response);
+        exit;
+    } // <- Cierre del método changePasswordWithValidation
+    
 } // <- Cierre de la CLASE AuthController
 ?>

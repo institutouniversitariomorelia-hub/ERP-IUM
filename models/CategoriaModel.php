@@ -24,7 +24,7 @@ class CategoriaModel {
             $params[] = $tipo;
             $types .= 's';
         }
-        $query .= " ORDER BY nombre ASC";
+        $query .= " ORDER BY id_categoria DESC";
 
         $stmt = $this->db->prepare($query);
 

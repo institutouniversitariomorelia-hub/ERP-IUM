@@ -111,6 +111,19 @@ $dia_pago = htmlspecialchars($ingreso['dia_pago'] ?? '');
         .print-btn { text-align:center; margin-top:22px; }
         .print-btn button { background:#2b7be4; color:#fff; border:none; padding:10px 22px; border-radius:8px; cursor:pointer; font-weight:700; }
 
+        @media (max-width: 768px) {
+            body { margin: 10px; }
+            .card { padding: 15px; }
+            .top { flex-direction: column; }
+            .title { margin-left: 0; margin-top: 15px; text-align: left; }
+            .title h1 { font-size: 18px; }
+            .grid { grid-template-columns: 1fr; gap: 10px; }
+            .monto { font-size: 20px; }
+            .signature-area { flex-direction: column; gap: 20px; }
+            .sig { width: 100%; }
+            .cantidad-letra { font-size: 12px; }
+        }
+
         @media print { body { background:#fff; } .print-btn { display:none; } .card { box-shadow:none; border-radius:0; padding:0; } }
     </style>
 </head>
