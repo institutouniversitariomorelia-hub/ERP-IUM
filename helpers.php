@@ -13,10 +13,10 @@ if (!function_exists('currentUserRole')) {
 // COB: Cobranzas.
 // REC: Rectoría.
 $ROLE_MODULES = [
-    'SU'  => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria'],
-    'ADM' => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria'],
-    'COB' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos'],
-    'REC' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos']
+    'SU'  => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria','reportes'],
+    'ADM' => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria','reportes'],
+    'COB' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos','reportes'],
+    'REC' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos','reportes']
 ];
 
 // Permisos de acciones CRUD por (rol -> módulo -> acciones permitidas)
@@ -29,6 +29,7 @@ $ROLE_ACTIONS = [
         'presupuestos' => ['view','add','edit','delete'],
         'auditoria' => ['view'],
         'dashboard' => ['view'],
+        'reportes' => ['view'],
         'profile' => ['view','change_pass']
         // 'user' removido - ADM no gestiona usuarios
     ],
@@ -37,6 +38,7 @@ $ROLE_ACTIONS = [
         'egresos'  => ['view','add','edit'],
         'categorias' => ['view'],
         'presupuestos' => ['view'],
+        'reportes' => ['view'],
         'profile' => ['view']
         // 'user' removido - COB no gestiona usuarios
     ],
@@ -45,6 +47,7 @@ $ROLE_ACTIONS = [
         'egresos'  => ['view','add','edit'],
         'categorias' => ['view'],
         'presupuestos' => ['view'],
+        'reportes' => ['view'],
         'profile' => ['view']
         // 'user' removido - Rectoría no gestiona usuarios
     ]

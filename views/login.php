@@ -252,15 +252,65 @@
                 transform: translateY(0);
             }
         }
+        
+        /* Easter Egg GIF */
+        #easterEggGif {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 999;
+            width: 100%;
+            max-width: 420px;
+            height: auto;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+            border-radius: 16px;
+            display: none;
+            animation: easterEggAppear 0.3s ease-out;
+            cursor: pointer;
+        }
+        
+        @keyframes easterEggAppear {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        #easterEggOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 998;
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+            cursor: pointer;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
     </style>
 </head>
 <body>
+    <!-- Easter Egg Overlay y GIF -->
+    <div id="easterEggOverlay" onclick="closeEasterEgg()"></div>
+    <img id="easterEggGif" src="<?php echo BASE_URL; ?>public/images/gif.gif" alt="Easter Egg" onclick="closeEasterEgg()" />
+    
     <div class="login-container">
         <div class="card login-card">
             <!-- Header con logo -->
             <div class="login-header">
                 <div class="logo-section">
-                    <div class="logo-icon">
+                    <div class="logo-icon" id="logoIcon">
                         <img src="<?php echo BASE_URL; ?>public/logo ium blanco.png" alt="Logo IUM" />
                     </div>
                     <h1 class="login-title">Sistema ERP IUM</h1>
@@ -310,5 +360,43 @@
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Easter Egg - 5 clics en el logo
+        let clickCount = 0;
+        let clickTimer = null;
+        
+        document.getElementById('logoIcon').addEventListener('click', function() {
+            clickCount++;
+            
+            // Resetear el contador después de 2 segundos de inactividad
+            clearTimeout(clickTimer);
+            clickTimer = setTimeout(() => {
+                clickCount = 0;
+            }, 2000);
+            
+            // Si se hacen 5 clics, mostrar el easter egg
+            if (clickCount === 5) {
+                showEasterEgg();
+                clickCount = 0;
+            }
+        });
+        
+        function showEasterEgg() {
+            document.getElementById('easterEggOverlay').style.display = 'block';
+            document.getElementById('easterEggGif').style.display = 'block';
+        }
+        
+        function closeEasterEgg() {
+            document.getElementById('easterEggOverlay').style.display = 'none';
+            document.getElementById('easterEggGif').style.display = 'none';
+        }
+        
+        // Cerrar con tecla ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeEasterEgg();
+            }
+        });
+    </script>
 </body>
 </html>

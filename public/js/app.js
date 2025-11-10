@@ -885,26 +885,39 @@ function escapeHtml(str) {
 
 /**
  * Buscador para el módulo de Ingresos
- * Filtra por: Folio y Alumno
+ * Filtra por: Folio, Alumno y Fecha
  */
 $(document).ready(function() {
     const $searchInput = $('#searchIngresos');
     const $clearBtn = $('#clearSearchIngresos');
+    const $fechaInicio = $('#fechaInicioIngresos');
+    const $fechaFin = $('#fechaFinIngresos');
+    const $clearDateBtn = $('#clearDateIngresos');
     const $resultCount = $('#resultCountIngresos');
     const $tableBody = $('#tablaIngresos');
     
     if ($searchInput.length) {
         console.log('Buscador de Ingresos inicializado');
         
-        // Evento de búsqueda en tiempo real
-        $searchInput.on('keyup', function() {
-            const searchTerm = $(this).val().toLowerCase().trim();
-            console.log('Búsqueda Ingresos:', searchTerm);
+        // Función de filtrado combinado
+        function filtrarIngresos() {
+            const searchTerm = $searchInput.val().toLowerCase().trim();
+            const fechaInicio = $fechaInicio.val();
+            const fechaFin = $fechaFin.val();
             
+            console.log('Búsqueda Ingresos:', searchTerm, 'Fecha Inicio:', fechaInicio, 'Fecha Fin:', fechaFin);
+            
+            // Mostrar/ocultar botones de limpiar
             if (searchTerm.length > 0) {
                 $clearBtn.show();
             } else {
                 $clearBtn.hide();
+            }
+            
+            if (fechaInicio || fechaFin) {
+                $clearDateBtn.show();
+            } else {
+                $clearDateBtn.hide();
             }
             
             let visibleCount = 0;
@@ -931,10 +944,35 @@ $(document).ready(function() {
                     folio = $editBtn.data('id').toString().toLowerCase();
                 }
                 
-                // Buscar SOLO en folio y alumno
-                const searchableText = folio + ' ' + alumno;
+                // Obtener la fecha desde el atributo data-fecha
+                let fechaRegistro = $row.attr('data-fecha');
                 
-                if (searchableText.includes(searchTerm)) {
+                // Buscar en folio y alumno
+                const searchableText = folio + ' ' + alumno;
+                let matchText = true;
+                let matchDate = true;
+                
+                // Filtro de texto
+                if (searchTerm.length > 0) {
+                    matchText = searchableText.includes(searchTerm);
+                }
+                
+                // Filtro de fecha
+                if (fechaRegistro && (fechaInicio || fechaFin)) {
+                    if (fechaInicio && fechaFin) {
+                        // Rango de fechas
+                        matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
+                    } else if (fechaInicio) {
+                        // Solo fecha inicio (desde)
+                        matchDate = fechaRegistro >= fechaInicio;
+                    } else if (fechaFin) {
+                        // Solo fecha fin (hasta)
+                        matchDate = fechaRegistro <= fechaFin;
+                    }
+                }
+                
+                // Mostrar solo si cumple ambos criterios
+                if (matchText && matchDate) {
                     $row.show();
                     visibleCount++;
                 } else {
@@ -943,7 +981,7 @@ $(document).ready(function() {
             });
             
             // Actualizar contador de resultados
-            if (searchTerm.length > 0) {
+            if (searchTerm.length > 0 || fechaInicio || fechaFin) {
                 if (visibleCount === 0) {
                     $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados');
                     $resultCount.addClass('text-danger').removeClass('text-success');
@@ -955,17 +993,34 @@ $(document).ready(function() {
                 $resultCount.html('');
                 $resultCount.removeClass('text-success text-danger');
             }
+        }
+        
+        // Evento de búsqueda en tiempo real
+        $searchInput.on('keyup', filtrarIngresos);
+        
+        // Eventos de cambio de fecha
+        $fechaInicio.on('change', filtrarIngresos);
+        $fechaFin.on('change', filtrarIngresos);
+        
+        // Botón para limpiar búsqueda de texto
+        $clearBtn.on('click', function() {
+            $searchInput.val('');
+            filtrarIngresos();
+            $searchInput.focus();
         });
         
-        // Botón para limpiar búsqueda
-        $clearBtn.on('click', function() {
-            $searchInput.val('').trigger('keyup').focus();
+        // Botón para limpiar fechas
+        $clearDateBtn.on('click', function() {
+            $fechaInicio.val('');
+            $fechaFin.val('');
+            filtrarIngresos();
         });
         
         // Limpiar con tecla ESC
         $searchInput.on('keydown', function(e) {
             if (e.key === 'Escape') {
-                $(this).val('').trigger('keyup');
+                $(this).val('');
+                filtrarIngresos();
             }
         });
     }
@@ -973,26 +1028,39 @@ $(document).ready(function() {
 
 /**
  * Buscador para el módulo de Egresos
- * Filtra por: Folio y Destinatario
+ * Filtra por: Folio, Destinatario y Fecha
  */
 $(document).ready(function() {
     const $searchInput = $('#searchEgresos');
     const $clearBtn = $('#clearSearchEgresos');
+    const $fechaInicio = $('#fechaInicioEgresos');
+    const $fechaFin = $('#fechaFinEgresos');
+    const $clearDateBtn = $('#clearDateEgresos');
     const $resultCount = $('#resultCountEgresos');
     const $tableBody = $('#tablaEgresos');
     
     if ($searchInput.length) {
         console.log('Buscador de Egresos inicializado');
         
-        // Evento de búsqueda en tiempo real
-        $searchInput.on('keyup', function() {
-            const searchTerm = $(this).val().toLowerCase().trim();
-            console.log('Búsqueda Egresos:', searchTerm);
+        // Función de filtrado combinado
+        function filtrarEgresos() {
+            const searchTerm = $searchInput.val().toLowerCase().trim();
+            const fechaInicio = $fechaInicio.val();
+            const fechaFin = $fechaFin.val();
             
+            console.log('Búsqueda Egresos:', searchTerm, 'Fecha Inicio:', fechaInicio, 'Fecha Fin:', fechaFin);
+            
+            // Mostrar/ocultar botones de limpiar
             if (searchTerm.length > 0) {
                 $clearBtn.show();
             } else {
                 $clearBtn.hide();
+            }
+            
+            if (fechaInicio || fechaFin) {
+                $clearDateBtn.show();
+            } else {
+                $clearDateBtn.hide();
             }
             
             let visibleCount = 0;
@@ -1019,10 +1087,35 @@ $(document).ready(function() {
                     folio = $editBtn.data('id').toString().toLowerCase();
                 }
                 
-                // Buscar SOLO en folio y destinatario
-                const searchableText = folio + ' ' + destinatario;
+                // Obtener la fecha desde el atributo data-fecha
+                let fechaRegistro = $row.attr('data-fecha');
                 
-                if (searchableText.includes(searchTerm)) {
+                // Buscar en folio y destinatario
+                const searchableText = folio + ' ' + destinatario;
+                let matchText = true;
+                let matchDate = true;
+                
+                // Filtro de texto
+                if (searchTerm.length > 0) {
+                    matchText = searchableText.includes(searchTerm);
+                }
+                
+                // Filtro de fecha
+                if (fechaRegistro && (fechaInicio || fechaFin)) {
+                    if (fechaInicio && fechaFin) {
+                        // Rango de fechas
+                        matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
+                    } else if (fechaInicio) {
+                        // Solo fecha inicio (desde)
+                        matchDate = fechaRegistro >= fechaInicio;
+                    } else if (fechaFin) {
+                        // Solo fecha fin (hasta)
+                        matchDate = fechaRegistro <= fechaFin;
+                    }
+                }
+                
+                // Mostrar solo si cumple ambos criterios
+                if (matchText && matchDate) {
                     $row.show();
                     visibleCount++;
                 } else {
@@ -1031,7 +1124,7 @@ $(document).ready(function() {
             });
             
             // Actualizar contador de resultados
-            if (searchTerm.length > 0) {
+            if (searchTerm.length > 0 || fechaInicio || fechaFin) {
                 if (visibleCount === 0) {
                     $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados');
                     $resultCount.addClass('text-danger').removeClass('text-success');
@@ -1043,17 +1136,34 @@ $(document).ready(function() {
                 $resultCount.html('');
                 $resultCount.removeClass('text-success text-danger');
             }
+        }
+        
+        // Evento de búsqueda en tiempo real
+        $searchInput.on('keyup', filtrarEgresos);
+        
+        // Eventos de cambio de fecha
+        $fechaInicio.on('change', filtrarEgresos);
+        $fechaFin.on('change', filtrarEgresos);
+        
+        // Botón para limpiar búsqueda de texto
+        $clearBtn.on('click', function() {
+            $searchInput.val('');
+            filtrarEgresos();
+            $searchInput.focus();
         });
         
-        // Botón para limpiar búsqueda
-        $clearBtn.on('click', function() {
-            $searchInput.val('').trigger('keyup').focus();
+        // Botón para limpiar fechas
+        $clearDateBtn.on('click', function() {
+            $fechaInicio.val('');
+            $fechaFin.val('');
+            filtrarEgresos();
         });
         
         // Limpiar con tecla ESC
         $searchInput.on('keydown', function(e) {
             if (e.key === 'Escape') {
-                $(this).val('').trigger('keyup');
+                $(this).val('');
+                filtrarEgresos();
             }
         });
     }

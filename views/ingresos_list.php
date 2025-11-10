@@ -25,14 +25,30 @@
 <!-- Buscador de Ingresos -->
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
-        <div class="input-group">
-            <span class="input-group-text bg-white border-end-0">
-                <ion-icon name="search-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
-            </span>
-            <input type="text" class="form-control border-start-0 ps-0" id="searchIngresos" placeholder="Buscar por folio o alumno...">
-            <button class="btn btn-outline-secondary" type="button" id="clearSearchIngresos" style="display:none;">
-                <ion-icon name="close-outline"></ion-icon>
-            </button>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <ion-icon name="search-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
+                    </span>
+                    <input type="text" class="form-control border-start-0 ps-0" id="searchIngresos" placeholder="Buscar por folio o alumno...">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearchIngresos" style="display:none;">
+                        <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white">
+                        <ion-icon name="calendar-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
+                    </span>
+                    <input type="date" class="form-control" id="fechaInicioIngresos" placeholder="Fecha inicio">
+                    <input type="date" class="form-control" id="fechaFinIngresos" placeholder="Fecha fin">
+                    <button class="btn btn-outline-secondary" type="button" id="clearDateIngresos" style="display:none;">
+                        <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                </div>
+            </div>
         </div>
         <small class="text-muted d-block mt-1">
             <span id="resultCountIngresos"></span>
@@ -70,7 +86,7 @@
                                 } catch (Exception $e) { /* fallback */ }
                             }
                         ?>
-                            <tr>
+                            <tr data-fecha="<?php echo htmlspecialchars($ingreso['fecha'] ?? ''); ?>">
                                 <td>
                                     <?php echo htmlspecialchars($ingreso['alumno'] ?? 'N/A'); ?>
                                     <br class="d-md-none">

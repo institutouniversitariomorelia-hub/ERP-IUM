@@ -109,6 +109,115 @@ class AuditoriaController {
         else echo json_encode(['success' => false, 'error' => 'Registro no encontrado.']);
         exit;
     }
+
+    /**
+     * Generar reporte de auditoría
+     */
+    public function generarReporte() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'No autorizado']);
+            exit;
+        }
+
+        $tipo = $_GET['tipo'] ?? 'personalizado';
+        $fechaInicio = $_GET['fecha_inicio'] ?? null;
+        $fechaFin = $_GET['fecha_fin'] ?? null;
+
+        try {
+            // Calcular fechas según el tipo
+            if ($tipo === 'semanal') {
+                $fechaFin = date('Y-m-d');
+                $fechaInicio = date('Y-m-d', strtotime('-7 days'));
+            }
+
+            if (!$fechaInicio || !$fechaFin) {
+                echo json_encode(['success' => false, 'error' => 'Fechas no válidas']);
+                exit;
+            }
+
+            // Obtener logs del rango - Usar la estructura correcta de la tabla auditoria
+            $sql = "SELECT a.*, 
+                           u.nombre as usuario_nombre,
+                           u.username as usuario_username
+                    FROM auditoria a 
+                    LEFT JOIN usuario_historial uh ON a.id_auditoria = uh.id_ha
+                    LEFT JOIN usuarios u ON uh.id_user = u.id_user
+                    WHERE DATE(a.fecha_hora) BETWEEN ? AND ? 
+                    ORDER BY a.fecha_hora DESC";
+            
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) {
+                throw new Exception("Error en preparación SQL: " . $this->db->error);
+            }
+            
+            $stmt->bind_param("ss", $fechaInicio, $fechaFin);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $logs = $result->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            // Calcular estadísticas
+            $totalLogs = count($logs);
+            $porSeccion = [];
+            $porAccion = [];
+            $porUsuario = [];
+            
+            foreach ($logs as $log) {
+                // Por sección
+                $seccion = $log['seccion'] ?? 'Sin especificar';
+                if (!isset($porSeccion[$seccion])) {
+                    $porSeccion[$seccion] = 0;
+                }
+                $porSeccion[$seccion]++;
+
+                // Por acción
+                $accion = $log['accion'] ?? 'Sin especificar';
+                if (!isset($porAccion[$accion])) {
+                    $porAccion[$accion] = 0;
+                }
+                $porAccion[$accion]++;
+
+                // Por usuario
+                $usuario = $log['usuario_nombre'] ?? 'Sistema';
+                if (!isset($porUsuario[$usuario])) {
+                    $porUsuario[$usuario] = 0;
+                }
+                $porUsuario[$usuario]++;
+            }
+
+            // Agregar información de detalles formateada para cada log
+            foreach ($logs as &$log) {
+                // Formatear detalles para mostrar en la tabla
+                $detalles = '';
+                if (!empty($log['old_valor']) && !empty($log['new_valor'])) {
+                    $detalles = 'Cambio de valores';
+                } elseif (!empty($log['new_valor'])) {
+                    $detalles = 'Nuevo registro';
+                } elseif (!empty($log['old_valor'])) {
+                    $detalles = 'Registro eliminado';
+                }
+                $log['detalles'] = $detalles;
+            }
+
+            echo json_encode([
+                'success' => true,
+                'tipo' => $tipo,
+                'fechaInicio' => $fechaInicio,
+                'fechaFin' => $fechaFin,
+                'logs' => $logs,
+                'totalLogs' => $totalLogs,
+                'porSeccion' => $porSeccion,
+                'porAccion' => $porAccion,
+                'porUsuario' => $porUsuario
+            ]);
+
+        } catch (Exception $e) {
+            error_log("Error en generarReporte: " . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Error al generar reporte: ' . $e->getMessage()]);
+        }
+        exit;
+    }
     
     /**
      * Acción AJAX: Obtiene los logs de auditoría (usada por el JS si no recargamos página).
