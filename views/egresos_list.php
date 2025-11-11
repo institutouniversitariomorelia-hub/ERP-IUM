@@ -25,14 +25,30 @@
 <!-- Buscador de Egresos -->
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
-        <div class="input-group">
-            <span class="input-group-text bg-white border-end-0">
-                <ion-icon name="search-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
-            </span>
-            <input type="text" class="form-control border-start-0 ps-0" id="searchEgresos" placeholder="Buscar por folio o destinatario...">
-            <button class="btn btn-outline-secondary" type="button" id="clearSearchEgresos" style="display:none;">
-                <ion-icon name="close-outline"></ion-icon>
-            </button>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0">
+                        <ion-icon name="search-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
+                    </span>
+                    <input type="text" class="form-control border-start-0 ps-0" id="searchEgresos" placeholder="Buscar por folio o destinatario...">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearchEgresos" style="display:none;">
+                        <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text bg-white">
+                        <ion-icon name="calendar-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
+                    </span>
+                    <input type="date" class="form-control" id="fechaInicioEgresos" placeholder="Fecha inicio">
+                    <input type="date" class="form-control" id="fechaFinEgresos" placeholder="Fecha fin">
+                    <button class="btn btn-outline-secondary" type="button" id="clearDateEgresos" style="display:none;">
+                        <ion-icon name="close-outline"></ion-icon>
+                    </button>
+                </div>
+            </div>
         </div>
         <small class="text-muted d-block mt-1">
             <span id="resultCountEgresos"></span>
@@ -76,7 +92,7 @@
                             $descripcionCompleta = htmlspecialchars($egreso['descripcion'] ?? '');
                             $descripcionCorta = mb_strimwidth($descripcionCompleta, 0, 25, '...'); // Acortar a 25 caracteres
                         ?>
-                            <tr>
+                            <tr data-fecha="<?php echo htmlspecialchars($egreso['fecha'] ?? ''); ?>">
                                 <td><?php echo htmlspecialchars($egreso['fecha'] ?? 'N/A'); ?></td>
                                 <td class="d-none d-lg-table-cell"><?php echo htmlspecialchars($egreso['nombre_categoria'] ?? 'Sin categoría'); ?></td>
                                 <td>

@@ -56,7 +56,8 @@ $currentUser = [
     #sidebar.open { transform: translateX(0); left: 0; }
     #sidebar.closed { transform: translateX(-100%); left: -100%; }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:900; }
-        .top-header { background-color: var(--c-primario); color: white; padding: 10px 30px; font-size: 1.1rem; border-bottom: 1px solid #dee2e6; box-shadow: var(--sombra-suave); position: sticky; top: 0; z-index: 999; display: flex; justify-content: space-between; align-items: center; }
+        .top-header { background-color: var(--c-primario); color: white; padding: 10px 30px; font-size: 1.1rem; border-bottom: 1px solid #dee2e6; box-shadow: var(--sombra-suave); position: sticky; top: 0; z-index: 999; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+        .user-info-header { flex-shrink: 0; }
         #view-container { padding: 30px; }
         .card { border: none; border-radius: 8px; box-shadow: var(--sombra-suave); margin-bottom: 1.5rem; }
         .card-header { background-color: var(--c-blanco); font-weight: bold; border-bottom: 1px solid #f0f0f0; padding: 1rem 1.25rem; }
@@ -77,7 +78,8 @@ $currentUser = [
         .badge { padding: 0.4em 0.6em; }
         /* Small screen adjustments */
         @media (max-width: 991px) {
-            .top-header { padding: 8px 12px; font-size: 0.95rem; }
+            .top-header { padding: 8px 12px; font-size: 0.95rem; gap: 0.5rem; }
+            .top-header .me-auto { font-size: 0.9rem; }
             #view-container { padding: 12px; }
             .card { margin-bottom: 1rem; width: 100%; }
             .table thead th { font-size: 0.72rem; }
@@ -100,6 +102,9 @@ $currentUser = [
 
         /* Extra small screens: tweak spacing a bit more */
         @media (max-width: 575px) {
+            .top-header { padding: 6px 8px; font-size: 0.85rem; }
+            .top-header .me-auto { font-size: 0.85rem; }
+            .top-header #btnToggleSidebar { padding: 0.2rem 0.4rem; margin-right: 0.25rem !important; }
             .table thead th { font-size: 0.68rem; }
             .table td, .table th { padding: 0.4rem; }
             .logo-container img { max-height: 40px; }
@@ -198,6 +203,14 @@ $currentUser = [
                         </a>
                     </li>
                 <?php endif; ?>
+                <?php if (roleCanViewModule('ingresos') || roleCanViewModule('egresos')): ?>
+                    <li class="nav-item">
+                        <a class="nav-link <?php echo $activeModule === 'reportes' ? 'active' : ''; ?>" href="<?php echo BASE_URL; ?>index.php?controller=reporte&action=index">
+                            <ion-icon name="document-text-outline"></ion-icon>
+                            <span>Reportes</span>
+                        </a>
+                    </li>
+                <?php endif; ?>
             </ul>
         </div>
 
@@ -233,8 +246,26 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto fw-bold">SISTEMA DE CONTROL DE EGRESOS Y INGRESOS IUM</span>
-            <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
+            <span class="me-auto fw-bold">
+                <span class="d-none d-md-inline">SISTEMA DE CONTROL DE INGRESOS Y EGRESOS IUM</span>
+                <span class="d-md-none">Sistema ERP</span>
+            </span>
+            <div class="user-info-header">
+                <div class="d-none d-md-block">
+                    <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
+                </div>
+                <div class="d-md-none text-end">
+                    <div class="fw-bold" style="font-size: 0.85rem; line-height: 1.2;">
+                        <?php echo htmlspecialchars($currentUser['username']); ?>
+                    </div>
+                    <div style="font-size: 0.7rem; opacity: 0.9; line-height: 1.2;">
+                        <?php 
+                        $roles = ['SU' => 'Super Admin', 'ADM' => 'Admin', 'COB' => 'Cobranzas', 'REC' => 'Rectoría'];
+                        echo $roles[$currentUser['rol']] ?? $currentUser['rol']; 
+                        ?>
+                    </div>
+                </div>
+            </div>
         </header>
         <main id="view-container" class="p-4">
             <?php
@@ -764,6 +795,20 @@ $currentUser = [
                     // Show modal on 5th click
                     if (clickCount === 5) {
                         clickCount = 0;
+                        
+                        // Cerrar sidebar si está abierto en móvil
+                        const sidebar = document.getElementById('sidebar');
+                        const sidebarOverlay = document.getElementById('sidebarOverlay');
+                        if (sidebar && sidebar.classList.contains('open')) {
+                            sidebar.classList.remove('open');
+                            sidebar.classList.add('closed');
+                            if (sidebarOverlay) {
+                                sidebarOverlay.style.display = 'none';
+                            }
+                            document.body.style.overflow = '';
+                        }
+                        
+                        // Mostrar modal de desarrolladores
                         const modal = new bootstrap.Modal(document.getElementById('modalDesarrolladores'));
                         modal.show();
                         
