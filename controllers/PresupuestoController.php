@@ -67,8 +67,9 @@ class PresupuestoController {
         }
         $data['id_categoria'] = (int)($rawCat !== '' ? $rawCat : 0);
 
-        if (empty($data['monto_limite']) || empty($data['fecha']) || empty($data['id_categoria'])) {
-             $response['error'] = 'Categoría, monto límite y fecha son obligatorios.';
+       // Validaciones: monto y fecha obligatorios. id_categoria puede ser NULL para presupuesto general.
+       if (empty($data['monto_limite']) || empty($data['fecha'])) {
+           $response['error'] = 'Monto límite y fecha son obligatorios.';
              echo json_encode($response);
              exit;
          }
@@ -77,15 +78,53 @@ class PresupuestoController {
              echo json_encode($response);
              exit;
          }
-         // id_categoria ya normalizado a int arriba; si es 0, inválido
-         if ($data['id_categoria'] <= 0) {
-             $response['error'] = 'Categoría inválida.';
-             echo json_encode($response);
-             exit;
-         }
+        // Determinar si es Presupuesto General o por Categoría
+        $isGeneral = false;
+        $parentPres = isset($data['parent_presupuesto']) ? (int)$data['parent_presupuesto'] : 0;
+        $catId = isset($data['id_categoria']) ? (int)$data['id_categoria'] : 0;
+
+        if ($catId <= 0) {
+            // Si no viene categoría válida, lo consideramos presupuesto general
+            $isGeneral = true;
+        }
+
+        // Si es presupuesto por categoría, forzar selección de presupuesto general padre
+        if (!$isGeneral && $parentPres <= 0) {
+            $response['error'] = 'Para un presupuesto por categoría debe seleccionar un Presupuesto General padre.';
+            echo json_encode($response);
+            exit;
+        }
 
         try {
+            // Si no existen presupuestos en la BD y se está creando uno nuevo, forzar que sea general
+            if (empty($id)) {
+                $all = $this->presupuestoModel->getAllPresupuestos();
+                if (empty($all) && !$isGeneral) {
+                    $response['error'] = 'El primer presupuesto debe ser GENERAL. Cree primero un Presupuesto General sin categoría.';
+                    echo json_encode($response);
+                    exit;
+                }
+            }
             // El modelo ahora hace un simple INSERT o UPDATE
+            // Antes de guardar: si es presupuesto por categoría, validar que la suma de hijos no exceda el padre
+            if (!$isGeneral && $parentPres > 0) {
+                $sumaHijos = $this->presupuestoModel->getSumaPresupuestosHijos($parentPres);
+                $nuevoMonto = floatval($data['monto_limite']);
+                // Si estamos editando un hijo, restar su monto anterior para validar correctamente
+                if (!empty($id)) {
+                    $old = $this->presupuestoModel->getPresupuestoById($id);
+                    $oldMonto = $old['monto_limite'] ?? 0;
+                    $sumaHijos = max(0, $sumaHijos - floatval($oldMonto));
+                }
+                $parent = $this->presupuestoModel->getPresupuestoById($parentPres);
+                $parentLimite = floatval($parent['monto_limite'] ?? 0);
+                if (($sumaHijos + $nuevoMonto) > $parentLimite) {
+                    $response['error'] = 'La suma de los presupuestos por categoría excedería el monto del Presupuesto General seleccionado.';
+                    echo json_encode($response);
+                    exit;
+                }
+            }
+
             $success = $this->presupuestoModel->savePresupuesto($data, $id);
 
             if ($success) {
@@ -158,6 +197,11 @@ class PresupuestoController {
                 'cat_nombre' => $p['cat_nombre'] ?? ($p['categoria'] ?? null)
              ];
          }
+        // Añadir parent_presupuesto si existe
+        foreach ($out as $k => $v) {
+            $p = $pres[$k] ?? null;
+            $out[$k]['parent_presupuesto'] = $p['parent_presupuesto'] ?? null;
+        }
          echo json_encode($out);
          exit;
      }

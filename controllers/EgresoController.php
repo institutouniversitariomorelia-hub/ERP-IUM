@@ -4,18 +4,21 @@
 require_once 'models/EgresoModel.php';
 require_once 'models/CategoriaModel.php';
 require_once 'models/AuditoriaModel.php';
+require_once 'models/PresupuestoModel.php';
 
 class EgresoController {
     private $db;
     private $egresoModel;
     private $categoriaModel;
     private $auditoriaModel;
+    private $presupuestoModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
         $this->egresoModel = new EgresoModel($dbConnection);
         $this->categoriaModel = new CategoriaModel($dbConnection);
         $this->auditoriaModel = new AuditoriaModel($dbConnection);
+        $this->presupuestoModel = new PresupuestoModel($dbConnection);
     }
 
     /**
@@ -78,6 +81,34 @@ class EgresoController {
 
         try {
             if (!$isUpdate) { // Crear
+                // Validar límites de presupuesto: el id_presupuesto debe existir
+                $selectedPres = isset($data['id_presupuesto']) ? (int)$data['id_presupuesto'] : 0;
+                if ($selectedPres <= 0) { $response['error'] = 'Presupuesto inválido.'; echo json_encode($response); exit; }
+
+                $presObj = $this->presupuestoModel->getPresupuestoById($selectedPres);
+                if (!$presObj) { $response['error'] = 'Presupuesto no encontrado.'; echo json_encode($response); exit; }
+
+                $montoNuevo = floatval($data['monto']);
+                // Gastado actualmente en ese presupuesto
+                $gastadoPres = $this->presupuestoModel->getGastadoEnPresupuesto($selectedPres);
+                if (($gastadoPres + $montoNuevo) > floatval($presObj['monto_limite'])) {
+                    $response['error'] = 'El monto excede el límite del presupuesto de la categoría.';
+                    echo json_encode($response); exit;
+                }
+
+                // Si este presupuesto tiene parent_presupuesto, validar también contra el general
+                $parentId = isset($presObj['parent_presupuesto']) ? (int)$presObj['parent_presupuesto'] : 0;
+                if ($parentId > 0) {
+                    // Gastado en el presupuesto general (suma de egresos asociados a ese general)
+                    $gastadoGeneral = $this->presupuestoModel->getGastadoEnPresupuesto($parentId);
+                    $parentObj = $this->presupuestoModel->getPresupuestoById($parentId);
+                    $parentLim = floatval($parentObj['monto_limite'] ?? 0);
+                    if (($gastadoGeneral + $montoNuevo) > $parentLim) {
+                        $response['error'] = 'El monto excede el límite del Presupuesto General asociado.';
+                        echo json_encode($response); exit;
+                    }
+                }
+
                 $newId = $this->egresoModel->createEgreso($data);
                 if ($newId) {
                     

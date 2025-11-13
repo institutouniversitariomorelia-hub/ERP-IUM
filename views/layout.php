@@ -265,6 +265,27 @@ $currentUser = [
                         ?>
                     </div>
                 </div>
+                    <!-- Modal: Mostrar respuesta cruda (para debugging AJAX) -->
+                    <div class="modal fade" id="modalRawResponse" tabindex="-1" aria-labelledby="modalRawResponseLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header modal-header-danger">
+                                    <h5 class="modal-title" id="modalRawResponseLabel">Respuesta cruda del servidor</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="small text-muted">Se muestran las respuestas más recientes de los endpoints relacionados al modal de Presupuesto por Categoría.</p>
+                                    <h6>getAllCategorias</h6>
+                                    <pre id="raw_response_cats" style="white-space: pre-wrap; background:#f8f9fa; padding:12px; border-radius:6px; max-height:300px; overflow:auto;"></pre>
+                                    <h6 class="mt-3">getAllPresupuestos</h6>
+                                    <pre id="raw_response_pres" style="white-space: pre-wrap; background:#f8f9fa; padding:12px; border-radius:6px; max-height:300px; overflow:auto;"></pre>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
             </div>
         </header>
         <main id="view-container" class="p-4">
@@ -582,7 +603,94 @@ $currentUser = [
 
     <div class="modal fade" id="modalPresupuesto" tabindex="-1" aria-labelledby="modalPresupuestoLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-sm-down">
-            <div class="modal-content"><form id="formPresupuesto"><div class="modal-header modal-header-danger"><h5 class="modal-title" id="modalPresupuestoTitle">Asignar/Actualizar Presupuesto</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="presupuesto_id" name="id"><div class="mb-3"><label for="pres_categoria" class="form-label">Categoría</label><select id="pres_categoria" name="id_categoria" class="form-select" required></select></div><div class="mb-3"><label for="pres_monto" class="form-label">Monto Límite</label><input id="pres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required></div><div class="mb-3"><label for="pres_fecha" class="form-label">Fecha de Asignación</label><input id="pres_fecha" name="fecha" type="date" class="form-control" required></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger">Guardar/Actualizar Presupuesto</button></div></form></div>
+            <div class="modal-content">
+                <form id="formPresupuesto">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalPresupuestoTitle">Asignar/Actualizar Presupuesto</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="presupuesto_id" name="id">
+                        <div class="mb-3">
+                            <label for="pres_tipo" class="form-label">Tipo de Presupuesto</label>
+                            <select id="pres_tipo" name="tipo" class="form-select">
+                                <option value="general">General</option>
+                                <option value="categoria">Por Categoría</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="div_parent_presupuesto" style="display:none;">
+                            <label for="pres_parent" class="form-label">Presupuesto General (padre)</label>
+                            <select id="pres_parent" name="parent_presupuesto" class="form-select">
+                                <option value="">Cargando presupuestos generales...</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3" id="div_categoria">
+                            <label for="pres_categoria" class="form-label">Categoría</label>
+                            <select id="pres_categoria" name="id_categoria" class="form-select"></select>
+                            <div class="form-text">Si selecciona "General", deje la categoría en blanco.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pres_monto" class="form-label">Monto Límite</label>
+                            <input id="pres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pres_fecha" class="form-label">Fecha de Asignación</label>
+                            <input id="pres_fecha" name="fecha" type="date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Guardar/Actualizar Presupuesto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Presupuesto por Categoría (separado para evitar problemas de populación) -->
+    <div class="modal fade" id="modalPresupuestoCategoria" tabindex="-1" aria-labelledby="modalPresupuestoCategoriaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <form id="formPresupuestoCategoria">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalPresupuestoCategoriaTitle">Asignar Presupuesto por Categoría</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="presupuesto_categoria_id" name="id">
+
+                        <div class="mb-3">
+                            <label for="pres_parent_categoria" class="form-label">Presupuesto General (padre)</label>
+                            <select id="pres_parent_categoria" name="parent_presupuesto" class="form-select">
+                                <option value="">Cargando presupuestos generales...</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pres_categoria_categoria" class="form-label">Categoría</label>
+                            <select id="pres_categoria_categoria" name="id_categoria" class="form-select"></select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pres_monto_categoria" class="form-label">Monto Límite</label>
+                            <input id="pres_monto_categoria" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pres_fecha_categoria" class="form-label">Fecha de Asignación</label>
+                            <input id="pres_fecha_categoria" name="fecha" type="date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <!-- Cambiado a type=button para evitar envío nativo si JS falla -->
+                        <button type="button" id="btnGuardarPresCategoria" class="btn btn-danger">Guardar Presupuesto por Categoría</button>
+                        <button type="button" id="btnVerRawPresCat" class="btn btn-outline-secondary ms-2">Ver respuesta cruda</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 

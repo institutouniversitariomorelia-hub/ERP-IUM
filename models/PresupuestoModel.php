@@ -13,9 +13,10 @@ class PresupuestoModel {
      * @return array Lista de presupuestos.
      */
     public function getAllPresupuestos() {
-        // Nuevo diseño: presupuesto -> id_categoria; un presupuesto pertenece a una categoría
+        // Nuevo diseño: incluir parent_presupuesto y permitir id_categoria NULL para presupuestos generales
         $query = "SELECT p.*, p.id_presupuesto AS id,
-                         c.id_categoria, c.nombre AS cat_nombre
+                         c.id_categoria, c.nombre AS cat_nombre,
+                         p.parent_presupuesto
                   FROM presupuestos p
                   LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
                   ORDER BY p.id_presupuesto DESC";
@@ -33,11 +34,12 @@ class PresupuestoModel {
      * @return array|null Datos del presupuesto o null.
      */
     public function getPresupuestoById($id) {
-        $query = "SELECT p.*, p.id_presupuesto AS id,
-                         c.id_categoria, c.nombre AS cat_nombre
-                  FROM presupuestos p
-                  LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
-                  WHERE p.id_presupuesto = ?";
+     $query = "SELECT p.*, p.id_presupuesto AS id,
+                c.id_categoria, c.nombre AS cat_nombre,
+                p.parent_presupuesto
+            FROM presupuestos p
+            LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+            WHERE p.id_presupuesto = ?";
         $stmt = $this->db->prepare($query);
         if (!$stmt) {
             error_log('Error al preparar getPresupuestoById: ' . $this->db->error);
@@ -52,6 +54,34 @@ class PresupuestoModel {
     }
 
     /**
+     * Retorna la suma de los montos límite de los presupuestos hijos de un presupuesto general
+     */
+    public function getSumaPresupuestosHijos($parentId) {
+        $query = "SELECT COALESCE(SUM(monto_limite), 0) as total FROM presupuestos WHERE parent_presupuesto = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) { error_log('Error preparar getSumaPresupuestosHijos: ' . $this->db->error); return 0; }
+        $stmt->bind_param('i', $parentId);
+        $stmt->execute();
+        $total = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+        $stmt->close();
+        return floatval($total);
+    }
+
+    /**
+     * Retorna la suma de egresos asociados a un presupuesto (por id_presupuesto)
+     */
+    public function getGastadoEnPresupuesto($presupuestoId) {
+        $query = "SELECT COALESCE(SUM(monto), 0) as total FROM egresos WHERE id_presupuesto = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) { error_log('Error preparar getGastadoEnPresupuesto: ' . $this->db->error); return 0; }
+        $stmt->bind_param('i', $presupuestoId);
+        $stmt->execute();
+        $total = $stmt->get_result()->fetch_assoc()['total'] ?? 0;
+        $stmt->close();
+        return floatval($total);
+    }
+
+    /**
      * Crea o actualiza un presupuesto.
      * @param array $data Datos del presupuesto (monto_limite, fecha, id_user).
      * @param int|null $id ID del presupuesto si es actualización.
@@ -60,22 +90,21 @@ class PresupuestoModel {
     public function savePresupuesto($data, $id = null) {
         
         // CORREGIDO: Lógica adaptada a la nueva tabla
-        // Validar que venga id_categoria
-        if (empty($data['id_categoria']) || !is_numeric($data['id_categoria'])) {
-            error_log('savePresupuesto: id_categoria faltante o inválido');
-            return false;
-        }
+        // id_categoria puede ser NULL para presupuestos generales
+        // Manejar parent_presupuesto opcional
+        $parent = isset($data['parent_presupuesto']) && is_numeric($data['parent_presupuesto']) ? (int)$data['parent_presupuesto'] : null;
+        $cat = isset($data['id_categoria']) && is_numeric($data['id_categoria']) && $data['id_categoria'] > 0 ? (int)$data['id_categoria'] : null;
 
         if ($id) { // Actualizar
-            $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_categoria=?, id_user=? WHERE id_presupuesto=?";
+            $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_categoria=?, id_user=?, parent_presupuesto=? WHERE id_presupuesto=?";
             $stmt = $this->db->prepare($query);
             if (!$stmt) { error_log('Error al preparar updatePresupuesto: ' . $this->db->error); return false; }
-            $stmt->bind_param('dsiii', $data['monto_limite'], $data['fecha'], $data['id_categoria'], $data['id_user'], $id);
+            $stmt->bind_param('dsiiii', $data['monto_limite'], $data['fecha'], $cat, $data['id_user'], $parent, $id);
         } else { // Crear
-            $query = "INSERT INTO presupuestos (monto_limite, fecha, id_categoria, id_user) VALUES (?, ?, ?, ?)";
+            $query = "INSERT INTO presupuestos (monto_limite, fecha, id_categoria, id_user, parent_presupuesto) VALUES (?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($query);
             if (!$stmt) { error_log('Error al preparar createPresupuesto: ' . $this->db->error); return false; }
-            $stmt->bind_param('dsii', $data['monto_limite'], $data['fecha'], $data['id_categoria'], $data['id_user']);
+            $stmt->bind_param('dsiii', $data['monto_limite'], $data['fecha'], $cat, $data['id_user'], $parent);
         }
 
         $success = $stmt->execute();

@@ -18,6 +18,12 @@
                 <span class="d-none d-sm-inline">Agregar Presupuesto</span>
                 <span class="d-inline d-sm-none">Agregar</span>
             </button>
+            <!-- Nuevo botón: Presupuesto por Categoría (abre modal separado) -->
+            <button class="btn btn-outline-danger btn-sm flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#modalPresupuestoCategoria" id="btnNuevoPresCategoria" style="margin-left:8px;">
+                <ion-icon name="layers-outline" class="me-1"></ion-icon>
+                <span class="d-none d-sm-inline">Por Categoría</span>
+                <span class="d-inline d-sm-none">Categoría</span>
+            </button>
         <?php endif; ?>
     </div>
 </div>
