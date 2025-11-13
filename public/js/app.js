@@ -89,6 +89,90 @@ function ensureNumberEditable(selector) {
     });
 }
 
+// Debug helpers (kept global so other handlers can access the last AJAX raw text)
+var _lastCatsResponseText = '';
+var _lastPresResponseText = '';
+
+// Reusable poblador para el modal de Presupuesto por Categoría.
+// Acepta opcionalmente presId (para edición) y retorna una Promise.
+function populatePresupuestoCategoria(presId) {
+    var $form = $('#formPresupuestoCategoria');
+    var $selectCat = $('#pres_categoria_categoria');
+    var $selectParent = $('#pres_parent_categoria');
+    if (!$form.length || !$selectCat.length || !$selectParent.length) {
+        return $.Deferred().reject(new Error('Elementos del modal no encontrados')).promise();
+    }
+
+    $form[0].reset();
+    $('#presupuesto_categoria_id').val('');
+    $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
+    $selectParent.empty().append('<option value="">Cargando presupuestos generales...</option>').prop('disabled', true);
+
+    var pCats = ajaxCall('presupuesto', 'getAllCategorias', {}, 'GET');
+    var pPres = ajaxCall('presupuesto', 'getAllPresupuestos', {}, 'GET');
+
+    // Capture raw responseText for debugging
+    pCats.always(function(data, textStatus, jqXHR) {
+        try { _lastCatsResponseText = jqXHR && jqXHR.responseText ? jqXHR.responseText : JSON.stringify(data); } catch(e) { _lastCatsResponseText = String(data); }
+    });
+    pPres.always(function(data, textStatus, jqXHR) {
+        try { _lastPresResponseText = jqXHR && jqXHR.responseText ? jqXHR.responseText : JSON.stringify(data); } catch(e) { _lastPresResponseText = String(data); }
+    });
+
+    return $.when(pCats, pPres).then(function(catsRes, presRes) {
+        var cats = catsRes && catsRes[0] ? catsRes[0] : (catsRes || []);
+        var presupuestos = presRes && presRes[0] ? presRes[0] : (presRes || []);
+
+        $selectCat.empty().append('<option value="">Seleccione...</option>');
+        if (cats && Array.isArray(cats)) {
+            cats.forEach(function(c){
+                var catId = c.id_categoria !== undefined ? c.id_categoria : (c.id || '');
+                var nombre = c.nombre || (c.cat_nombre || '');
+                $selectCat.append($('<option></option>').attr('value', catId).text(nombre));
+            });
+        }
+        $selectCat.prop('disabled', false);
+
+        $selectParent.empty().append('<option value="">Seleccione presupuesto general...</option>');
+        if (presupuestos && Array.isArray(presupuestos)) {
+            var found = false;
+            presupuestos.forEach(function(p){
+                var id = p.id || p.id_presupuesto || '';
+                var catVal = (p.id_categoria === null || p.id_categoria === undefined || p.id_categoria === '') ? null : p.id_categoria;
+                if (catVal === null) {
+                    var monto = p.monto_limite || p.monto || '';
+                    var label = monto !== '' ? (monto + ' — ' + (p.fecha || '')) : ('Presupuesto ' + id);
+                    $selectParent.append($('<option>').val(id).text(label));
+                    found = true;
+                }
+            });
+            if (!found) {
+                $selectParent.empty().append('<option value="">-- No hay presupuestos generales --</option>');
+            }
+        }
+        $selectParent.prop('disabled', false);
+
+        // Si pasaron presId (edit), cargar datos
+        if (presId) {
+            return ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').then(function(data){
+                if (data && !data.error) {
+                    $('#presupuesto_categoria_id').val(data.id_presupuesto || data.id);
+                    if (data.parent_presupuesto) $selectParent.val(String(data.parent_presupuesto));
+                    if (data.id_categoria) $selectCat.val(String(data.id_categoria));
+                    $('#pres_monto_categoria').val(data.monto_limite || data.monto || '');
+                    $('#pres_fecha_categoria').val(data.fecha || '');
+                }
+                return { cats: cats, presupuestos: presupuestos };
+            });
+        }
+
+        return { cats: cats, presupuestos: presupuestos };
+    }, function(err){
+        // Propagar error
+        throw err;
+    });
+}
+
 
 /* ==========================================================================
    EVENTOS Y LÓGICA PARA CADA MÓDULO
@@ -602,61 +686,320 @@ $('#modalPresupuesto').on('show.bs.modal', function(event) {
     if (!$form.length) { console.error("Form #formPresupuesto no encontrado."); return; }
     $form[0].reset();
     $('#presupuesto_id').val('');
+    // Debug: asegurar que el contenedor parent y el input monto no queden bloqueados
+    console.log('DEBUG modalPresupuesto: asegurar visibilidad y editabilidad iniciales');
+    // Mantener el contenedor oculto por defecto (se mostrará si el tipo es 'categoria')
+    if ($('#div_parent_presupuesto').length) {
+        // no forzamos visibilidad inmediata, dejamos que toggleTipo controle la visibilidad
+        $('#div_parent_presupuesto').hide();
+    }
+    if ($('#pres_parent').length) {
+        $('#pres_parent').prop('disabled', true).removeAttr('readonly');
+    }
+    if ($('#pres_monto').length) {
+        $('#pres_monto').prop('disabled', false).prop('readonly', false).removeAttr('readonly');
+    }
     $selectCat.empty().append('<option>Cargando...</option>').prop('disabled', true);
 
-    ajaxCall('presupuesto', 'getAllCategorias', {}, 'GET')
-        .done(cats => {
-            $selectCat.empty().append('<option value="">Seleccione...</option>');
-            if (cats && cats.length > 0) {
-                cats.forEach(c => {
-                    // CRÍTICO: usar id_categoria numérico, NO el nombre
-                    const catId = c.id_categoria !== undefined ? c.id_categoria : (c.id || '');
-                    const nombre = c.nombre || (c.cat_nombre || '');
-                    const tipo = c.tipo || '';
-                    // Asegurar que value sea el ID numérico
-                    $selectCat.append($('<option></option>')
-                        .attr('value', catId)
-                        .text(`${nombre}${tipo ? ' ('+tipo+')' : ''}`));
-                });
-            }
-            $selectCat.prop('disabled', false);
+    // Cargar categorías y además cargar presupuestos generales para el select padre
+    const cargarCategorias = ajaxCall('presupuesto', 'getAllCategorias', {}, 'GET');
+    const cargarGenerales = ajaxCall('presupuesto', 'getAllPresupuestos', {}, 'GET');
 
-            if (presId) {
-                $('#modalPresupuestoTitle').text('Editar Presupuesto');
-                ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
-                    if (data && !data.error) {
-                        $('#presupuesto_id').val(data.id_presupuesto || data.id);
-                        // Esperamos id_categoria con el nuevo backend
-                        if (data.id_categoria) { $selectCat.val(String(data.id_categoria)); }
-                        else if (data.categoria && !isNaN(data.categoria)) { $selectCat.val(String(data.categoria)); }
-                        $('#pres_monto').val(data.monto_limite || data.monto || '');
-                        $('#pres_fecha').val(data.fecha || '');
-                    } else {
-                        $('#modalPresupuesto').modal('hide');
-                        alert('Error al cargar: ' + (data.error || ''));
-                    }
-                }).fail((xhr) => {mostrarError('cargar datos presupuesto', xhr); $('#modalPresupuesto').modal('hide');});
+    $.when(cargarCategorias, cargarGenerales).done(function(catsRes, presRes) {
+    const cats = catsRes[0];
+    const presupuestos = presRes[0];
+    console.log('DEBUG modalPresupuesto - cats:', cats);
+    console.log('DEBUG modalPresupuesto - presupuestos (raw):', presupuestos);
+
+        $selectCat.empty().append('<option value="">Seleccione...</option>');
+        if (cats && cats.length > 0) {
+            cats.forEach(c => {
+                const catId = c.id_categoria !== undefined ? c.id_categoria : (c.id || '');
+                const nombre = c.nombre || (c.cat_nombre || '');
+                const tipo = c.tipo || '';
+                $selectCat.append($('<option></option>').attr('value', catId).text(`${nombre}${tipo ? ' ('+tipo+')' : ''}`));
+            });
+        }
+        $selectCat.prop('disabled', false);
+
+        // Poblar select de presupuestos generales (solo aquellos sin id_categoria)
+        const $selectParent = $('#pres_parent');
+        $selectParent.empty().append('<option value="">Seleccione presupuesto general...</option>');
+        if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
+            let foundGeneral = false;
+            presupuestos.forEach(p => {
+                const id = p.id || p.id_presupuesto || '';
+                // Detectar presupuesto general: id_categoria NULL/undefined/empty
+                const catVal = (p.id_categoria === null || p.id_categoria === undefined || p.id_categoria === '' ) ? null : p.id_categoria;
+                if (catVal === null) {
+                    const monto = p.monto_limite || p.monto || '';
+                    const label = monto !== '' ? `${monto} — ${p.fecha || ''}` : `Presupuesto ${id}`;
+                    $selectParent.append(`<option value="${id}">${label}</option>`);
+                    foundGeneral = true;
+                }
+            });
+            if (!foundGeneral) {
+                console.warn('No se encontraron presupuestos generales para poblar #pres_parent');
             } else {
-                $('#modalPresupuestoTitle').text('Asignar/Actualizar');
+                console.log('DEBUG #pres_parent options count after populate:', $selectParent.find('option').length);
             }
-        })
-        .fail((xhr) => { mostrarError('cargar categorías ppto', xhr); $selectCat.empty().append('<option>Error</option>'); });
+        }
+        $selectParent.prop('disabled', false);
+
+        // Inicializar tipo (general / categoria) y toggle UI
+        const $tipo = $('#pres_tipo');
+        function toggleTipo() {
+            const val = $tipo.val();
+            console.log('DEBUG pres_tipo change ->', val);
+            if (val === 'general') {
+                console.log('DEBUG toggleTipo -> ocultando parent y categoria');
+                $('#div_parent_presupuesto').hide();
+                $('#div_categoria').hide();
+                $('#pres_categoria').prop('required', false);
+                $('#pres_parent').prop('required', false);
+                // Deshabilitar select padre cuando es general
+                $('#pres_parent').prop('disabled', true);
+            } else {
+                console.log('DEBUG toggleTipo -> mostrando parent y categoria');
+                // Mostrar claramente el contenedor y el select padre
+                $('#div_parent_presupuesto').show().css('display', 'block');
+                $('#div_categoria').show();
+                $('#pres_categoria').prop('required', true);
+                // Asegurar que el select padre esté habilitado y editable
+                $('#pres_parent').prop('required', true).prop('disabled', false).prop('readonly', false).removeAttr('readonly');
+                // Asegurar que el input de monto esté editable
+                $('#pres_monto').prop('disabled', false).prop('readonly', false).removeAttr('readonly');
+            }
+        }
+        $tipo.off('change.presTipo').on('change.presTipo', toggleTipo);
+        toggleTipo();
+
+        if (presId) {
+            $('#modalPresupuestoTitle').text('Editar Presupuesto');
+            ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
+                if (data && !data.error) {
+                    $('#presupuesto_id').val(data.id_presupuesto || data.id);
+                    if (data.id_categoria) { $selectCat.val(String(data.id_categoria)); }
+                    $('#pres_monto').val(data.monto_limite || data.monto || '');
+                    $('#pres_fecha').val(data.fecha || '');
+                    if (data.parent_presupuesto) {
+                        $tipo.val('categoria');
+                        $('#pres_parent').val(String(data.parent_presupuesto));
+                    } else {
+                        $tipo.val('general');
+                    }
+                    toggleTipo();
+                } else {
+                    $('#modalPresupuesto').modal('hide');
+                    alert('Error al cargar: ' + (data.error || ''));
+                }
+            }).fail((xhr) => {mostrarError('cargar datos presupuesto', xhr); $('#modalPresupuesto').modal('hide');});
+        } else {
+            $('#modalPresupuestoTitle').text('Asignar/Actualizar');
+        }
+
+    }).fail(function() {
+        mostrarError('cargar categorías o presupuestos generales');
+    });
 });
 // Asegurar que el campo monto del presupuesto sea editable
 ensureNumberEditable('#pres_monto');
-$(document).on('submit', '#formPresupuesto', function(e) { 
-    e.preventDefault(); 
+$(document).on('submit', '#formPresupuesto', function(e) {
+    e.preventDefault();
+    // Preparar datos según tipo
+    const tipo = $('#pres_tipo').val();
+    if (tipo === 'general') {
+        // Forzar valores para que el servidor lo considere general
+        $('#pres_parent').val('');
+        $('#pres_categoria').val('');
+        const formData = $(this).serialize();
+        console.log('=== DEPURACIÓN PRESUPUESTO (general) ===');
+        console.log('FormData serializado:', formData);
+        ajaxCall('presupuesto', 'save', formData).done(r => {
+            if (r.success) window.location.reload();
+            else alert('Error: ' + (r.error || 'Verifique si ya existe o los límites.'));
+        }).fail((xhr) => mostrarError('guardar presupuesto', xhr));
+        return;
+    }
+
+    // Por categoría: asegurar que exista parent y categoría; intentar autocompletar parent si está vacío
+    if (!$('#pres_parent').val()) {
+        // Intentar obtener presupuestos y seleccionar el primer Presupuesto General disponible
+        ajaxCall('presupuesto', 'getAllPresupuestos', {}, 'GET').done(function(presupuestos) {
+            try {
+                if (!presupuestos || !Array.isArray(presupuestos)) {
+                    alert('No se pudieron cargar los presupuestos. Intente recargar la página.');
+                    return;
+                }
+                let firstGeneral = null;
+                presupuestos.forEach(p => {
+                    const cat = (p.id_categoria === null || p.id_categoria === undefined || p.id_categoria === '') ? null : p.id_categoria;
+                    if (cat === null && !firstGeneral) {
+                        firstGeneral = p;
+                    }
+                });
+                if (firstGeneral) {
+                    const id = firstGeneral.id || firstGeneral.id_presupuesto || '';
+                    $('#pres_parent').val(String(id));
+                    // ahora procedemos a validar categoría y enviar
+                    if (!$('#pres_categoria').val()) {
+                        alert('Seleccione la categoría para este presupuesto por categoría.');
+                        return;
+                    }
+                    const formData = $('#formPresupuesto').serialize();
+                    console.log('=== DEPURACIÓN PRESUPUESTO (autocompletado parent) ===');
+                    console.log('FormData serializado:', formData);
+                    ajaxCall('presupuesto', 'save', formData).done(r => {
+                        if (r.success) window.location.reload();
+                        else alert('Error: ' + (r.error || 'Verifique si ya existe o los límites.'));
+                    }).fail((xhr) => mostrarError('guardar presupuesto', xhr));
+                } else {
+                    alert('No existe ningún Presupuesto General. Cree primero un Presupuesto General antes de asignar presupuestos por categoría.');
+                }
+            } catch (e) {
+                console.error('Error en fallback submit presupuesto:', e);
+                alert('Ocurrió un error al procesar el formulario. Ver consola.');
+            }
+        }).fail(function(xhr) {
+            mostrarError('cargar presupuestos', xhr);
+        });
+        return;
+    }
+
+    // Si ya tiene parent seleccionado y categoría ok, proceder normalmente
+    if (!$('#pres_categoria').val()) {
+        alert('Seleccione la categoría para este presupuesto por categoría.');
+        return;
+    }
     const formData = $(this).serialize();
     console.log('=== DEPURACIÓN PRESUPUESTO ===');
     console.log('FormData serializado:', formData);
-    console.log('Valor select #pres_categoria:', $('#pres_categoria').val());
-    console.log('Texto select #pres_categoria:', $('#pres_categoria option:selected').text());
-    ajaxCall('presupuesto', 'save', formData).done(r => { 
-        if(r.success) window.location.reload(); 
-        else alert('Error: ' + (r.error || 'Verifique si ya existe.')); 
-    }).fail((xhr) => mostrarError('guardar presupuesto', xhr)); 
+    ajaxCall('presupuesto', 'save', formData).done(r => {
+        if (r.success) window.location.reload();
+        else alert('Error: ' + (r.error || 'Verifique si ya existe o los límites.'));
+    }).fail((xhr) => mostrarError('guardar presupuesto', xhr));
 });
 $(document).on('click', '.btn-del-presupuesto', function() { if (confirm('¿Eliminar este presupuesto?')) { ajaxCall('presupuesto', 'delete', { id: $(this).data('id') }).done(r => { if(r.success) window.location.reload(); else alert('Error: ' + (r.error || 'Error.')); }).fail((xhr) => mostrarError('eliminar presupuesto', xhr)); } });
+
+// Nuevo: Modal y formulario específico para Presupuesto por Categoría
+$('#modalPresupuestoCategoria').on('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const presId = button ? $(button).data('id') : null;
+    // Usar la función reutilizable que garantiza capturar la respuesta cruda
+    populatePresupuestoCategoria(presId).then(function(){
+        console.log('populatePresupuestoCategoria: poblado correctamente');
+    }).catch(function(err){
+        console.error('populatePresupuestoCategoria error:', err);
+        const $body = $('#modalPresupuestoCategoria .modal-body');
+        if ($body.find('.alert-presupuesto-empty').length === 0) {
+            $body.prepend('<div class="alert alert-danger alert-presupuesto-empty">Error al cargar datos desde el servidor. Revise la consola (F12) y la pestaña Network.</div>');
+        }
+    });
+});
+
+// Asegurar que el monto sea editable
+ensureNumberEditable('#pres_monto_categoria');
+
+// Submit para el formulario específico de categoría
+// Ahora usamos un botón con click handler para evitar envío nativo que redirige si JS falla
+$(document).on('click', '#btnGuardarPresCategoria', function(e) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    // Mostrar modal con respuesta cruda cuando se hace click en el botón
+    $(document).off('click.showRawPresCat').on('click.showRawPresCat', '#btnVerRawPresCat', function() {
+        try {
+            $('#raw_response_cats').text((_lastCatsResponseText) || 'No hay respuesta disponible para getAllCategorias');
+            $('#raw_response_pres').text((_lastPresResponseText) || 'No hay respuesta disponible para getAllPresupuestos');
+            const modal = new bootstrap.Modal(document.getElementById('modalRawResponse'));
+            modal.show();
+        } catch(e) { console.error('Error mostrando raw response modal', e); alert('Error al abrir visor de respuesta cruda. Ver consola.'); }
+    });
+    const $form = $('#formPresupuestoCategoria');
+    if (!$form.length) { console.error('No se encontró #formPresupuestoCategoria'); return; }
+    // Validaciones básicas
+    if (!$('#pres_parent_categoria').val()) {
+        alert('Seleccione un Presupuesto General (padre) antes de guardar.');
+        return;
+    }
+    if (!$('#pres_categoria_categoria').val()) {
+        alert('Seleccione la categoría.');
+        return;
+    }
+    const formData = $form.serialize();
+    console.log('=== DEPURACIÓN PRESUPUESTO CATEGORÍA (click) ===');
+    console.log('FormData serializado:', formData);
+
+    ajaxCall('presupuesto', 'save', formData).done(r => {
+        console.log('Respuesta save presupuesto categoria:', r);
+        if (r && r.success) window.location.reload();
+        else {
+            alert('Error: ' + (r && r.error ? r.error : 'Verifique si ya existe o los límites.'));
+            // Mostrar detalle dentro del modal
+            const $body = $('#modalPresupuestoCategoria .modal-body');
+            $body.find('.alert-presupuesto-empty').remove();
+            $body.prepend('<div class="alert alert-danger alert-presupuesto-empty">' + (r && r.error ? r.error : 'Error al guardar presupuesto') + '</div>');
+        }
+    }).fail((xhr) => {
+        mostrarError('guardar presupuesto categoría', xhr);
+        console.error('AJAX fail guardar presupuesto categoria:', xhr);
+        const $body = $('#modalPresupuestoCategoria .modal-body');
+        $body.find('.alert-presupuesto-empty').remove();
+        $body.prepend('<div class="alert alert-danger alert-presupuesto-empty">Error al comunicarse con el servidor. Revise la consola y Network.</div>');
+    });
+});
+
+// Ensure modal elements are forced editable/visible when modal is shown (double-safety)
+$(document).on('shown.bs.modal', '#modalPresupuesto', function() {
+    try {
+        console.log('DEBUG modalPresupuesto: shown event fired');
+        const tipo = $('#pres_tipo').val();
+        if (tipo === 'categoria') {
+            $('#div_parent_presupuesto').show().css('display', 'block');
+            $('#pres_parent').prop('disabled', false).prop('readonly', false).removeAttr('readonly');
+        } else {
+            $('#div_parent_presupuesto').hide();
+            $('#pres_parent').prop('disabled', true);
+        }
+
+        // Ensure monto is editable and focused
+        $('#pres_monto').prop('disabled', false).prop('readonly', false).removeAttr('readonly').focus();
+
+        // Robust fallback: si el select #pres_parent no tiene opciones (o sólo el placeholder), solicitar los presupuestos ahora
+        const $selectParent = $('#pres_parent');
+        const optsCount = $selectParent.find('option').length;
+        console.log('DEBUG modalPresupuesto: pres_parent optsCount=', optsCount);
+        if (optsCount <= 1) {
+            console.log('DEBUG modalPresupuesto: fallback - solicitando getAllPresupuestos para poblar #pres_parent');
+            ajaxCall('presupuesto', 'getAllPresupuestos', {}, 'GET').done(function(presupuestos) {
+                try {
+                    if (!presupuestos || !Array.isArray(presupuestos)) {
+                        console.warn('Fallback getAllPresupuestos devolvió datos inesperados', presupuestos);
+                        return;
+                    }
+                    // limpiar y volver a poblar
+                    $selectParent.empty().append('<option value="">Seleccione presupuesto general...</option>');
+                    let found = false;
+                    presupuestos.forEach(p => {
+                        const id = p.id || p.id_presupuesto || '';
+                        const cat = p.id_categoria === null || p.id_categoria === undefined || p.id_categoria === '' ? null : p.id_categoria;
+                        if (cat === null) {
+                            const monto = p.monto_limite || p.monto || '';
+                            const label = monto !== '' ? `${monto} — ${p.fecha || ''}` : `Presupuesto ${id}`;
+                            $selectParent.append(`<option value="${id}">${label}</option>`);
+                            found = true;
+                        }
+                    });
+                    if (!found) console.warn('Fallback: no se encontraron presupuestos generales');
+                    $selectParent.prop('disabled', false);
+                    console.log('DEBUG modalPresupuesto: pres_parent options after fallback=', $selectParent.find('option').length);
+                } catch(e) { console.error('Error al poblar #pres_parent en fallback', e); }
+            }).fail(function(xhr) {
+                console.error('Fallback getAllPresupuestos falló', xhr);
+            });
+        }
+    } catch(e) { console.error('DEBUG modalPresupuesto shown handler error', e); }
+});
 
 // --- Eventos Módulo: Auditoría ---
 // (Sin cambios, usa submit normal)
@@ -700,6 +1043,26 @@ $(document).ready(function() {
             }
         } catch(e) { console.error('Error en sidebar:', e); }
     });
+
+    // Comprobación rápida: Si NO existen Presupuestos Generales, deshabilitar el botón "Por Categoría"
+    try {
+        ajaxCall('presupuesto', 'getAllPresupuestos', {}, 'GET').done(function(res) {
+            try {
+                if (!res || !Array.isArray(res)) return;
+                const hasGeneral = res.some(p => (p.id_categoria === null || p.id_categoria === undefined || p.id_categoria === ''));
+                if (!hasGeneral) {
+                    const $btn = $('#btnNuevoPresCategoria');
+                    if ($btn.length) {
+                        $btn.prop('disabled', true).addClass('disabled');
+                        $btn.attr('title', 'Cree primero un Presupuesto General para habilitar presupuestos por categoría');
+                        // añadir pequeño mensaje visual
+                        $btn.after('<small id="prescat_hint" class="text-muted ms-2 d-none d-md-inline">(Crear Presupuesto General primero)</small>');
+                        $('#prescat_hint').show();
+                    }
+                }
+            } catch(e) { console.error('Error en comprobación presupuestos generales:', e); }
+        }).fail(function(xhr){ console.warn('No se pudo comprobar existencia de presupuestos generales', xhr); });
+    } catch(e) { console.error('Error iniciando comprobación presupuestos generales', e); }
 });
 
 // Handler para abrir modal de auditoría y cargar detalles
