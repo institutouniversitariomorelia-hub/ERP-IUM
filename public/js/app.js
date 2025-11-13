@@ -678,6 +678,26 @@ $(document).on('click', '.btn-del-categoria', function() { if (confirm('¿Elimin
 $(document).on('click', '#btnRefrescarCategorias', () => window.location.reload());
 
 // --- Eventos Módulo: Presupuestos ---
+
+// Handler para botón "Nuevo Presupuesto General"
+$(document).on('click', '#btnNuevoPresupuestoGeneral, #btnPrimerPresupuesto', function() {
+    // Forzar tipo general al abrir el modal
+    setTimeout(function() {
+        $('#pres_tipo').val('general').trigger('change');
+    }, 100);
+});
+
+// Handler para botón "Agregar Sub-presupuesto"
+$(document).on('click', '.btn-add-sub-presupuesto', function() {
+    const parentId = $(this).data('parent-id');
+    // Pre-seleccionar el presupuesto padre en el modal de categoría
+    $('#modalPresupuestoCategoria').one('shown.bs.modal', function() {
+        setTimeout(function() {
+            $('#pres_parent_categoria').val(parentId);
+        }, 100);
+    });
+});
+
 $('#modalPresupuesto').on('show.bs.modal', function(event) {
     const button = event.relatedTarget;
     const presId = button ? $(button).data('id') : null;
@@ -775,27 +795,38 @@ $('#modalPresupuesto').on('show.bs.modal', function(event) {
         toggleTipo();
 
         if (presId) {
-            $('#modalPresupuestoTitle').text('Editar Presupuesto');
+            // Verificar si es un presupuesto general o por categoría para decidir qué modal usar
             ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
                 if (data && !data.error) {
-                    $('#presupuesto_id').val(data.id_presupuesto || data.id);
-                    if (data.id_categoria) { $selectCat.val(String(data.id_categoria)); }
-                    $('#pres_monto').val(data.monto_limite || data.monto || '');
-                    $('#pres_fecha').val(data.fecha || '');
-                    if (data.parent_presupuesto) {
-                        $tipo.val('categoria');
-                        $('#pres_parent').val(String(data.parent_presupuesto));
-                    } else {
+                    const isGeneral = !data.id_categoria || data.id_categoria === null;
+                    
+                    if (isGeneral) {
+                        // Es presupuesto general - usar modal actual
+                        $('#modalPresupuestoTitle').text('Editar Presupuesto General');
+                        $('#presupuesto_id').val(data.id_presupuesto || data.id);
+                        $('#pres_monto').val(data.monto_limite || data.monto || '');
+                        $('#pres_fecha').val(data.fecha || '');
                         $tipo.val('general');
+                        toggleTipo();
+                    } else {
+                        // Es presupuesto por categoría - cerrar este modal y abrir el correcto
+                        $('#modalPresupuesto').modal('hide');
+                        setTimeout(() => {
+                            $('#modalPresupuestoCategoria').modal('show');
+                            // Los datos se cargarán cuando se abra ese modal
+                        }, 300);
+                        return;
                     }
-                    toggleTipo();
                 } else {
                     $('#modalPresupuesto').modal('hide');
                     alert('Error al cargar: ' + (data.error || ''));
                 }
             }).fail((xhr) => {mostrarError('cargar datos presupuesto', xhr); $('#modalPresupuesto').modal('hide');});
         } else {
-            $('#modalPresupuestoTitle').text('Asignar/Actualizar');
+            $('#modalPresupuestoTitle').text('Nuevo Presupuesto General');
+            // Por defecto, establecer como general
+            $tipo.val('general');
+            toggleTipo();
         }
 
     }).fail(function() {
@@ -885,6 +916,16 @@ $(document).on('click', '.btn-del-presupuesto', function() { if (confirm('¿Elim
 $('#modalPresupuestoCategoria').on('show.bs.modal', function(event) {
     const button = event.relatedTarget;
     const presId = button ? $(button).data('id') : null;
+    
+    // Verificar si se llamó desde un botón de editar sub-presupuesto
+    if (button && $(button).hasClass('btn-edit-presupuesto') && presId) {
+        // Es edición - actualizar título
+        $('#modalPresupuestoCategoriaTitle').text('Editar Sub-presupuesto');
+    } else {
+        // Es nuevo - titulo normal
+        $('#modalPresupuestoCategoriaTitle').text('Nuevo Sub-presupuesto por Categoría');
+    }
+    
     // Usar la función reutilizable que garantiza capturar la respuesta cruda
     populatePresupuestoCategoria(presId).then(function(){
         console.log('populatePresupuestoCategoria: poblado correctamente');

@@ -4,110 +4,229 @@
 // Variables disponibles: $pageTitle, $activeModule, $presupuestos, $currentUser (del layout)
 ?>
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
-    <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle); ?>: Resumen General</h3>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
+    <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle); ?>: Sistema Jerárquico</h3>
     <div class="d-flex gap-2 w-100 w-md-auto">
         <button class="btn btn-outline-danger btn-sm flex-grow-1 flex-md-grow-0" id="btnVerGraficaPresupuestos">
             <ion-icon name="bar-chart-outline" style="vertical-align: middle;"></ion-icon> 
             <span class="d-none d-sm-inline">Ver Análisis</span>
             <span class="d-inline d-sm-none">Análisis</span>
         </button>
-        <?php if (roleCan('add','presupuestos')): ?>
-            <button class="btn btn-danger btn-sm flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#modalPresupuesto" id="btnNuevoPresupuesto">
-                <ion-icon name="add-circle-outline" class="me-1"></ion-icon> 
-                <span class="d-none d-sm-inline">Agregar Presupuesto</span>
-                <span class="d-inline d-sm-none">Agregar</span>
-            </button>
-            <!-- Nuevo botón: Presupuesto por Categoría (abre modal separado) -->
-            <button class="btn btn-outline-danger btn-sm flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#modalPresupuestoCategoria" id="btnNuevoPresCategoria" style="margin-left:8px;">
-                <ion-icon name="layers-outline" class="me-1"></ion-icon>
-                <span class="d-none d-sm-inline">Por Categoría</span>
-                <span class="d-inline d-sm-none">Categoría</span>
-            </button>
-        <?php endif; ?>
     </div>
 </div>
 
-<div class="action-menu mb-4 d-none">
-    <button class="btn active">Ver Presupuesto</button>
-    <button class="btn" data-bs-toggle="modal" data-bs-target="#modalPresupuesto">Agregar</button>
-    <button class="btn">Actualizar</button> </div>
+<!-- Información del sistema -->
+<div class="alert alert-info alert-info-custom d-flex align-items-center mb-4" style="border-left: 4px solid #0dcaf0;">
+    <ion-icon name="information-circle-outline" style="font-size: 1.5rem; margin-right: 10px; color: #0dcaf0;"></ion-icon>
+    <div>
+        <strong>Sistema de Presupuestos Jerárquico:</strong><br>
+        Primero cree un <strong>Presupuesto General</strong> por mes, luego asigne <strong>Sub-presupuestos</strong> por categoría dentro de cada presupuesto general.
+    </div>
+</div>
 
-<div class="card shadow-sm">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <?php 
-            // Verificar si el usuario tiene permisos para editar o eliminar
-            $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos');
-            $colspan = $hasActions ? '4' : '3';
-            ?>
-            <table class="table table-hover table-striped mb-0">
-                <thead>
-                    <tr class="table-light">
-                        <th>Categoría</th>
-                        <th class="text-end">Monto Límite</th>
-                        <th class="d-none d-md-table-cell">Fecha Asig.</th>
-                        <?php if ($hasActions): ?>
-                            <th class="text-center">Acciones</th>
-                        <?php endif; ?>
-                    </tr>
-                </thead>
-                <tbody id="tablaPresupuestos">
-                    <?php if (empty($presupuestos)): ?>
-                        <tr><td colspan="<?php echo $colspan; ?>" class="text-center p-4 text-muted">No hay presupuestos asignados.</td></tr>
-                    <?php else: ?>
-                        <?php foreach ($presupuestos as $presupuesto):
-                            $monto = $presupuesto['monto_limite'] ?? ($presupuesto['monto'] ?? 0);
-                            $montoFormateado = number_format((float)$monto, 2);
-                            try {
-                                if (class_exists('NumberFormatter')) {
-                                    $formatter = new NumberFormatter('es-MX', NumberFormatter::CURRENCY);
-                                    if (is_numeric($monto)) {
-                                        $montoFormateado = $formatter->formatCurrency($monto, 'MXN');
-                                    }
-                                }
-                            } catch (Exception $e) { /* Ignorar */ }
-                            $categoria = htmlspecialchars($presupuesto['cat_nombre'] ?? '-');
-                            $fechaDisplay = htmlspecialchars($presupuesto['fecha'] ?? '-');
-                            $presId = $presupuesto['id'] ?? ($presupuesto['id_presupuesto'] ?? 0);
-                            $catId = $presupuesto['id_categoria'] ?? null;
-                        ?>
-                            <tr>
-                                <td>
-                                    <?php echo $categoria; ?>
-                                    <br class="d-md-none">
-                                    <small class="d-md-none text-muted"><?php echo $fechaDisplay; ?></small>
-                                </td>
-                                <td class="text-end fw-bold"><?php echo $montoFormateado; ?></td>
-                                <td class="d-none d-md-table-cell"><?php echo $fechaDisplay; ?></td>
-                                <?php if ($hasActions): ?>
-                                    <td class="text-center align-middle">
-                                        <div class="d-flex flex-column flex-sm-row gap-1 justify-content-center align-items-center">
-                                            <?php if (roleCan('edit','presupuestos')): ?>
-                                                <button class="btn btn-sm btn-warning btn-edit-presupuesto"
-                                                        data-id="<?php echo $presId; ?>"
-                                                        data-cat="<?php echo htmlspecialchars($catId); ?>"
-                                                        data-bs-toggle="modal" data-bs-target="#modalPresupuesto"
-                                                        title="Editar Presupuesto">
-                                                     <ion-icon name="create-outline"></ion-icon>
-                                                </button>
-                                            <?php endif; ?>
-                                            <?php if (roleCan('delete','presupuestos')): ?>
-                                                <button class="btn btn-sm btn-danger btn-del-presupuesto"
-                                                        data-id="<?php echo $presId; ?>"
-                                                        title="Eliminar Presupuesto">
-                                                    <ion-icon name="trash-outline"></ion-icon>
-                                                </button>
-                                            <?php endif; ?>
-                                        </div>
-                                    </td>
-                                <?php endif; ?>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
+<?php
+// Separar presupuestos generales de los presupuestos por categoría
+$presupuestosGenerales = [];
+$subPresupuestos = [];
+
+foreach ($presupuestos as $presupuesto) {
+    if (empty($presupuesto['id_categoria'])) {
+        $presupuestosGenerales[] = $presupuesto;
+    } else {
+        $parentId = $presupuesto['parent_presupuesto'] ?? 0;
+        if (!isset($subPresupuestos[$parentId])) {
+            $subPresupuestos[$parentId] = [];
+        }
+        $subPresupuestos[$parentId][] = $presupuesto;
+    }
+}
+
+// Verificar permisos
+$hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos');
+?>
+
+<!-- Sección de Presupuestos Generales -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="text-success fw-bold mb-0">
+                <ion-icon name="wallet-outline" style="vertical-align: middle;"></ion-icon>
+                Presupuestos Generales
+            </h4>
+            <?php if (roleCan('add','presupuestos')): ?>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalPresupuesto" id="btnNuevoPresupuestoGeneral">
+                    <ion-icon name="add-circle-outline" class="me-1"></ion-icon>
+                    Nuevo Presupuesto General
+                </button>
+            <?php endif; ?>
         </div>
+        
+        <?php if (empty($presupuestosGenerales)): ?>
+            <div class="alert alert-warning text-center py-4" style="border-radius: 15px; background: linear-gradient(135deg, #fff3cd 0%, #fef7e0 100%); border: 2px dashed #ffc107;">
+                <ion-icon name="wallet-outline" style="font-size: 3rem; color: #f39c12; opacity: 0.7;"></ion-icon>
+                <h4 class="mt-3 text-warning">No hay Presupuestos Generales</h4>
+                <p class="text-muted mb-3">Para comenzar a usar el sistema de presupuestos, primero debe crear un Presupuesto General.</p>
+                <?php if (roleCan('add','presupuestos')): ?>
+                <button class="btn btn-warning btn-lg" data-bs-toggle="modal" data-bs-target="#modalPresupuesto" id="btnPrimerPresupuesto">
+                    <ion-icon name="add-circle-outline" class="me-2"></ion-icon>
+                    Crear Primer Presupuesto General
+                </button>
+                <?php else: ?>
+                <p class="text-muted small">Contacte al administrador para crear presupuestos.</p>
+                <?php endif; ?>
+            </div>
+        <?php else: ?>
+            <div class="row g-3 g-md-4">
+                <?php foreach ($presupuestosGenerales as $presGeneral): 
+                    $monto = $presGeneral['monto_limite'] ?? 0;
+                    $presId = $presGeneral['id'] ?? ($presGeneral['id_presupuesto'] ?? 0);
+                    $fecha = $presGeneral['fecha'] ?? '';
+                    
+                    // Formatear moneda
+                    $montoFormateado = '$' . number_format((float)$monto, 2);
+                    try {
+                        if (class_exists('NumberFormatter')) {
+                            $formatter = new NumberFormatter('es-MX', NumberFormatter::CURRENCY);
+                            if (is_numeric($monto)) {
+                                $montoFormateado = $formatter->formatCurrency($monto, 'MXN');
+                            }
+                        }
+                    } catch (Exception $e) { /* Ignorar */ }
+                    
+                    // Calcular totales asignados y disponibles
+                    $totalAsignado = 0;
+                    $subPresupuestosDelGeneral = $subPresupuestos[$presId] ?? [];
+                    foreach ($subPresupuestosDelGeneral as $sub) {
+                        $totalAsignado += floatval($sub['monto_limite'] ?? 0);
+                    }
+                    $disponible = $monto - $totalAsignado;
+                    $porcentajeAsignado = $monto > 0 ? ($totalAsignado / $monto) * 100 : 0;
+                ?>
+                <div class="col-12 col-md-6 col-xl-4">
+                    <div class="card presupuesto-card card-presupuesto-general h-100" style="border-radius: 15px; border-left: 5px solid #28a745;">
+                        <div class="card-header bg-light border-0" style="border-radius: 15px 15px 0 0;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="text-success mb-0 fw-bold">
+                                    <ion-icon name="calendar-outline" style="vertical-align: middle;"></ion-icon>
+                                    <?php echo htmlspecialchars(date('F Y', strtotime($fecha))); ?>
+                                </h5>
+                                <?php if ($hasActions): ?>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <ion-icon name="ellipsis-vertical-outline"></ion-icon>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <?php if (roleCan('edit','presupuestos')): ?>
+                                        <li><button class="dropdown-item btn-edit-presupuesto" data-id="<?php echo $presId; ?>" data-bs-toggle="modal" data-bs-target="#modalPresupuesto">
+                                            <ion-icon name="create-outline" class="me-2"></ion-icon>Editar
+                                        </button></li>
+                                        <?php endif; ?>
+                                        <?php if (roleCan('delete','presupuestos')): ?>
+                                        <li><button class="dropdown-item text-danger btn-del-presupuesto" data-id="<?php echo $presId; ?>">
+                                            <ion-icon name="trash-outline" class="me-2"></ion-icon>Eliminar
+                                        </button></li>
+                                        <?php endif; ?>
+                                    </ul>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center mb-3">
+                                <div class="col-4">
+                                    <div class="border-end">
+                                        <h6 class="text-primary mb-1">Monto Total</h6>
+                                        <p class="h5 text-success mb-0 monto-display"><?php echo $montoFormateado; ?></p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border-end">
+                                        <h6 class="text-primary mb-1">Asignado</h6>
+                                        <p class="h6 text-warning mb-0 monto-display">$<?php echo number_format($totalAsignado, 2); ?></p>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <h6 class="text-primary mb-1">Disponible</h6>
+                                    <p class="h6 <?php echo $disponible >= 0 ? 'text-success' : 'text-danger'; ?> mb-0 monto-display">
+                                        $<?php echo number_format($disponible, 2); ?>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <!-- Barra de progreso -->
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <small class="text-muted">% Asignado</small>
+                                    <span class="badge badge-porcentaje <?php echo $porcentajeAsignado > 90 ? 'bg-danger' : ($porcentajeAsignado > 70 ? 'bg-warning' : 'bg-success'); ?>">
+                                        <?php echo number_format($porcentajeAsignado, 1); ?>%
+                                    </span>
+                                </div>
+                                <div class="progress progress-custom">
+                                    <div class="progress-bar <?php echo $porcentajeAsignado > 90 ? 'bg-danger' : ($porcentajeAsignado > 70 ? 'bg-warning' : 'bg-success'); ?>" 
+                                         style="width: <?php echo min($porcentajeAsignado, 100); ?>%"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Botón para agregar sub-presupuesto -->
+                            <?php if (roleCan('add','presupuestos')): ?>
+                            <div class="text-center">
+                                <button class="btn btn-outline-primary btn-sm btn-add-sub btn-add-sub-presupuesto" 
+                                        data-parent-id="<?php echo $presId; ?>"
+                                        data-bs-toggle="modal" data-bs-target="#modalPresupuestoCategoria">
+                                    <ion-icon name="add-outline" class="me-1"></ion-icon>
+                                    Agregar Sub-presupuesto
+                                </button>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <!-- Sub-presupuestos -->
+                        <?php if (!empty($subPresupuestosDelGeneral)): ?>
+                        <div class="card-footer bg-light" style="border-radius: 0 0 15px 15px;">
+                            <h6 class="text-muted mb-2">
+                                <ion-icon name="layers-outline" style="vertical-align: middle;"></ion-icon>
+                                Sub-presupuestos por Categoría (<?php echo count($subPresupuestosDelGeneral); ?>)
+                            </h6>
+                            <?php foreach ($subPresupuestosDelGeneral as $sub): 
+                                $subMonto = floatval($sub['monto_limite'] ?? 0);
+                                $subCategoria = htmlspecialchars($sub['cat_nombre'] ?? 'Sin categoría');
+                                $subId = $sub['id'] ?? ($sub['id_presupuesto'] ?? 0);
+                            ?>
+                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom sub-presupuesto-item">
+                                <div>
+                                    <small class="fw-bold text-primary"><?php echo $subCategoria; ?></small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <small class="text-success fw-bold monto-display">$<?php echo number_format($subMonto, 2); ?></small>
+                                    <?php if ($hasActions): ?>
+                                    <div class="btn-group btn-group-sm">
+                                        <?php if (roleCan('edit','presupuestos')): ?>
+                                        <button class="btn btn-outline-warning btn-sm btn-edit-presupuesto" 
+                                                data-id="<?php echo $subId; ?>" 
+                                                data-bs-toggle="modal" data-bs-target="#modalPresupuestoCategoria"
+                                                title="Editar">
+                                            <ion-icon name="create-outline"></ion-icon>
+                                        </button>
+                                        <?php endif; ?>
+                                        <?php if (roleCan('delete','presupuestos')): ?>
+                                        <button class="btn btn-outline-danger btn-sm btn-del-presupuesto" 
+                                                data-id="<?php echo $subId; ?>"
+                                                title="Eliminar">
+                                            <ion-icon name="trash-outline"></ion-icon>
+                                        </button>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
 </div>
 
