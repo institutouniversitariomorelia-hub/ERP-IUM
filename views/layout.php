@@ -133,6 +133,80 @@ $currentUser = [
         .aud-row-insert { background: rgba(198, 239, 206, 0.25); }
         .aud-row-update { background: rgba(255, 243, 205, 0.25); }
         .aud-row-delete { background: rgba(248, 215, 218, 0.25); }
+
+        /* Estilos personalizados para presupuestos jerárquicos */
+        .presupuesto-card { 
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; 
+        }
+        .presupuesto-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .sub-presupuesto-item {
+            transition: background-color 0.15s ease;
+        }
+        .sub-presupuesto-item:hover {
+            background-color: rgba(0,123,255,0.05);
+        }
+        .monto-display {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-weight: 600;
+        }
+        .badge-porcentaje {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.6rem;
+        }
+        .progress-custom {
+            height: 10px;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        .card-presupuesto-general {
+            border: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .card-presupuesto-general .card-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 2px solid #28a745;
+        }
+        .btn-add-sub {
+            transition: all 0.2s ease;
+            border-radius: 20px;
+        }
+        .btn-add-sub:hover {
+            transform: scale(1.05);
+        }
+        .alert-info-custom {
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+            border: none;
+            border-radius: 12px;
+        }
+        
+        /* Responsive improvements for presupuestos */
+        @media (max-width: 768px) {
+            .presupuesto-card .row.text-center > .col-4 {
+                margin-bottom: 0.5rem;
+            }
+            .presupuesto-card .row.text-center .border-end {
+                border-right: none !important;
+                border-bottom: 1px solid #dee2e6;
+                padding-bottom: 0.5rem;
+            }
+            .presupuesto-card .row.text-center > .col-4:last-child .border-end {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+            .btn-add-sub {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.8rem;
+            }
+            .sub-presupuesto-item {
+                padding: 0.5rem 0 !important;
+            }
+            .monto-display {
+                font-size: 0.9rem;
+            }
+        }
     </style>
 </head>
 <body>
