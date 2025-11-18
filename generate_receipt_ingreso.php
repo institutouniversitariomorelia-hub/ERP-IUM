@@ -10,7 +10,7 @@ if ($folio <= 0) {
     exit;
 }
 
-// Consulta segura con JOIN para obtener nombre de categoría
+// Consulta segura con JOIN para obtener nombre de categoría y pagos parciales
 $sql = "SELECT i.*, c.nombre AS nombre_categoria 
         FROM ingresos i
         LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
@@ -29,6 +29,20 @@ $stmt->close();
 if (!$ingreso) {
     echo "Recibo no encontrado para folio: " . htmlspecialchars($folio);
     exit;
+}
+
+// Obtener pagos parciales si existen
+$sqlPagos = "SELECT * FROM pagos_parciales WHERE folio_ingreso = ? ORDER BY orden ASC";
+$stmtPagos = $conn->prepare($sqlPagos);
+$pagosParciales = [];
+if ($stmtPagos) {
+    $stmtPagos->bind_param("i", $folio);
+    $stmtPagos->execute();
+    $resPagos = $stmtPagos->get_result();
+    while ($pago = $resPagos->fetch_assoc()) {
+        $pagosParciales[] = $pago;
+    }
+    $stmtPagos->close();
 }
 
 // Formatear monto
@@ -71,7 +85,18 @@ $mes = htmlspecialchars($ingreso['mes_correspondiente'] ?? '');
 $anio = htmlspecialchars($ingreso['anio'] ?? '');
 $metodo = htmlspecialchars($ingreso['metodo_de_pago'] ?? $ingreso['metodo'] ?? '');
 $observaciones = htmlspecialchars($ingreso['observaciones'] ?? '');
-$dia_pago = htmlspecialchars($ingreso['dia_pago'] ?? '');
+
+// Construir detalle de métodos de pago
+$detalleMetodos = '';
+if (!empty($pagosParciales)) {
+    $detalleMetodos = '<div style="margin-top: 8px;">';
+    foreach ($pagosParciales as $pago) {
+        $metodoPago = htmlspecialchars($pago['metodo_pago']);
+        $montoPago = number_format((float)$pago['monto'], 2);
+        $detalleMetodos .= '<div style="padding: 4px 0; font-size: 13px;"><strong>' . $metodoPago . ':</strong> $' . $montoPago . '</div>';
+    }
+    $detalleMetodos .= '</div>';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -180,7 +205,16 @@ $dia_pago = htmlspecialchars($ingreso['dia_pago'] ?? '');
                 <div style="height:18px;"></div>
 
                 <div class="label">MÉTODO DE PAGO</div>
-                <div class="value"><?php echo $metodo ?: '-'; ?></div>
+                <div class="value">
+                    <?php 
+                    if (!empty($pagosParciales)) {
+                        echo '<span style="color: #b12b3a; font-weight: 600;">Pago Dividido</span>';
+                        echo $detalleMetodos;
+                    } else {
+                        echo $metodo ?: '-';
+                    }
+                    ?>
+                </div>
 
                 <div style="height:8px;"></div>
 

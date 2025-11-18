@@ -585,45 +585,56 @@ $(document).on('submit', '#formEgreso', function(e) { e.preventDefault(); ajaxCa
 $(document).on('click', '.btn-del-egreso', function() { const id = $(this).data('id'); if (confirm('¿Eliminar este egreso?')) { ajaxCall('egreso', 'delete', { id: id }).done(r => { if(r.success) window.location.reload(); else alert('Error al eliminar: ' + (r.error || 'Error.')); }).fail((xhr) => mostrarError('eliminar egreso', xhr)); } });
 
 
-// --- Eventos Módulo: Ingresos (ACTUALIZADO CON NUEVOS CAMPOS) ---
+// --- Eventos Módulo: Ingresos (CON SISTEMA DE PAGOS DIVIDIDOS) ---
+
+// Variable global para contar pagos parciales
+let contadorPagos = 0;
+
+// Evento cuando se abre el modal de ingreso
 $('#modalIngreso').on('show.bs.modal', function (event) {
     const button = event.relatedTarget;
-    const ingresoId = button ? $(button).data('id') : null; // Este ID es folio_ingreso
+    const ingresoId = button ? $(button).data('id') : null;
     const $form = $('#formIngreso');
-    const $selectCat = $('#in_id_categoria'); // ID correcto del select
+    const $selectCat = $('#in_id_categoria');
 
     if (!$form.length) { console.error("Formulario #formIngreso no encontrado."); return; }
+    
+    // Reset del formulario
     $form[0].reset();
-    $('#ingreso_id').val(''); // Campo oculto para folio_ingreso en update
+    $('#ingreso_id').val('');
+    contadorPagos = 0;
+    $('#contenedor_pagos_parciales').empty();
+    $('#seccion_pago_unico').show();
+    $('#seccion_cobro_dividido').hide();
+    $('#toggleCobroDividido').prop('checked', false);
+    $('#in_monto').prop('readonly', false).prop('disabled', false).css('background-color', '');
+    $('#in_metodo_unico').val('');
+    $('#in_monto_unico').val('');
+    
     $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
-    // Asegurar que el campo monto sea editable
-    ensureNumberEditable('#in_monto');
 
-    // 1. Cargar categorías de Ingreso (ID y Nombre)
+    // Cargar categorías de Ingreso
     ajaxCall('ingreso', 'getCategoriasIngreso', {}, 'GET')
         .done(categorias => {
             $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
             if (categorias && Array.isArray(categorias) && categorias.length > 0) {
-                 // Usar id_categoria como valor (de tu tabla categorias)
                 categorias.forEach(cat => {
-                     if (cat && cat.id_categoria !== undefined && cat.nombre !== undefined) {
+                    if (cat && cat.id_categoria !== undefined && cat.nombre !== undefined) {
                         $selectCat.append(`<option value="${cat.id_categoria}">${cat.nombre}</option>`);
-                    } else { console.warn("Categoría Ingreso con formato incorrecto:", cat); }
+                    }
                 });
-            } else { $selectCat.append('<option value="">-- No hay categorías de ingreso --</option>'); }
+            }
             $selectCat.prop('disabled', false);
 
-            // 2. Si es edición, cargar datos del ingreso
+            // Si es edición, cargar datos
             if (ingresoId) {
                 $('#modalIngresoTitle').text('Editar Ingreso');
-                ajaxCall('ingreso', 'getIngresoData', { id: ingresoId }, 'GET') // Pide datos usando folio_ingreso
+                ajaxCall('ingreso', 'getIngresoData', { id: ingresoId }, 'GET')
                     .done(data => {
                         if(data && !data.error && data.folio_ingreso !== undefined) {
-                            // Rellenar TODOS los campos del formulario
-                            $('#ingreso_id').val(data.folio_ingreso); // Guardar PK en campo oculto 'id'
+                            $('#ingreso_id').val(data.folio_ingreso);
                             $('#in_fecha').val(data.fecha);
                             $('#in_monto').val(data.monto);
-                            $('#in_metodo_de_pago').val(data.metodo_de_pago);
                             $('#in_alumno').val(data.alumno);
                             $('#in_matricula').val(data.matricula);
                             $('#in_nivel').val(data.nivel);
@@ -631,44 +642,281 @@ $('#modalIngreso').on('show.bs.modal', function (event) {
                             $('#in_grado').val(data.grado);
                             $('#in_modalidad').val(data.modalidad);
                             $('#in_grupo').val(data.grupo);
-                            $selectCat.val(data.id_categoria); // Seleccionar categoría por ID
+                            $selectCat.val(data.id_categoria);
                             $('#in_concepto').val(data.concepto);
                             $('#in_mes_correspondiente').val(data.mes_correspondiente);
-                            $('#in_anio').val(data.anio); // Corregido a 'anio' (con n)
-                            $('#in_dia_pago').val(data.dia_pago);
+                            $('#in_anio').val(data.anio);
                             $('#in_observaciones').val(data.observaciones);
+                            
+                            // Cargar pagos parciales si existen
+                            if (data.pagos_parciales && data.pagos_parciales.length > 0) {
+                                $('#toggleCobroDividido').prop('checked', true).trigger('change');
+                                data.pagos_parciales.forEach(pago => {
+                                    agregarFilaPago(pago.metodo_pago, pago.monto);
+                                });
+                            } else if (data.metodo_de_pago && data.metodo_de_pago !== 'Mixto') {
+                                $('#toggleCobroDividido').prop('checked', false).trigger('change');
+                                $('#in_metodo_unico').val(data.metodo_de_pago);
+                            }
                         } else {
                             $('#modalIngreso').modal('hide');
-                            alert('Error al cargar datos del ingreso: '+(data.error || 'Registro no encontrado o inválido.'));
-                         }
+                            alert('Error al cargar datos del ingreso: '+(data.error || 'Registro no encontrado.'));
+                        }
                     }).fail((xhr) => {
                         mostrarError('cargar datos ingreso', xhr);
                         $('#modalIngreso').modal('hide');
                     });
             } else {
                 $('#modalIngresoTitle').text('Registrar Nuevo Ingreso');
-                $('#in_anio').val(new Date().getFullYear()); // Poner año actual por defecto
+                $('#in_anio').val(new Date().getFullYear());
+                // Asegurar que inicia en modo pago único
+                $('#seccion_pago_unico').show();
+                $('#seccion_cobro_dividido').hide();
+                $('#toggleCobroDividido').prop('checked', false);
             }
         }).fail((xhr) => {
             mostrarError('cargar categorías ingreso', xhr);
-            $selectCat.empty().append('<option value="">Error al cargar categorías</option>').prop('disabled', false);
         });
 });
-// Envío de formulario (usa 'anio' del form)
-$(document).on('submit', '#formIngreso', function(e) { 
-    e.preventDefault(); 
-    const formData = $(this).serialize();
-    console.log('FormIngreso enviando:', formData);
-    console.log('Modalidad value:', $('#in_modalidad').val());
-    console.log('Observaciones value:', $('#in_observaciones').val());
+
+// Toggle entre pago único y cobro dividido
+$(document).on('change', '#toggleCobroDividido', function() {
+    const esDividido = $(this).is(':checked');
+    const monto = parseFloat($('#in_monto').val()) || 0;
     
-    ajaxCall('ingreso', 'save', formData).done(r => { 
-        if(r.success) window.location.reload(); 
-        else alert('Error al guardar: ' + (r.error || 'Verifique datos.')); 
+    console.log('Toggle cambió a:', esDividido);
+    
+    // Asegurar que el campo monto SIEMPRE esté habilitado
+    $('#in_monto').prop('readonly', false).prop('disabled', false).css('background-color', '');
+    
+    if (esDividido) {
+        console.log('Activando cobro dividido...');
+        // Activar cobro dividido
+        $('#seccion_pago_unico').hide();
+        $('#seccion_cobro_dividido').show();
+        
+        console.log('Contenedor pagos parciales tiene', $('#contenedor_pagos_parciales').children().length, 'hijos');
+        
+        // Siempre limpiar y agregar exactamente 2 filas
+        $('#contenedor_pagos_parciales').empty();
+        contadorPagos = 0;
+        console.log('Agregando primera fila...');
+        agregarFilaPago('', ''); // Primera fila vacía
+        console.log('Agregando segunda fila...');
+        agregarFilaPago('', ''); // Segunda fila vacía
+        console.log('Filas agregadas. Total ahora:', $('.pago-parcial-item').length);
+        
+        actualizarResumenPagos();
+    } else {
+        console.log('Desactivando cobro dividido...');
+        // Desactivar cobro dividido (volver a pago único)
+        $('#seccion_pago_unico').show();
+        $('#seccion_cobro_dividido').hide();
+        
+        // Sincronizar monto único con el total
+        if (monto > 0) {
+            $('#in_monto_unico').val(monto.toFixed(2));
+        }
+        
+        // Limpiar pagos parciales
+        $('#contenedor_pagos_parciales').empty();
+        contadorPagos = 0;
+    }
+});
+
+// Actualizar monto único cuando cambia el monto total
+$(document).on('input', '#in_monto', function() {
+    const monto = parseFloat($(this).val()) || 0;
+    
+    // Si está en modo pago único, sincronizar el monto
+    if (!$('#toggleCobroDividido').is(':checked')) {
+        $('#in_monto_unico').val(monto.toFixed(2));
+    }
+    
+    // Si está en modo cobro dividido, actualizar resumen
+    if ($('#toggleCobroDividido').is(':checked')) {
+        actualizarResumenPagos();
+    }
+});
+
+// Agregar nueva fila de pago parcial
+$(document).on('click', '#btnAgregarPago', function() {
+    agregarFilaPago();
+});
+
+// Función para agregar fila de pago
+function agregarFilaPago(metodo = '', monto = '') {
+    contadorPagos++;
+    const html = `
+        <div class="row g-3 mb-2 pago-parcial-item" data-pago-id="${contadorPagos}">
+            <div class="col-md-6">
+                <label class="form-label">Método de Pago <span class="text-danger">*</span></label>
+                <select class="form-select form-select-sm pago-metodo" required>
+                    <option value="">Seleccione...</option>
+                    <option value="Efectivo" ${metodo === 'Efectivo' ? 'selected' : ''}>Efectivo</option>
+                    <option value="Transferencia" ${metodo === 'Transferencia' ? 'selected' : ''}>Transferencia</option>
+                    <option value="Depósito" ${metodo === 'Depósito' ? 'selected' : ''}>Depósito</option>
+                    <option value="Tarjeta Débito" ${metodo === 'Tarjeta Débito' ? 'selected' : ''}>Tarjeta Débito</option>
+                    <option value="Tarjeta Crédito" ${metodo === 'Tarjeta Crédito' ? 'selected' : ''}>Tarjeta Crédito</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Monto <span class="text-danger">*</span></label>
+                <div class="input-group input-group-sm">
+                    <input type="number" step="0.01" min="0.01" class="form-control pago-monto" placeholder="0.00" value="${monto}" required>
+                    <button class="btn btn-outline-danger btn-eliminar-pago ${contadorPagos === 1 ? 'd-none' : ''}" type="button" title="Eliminar">
+                        <ion-icon name="close-circle-outline"></ion-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    $('#contenedor_pagos_parciales').append(html);
+    actualizarResumenPagos();
+    actualizarBotonesEliminar();
+}
+
+// Actualizar visibilidad de botones eliminar
+function actualizarBotonesEliminar() {
+    const totalFilas = $('.pago-parcial-item').length;
+    if (totalFilas === 1) {
+        $('.btn-eliminar-pago').addClass('d-none');
+    } else {
+        $('.btn-eliminar-pago').removeClass('d-none');
+    }
+}
+
+// Eliminar fila de pago
+$(document).on('click', '.btn-eliminar-pago', function() {
+    if ($('.pago-parcial-item').length > 1) {
+        $(this).closest('.pago-parcial-item').remove();
+        contadorPagos = $('.pago-parcial-item').length;
+        actualizarResumenPagos();
+        actualizarBotonesEliminar();
+    } else {
+        alert('Debe mantener al menos un método de pago en el cobro dividido.');
+    }
+});
+
+// Actualizar resumen cuando cambian los montos
+$(document).on('input', '.pago-monto', function() {
+    actualizarResumenPagos();
+});
+
+// Función para actualizar el resumen de pagos
+function actualizarResumenPagos() {
+    const montoTotal = parseFloat($('#in_monto').val()) || 0;
+    let sumaParciales = 0;
+    
+    $('.pago-monto').each(function() {
+        const valor = parseFloat($(this).val()) || 0;
+        sumaParciales += valor;
+    });
+    
+    const diferencia = montoTotal - sumaParciales;
+    
+    $('#display_monto_total').text('$' + montoTotal.toFixed(2));
+    $('#display_suma_parciales').text('$' + sumaParciales.toFixed(2));
+    $('#display_diferencia').text('$' + Math.abs(diferencia).toFixed(2));
+    
+    // Cambiar colores y etiquetas según el estado
+    const $displayDif = $('#display_diferencia');
+    const $labelDif = $('#label_diferencia');
+    
+    if (Math.abs(diferencia) < 0.01) {
+        // Cuadrado - Verde
+        $displayDif.removeClass('text-danger text-warning').addClass('text-success');
+        $labelDif.html('✓ Cuadrado <span class="badge bg-success ms-2">OK</span>');
+    } else if (diferencia > 0) {
+        // Falta - Rojo
+        $displayDif.removeClass('text-success text-warning').addClass('text-danger');
+        $labelDif.html('⚠ Pendiente <span class="badge bg-danger ms-2">FALTA</span>');
+    } else {
+        // Exceso - Amarillo
+        $displayDif.removeClass('text-success text-danger').addClass('text-warning');
+        $labelDif.html('⚠ Exceso <span class="badge bg-warning text-dark ms-2">SOBRA</span>');
+    }
+}
+
+// Envío de formulario con validación de pagos
+$(document).on('submit', '#formIngreso', function(e) { 
+    e.preventDefault();
+    
+    const esDividido = $('#toggleCobroDividido').is(':checked');
+    
+    let formData = $(this).serializeArray();
+    let dataObj = {};
+    formData.forEach(item => {
+        dataObj[item.name] = item.value;
+    });
+    
+    // Según el tipo de pago, agregar método de pago
+    if (!esDividido) {
+        // Pago único
+        const metodoUnico = $('#in_metodo_unico').val();
+        if (!metodoUnico) {
+            alert('Debe seleccionar un método de pago.');
+            return;
+        }
+        dataObj.metodo_de_pago = metodoUnico;
+        dataObj.pagos = JSON.stringify([{
+            metodo: metodoUnico,
+            monto: parseFloat($('#in_monto').val())
+        }]);
+    } else {
+        // Cobro dividido
+        const montoTotal = parseFloat($('#in_monto').val()) || 0;
+        let sumaParciales = 0;
+        const pagos = [];
+        
+        let valido = true;
+        $('.pago-parcial-item').each(function() {
+            const metodo = $(this).find('.pago-metodo').val();
+            const monto = parseFloat($(this).find('.pago-monto').val()) || 0;
+            
+            if (!metodo || monto <= 0) {
+                valido = false;
+                return false;
+            }
+            
+            sumaParciales += monto;
+            pagos.push({ metodo: metodo, monto: monto });
+        });
+        
+        if (!valido) {
+            alert('Todos los pagos parciales deben tener un método y un monto válido.');
+            return;
+        }
+        
+        const diferencia = Math.abs(montoTotal - sumaParciales);
+        if (diferencia >= 0.01) {
+            alert(`La suma de los pagos parciales ($${sumaParciales.toFixed(2)}) no coincide con el monto total ($${montoTotal.toFixed(2)}).\nDiferencia: $${diferencia.toFixed(2)}`);
+            return;
+        }
+        
+        dataObj.metodo_de_pago = 'Mixto';
+        dataObj.pagos = JSON.stringify(pagos);
+    }
+    
+    ajaxCall('ingreso', 'save', dataObj).done(r => { 
+        if(r.success) {
+            window.location.reload();
+        } else {
+            alert('Error al guardar: ' + (r.error || 'Verifique datos.')); 
+        }
     }).fail((xhr) => mostrarError('guardar ingreso', xhr)); 
 });
-// Eliminación (usa 'data-id' que es 'folio_ingreso')
-$(document).on('click', '.btn-del-ingreso', function() { const id = $(this).data('id'); if (confirm('¿Eliminar este ingreso?')) { ajaxCall('ingreso', 'delete', { id: id }).done(r => { if(r.success) window.location.reload(); else alert('Error al eliminar: ' + (r.error || 'Error.')); }).fail((xhr) => mostrarError('eliminar ingreso', xhr)); } });
+
+// Eliminación de ingreso
+$(document).on('click', '.btn-del-ingreso', function() { 
+    const id = $(this).data('id'); 
+    if (confirm('¿Eliminar este ingreso? Se eliminarán también todos los pagos parciales asociados.')) { 
+        ajaxCall('ingreso', 'delete', { id: id }).done(r => { 
+            if(r.success) window.location.reload(); 
+            else alert('Error al eliminar: ' + (r.error || 'Error.')); 
+        }).fail((xhr) => mostrarError('eliminar ingreso', xhr)); 
+    }
+});
 
 
 // --- Eventos Módulo: Categorías ---
