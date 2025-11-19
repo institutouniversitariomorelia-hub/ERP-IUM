@@ -29,9 +29,6 @@
             <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalEditarMiPerfil" id="btnEditarMiPerfil">
                 <ion-icon name="create-outline" style="vertical-align: middle;"></ion-icon> Editar Mi Perfil
             </button>
-            <a href="<?php echo BASE_URL; ?>index.php?controller=auth&action=logout" class="btn btn-sm btn-outline-danger">
-                <ion-icon name="log-out-outline" style="vertical-align: middle;"></ion-icon> Cerrar Sesión
-            </a>
         </div>
     </div>
 </div>

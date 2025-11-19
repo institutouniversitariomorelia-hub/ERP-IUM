@@ -236,6 +236,12 @@ $currentUser = [
                         </div>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?php echo BASE_URL; ?>index.php?controller=auth&action=logout" style="color: rgba(255, 255, 255, 0.9); background: rgba(255, 255, 255, 0.1);">
+                        <ion-icon name="log-out-outline"></ion-icon>
+                        <span>Cerrar Sesión</span>
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -640,9 +646,63 @@ $currentUser = [
                     <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                         <input type="hidden" id="ingreso_id" name="id">
                         <div class="row g-3">
-                            <div class="col-md-4"><label for="in_fecha" class="form-label">Fecha Pago <span class="text-danger">*</span></label><input id="in_fecha" name="fecha" type="date" class="form-control form-control-sm" required></div>
-                            <div class="col-md-4"><label for="in_monto" class="form-label">Monto <span class="text-danger">*</span></label><input id="in_monto" name="monto" type="number" step="0.01" class="form-control form-control-sm" min="0.01" placeholder="Ej: 5000.00" required></div>
-                            <div class="col-md-4"><label for="in_metodo_de_pago" class="form-label">Método Pago <span class="text-danger">*</span></label><select id="in_metodo_de_pago" name="metodo_de_pago" class="form-select form-select-sm" required><option value="">Seleccione...</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Depósito">Depósito</option></select></div>
+                            <div class="col-md-6"><label for="in_fecha" class="form-label">Fecha Pago <span class="text-danger">*</span></label><input id="in_fecha" name="fecha" type="date" class="form-control form-control-sm" required></div>
+                            <div class="col-md-6"><label for="in_monto" class="form-label">Monto Total <span class="text-danger">*</span></label><input id="in_monto" name="monto" type="number" step="0.01" class="form-control form-control-sm" min="0.01" placeholder="Ej: 5000.00" required></div>
+                            
+                            <!-- Toggle Métodos de Pago / Cobro Dividido -->
+                            <div class="col-12">
+                                <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                                    <div class="card-body p-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-white fw-bold"><ion-icon name="card-outline" style="vertical-align: middle;"></ion-icon> Métodos de Pago</span>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" id="toggleCobroDividido" style="width: 50px; height: 24px; cursor: pointer;">
+                                                <label class="form-check-label text-white fw-bold ms-2" for="toggleCobroDividido" style="cursor: pointer;">Cobro Dividido</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sección de Pago Único -->
+                            <div class="col-12" id="seccion_pago_unico">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Método de Pago <span class="text-danger">*</span></label>
+                                        <select id="in_metodo_unico" class="form-select form-select-sm">
+                                            <option value="">Seleccione...</option>
+                                            <option value="Efectivo">Efectivo</option>
+                                            <option value="Transferencia">Transferencia</option>
+                                            <option value="Depósito">Depósito</option>
+                                            <option value="Tarjeta Débito">Tarjeta Débito</option>
+                                            <option value="Tarjeta Crédito">Tarjeta Crédito</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Monto <span class="text-danger">*</span></label>
+                                        <input id="in_monto_unico" type="number" step="0.01" class="form-control form-control-sm" placeholder="0.00" readonly style="background-color: #e9ecef;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sección de Cobro Dividido -->
+                            <div class="col-12" id="seccion_cobro_dividido" style="display: none;">
+                                <div id="contenedor_pagos_parciales" class="mb-3"></div>
+                                <button type="button" class="btn btn-sm btn-outline-primary w-100 mb-3" id="btnAgregarPago">
+                                    <ion-icon name="add-circle-outline"></ion-icon> Agregar otro método de pago
+                                </button>
+                                <div class="alert alert-light border p-2 mb-0">
+                                    <div class="row text-center small">
+                                        <div class="col-6">
+                                            <strong>Total Asignado:</strong> <span class="text-success fw-bold" id="display_suma_parciales">$0.00</span>
+                                        </div>
+                                        <div class="col-6">
+                                            <strong id="label_diferencia">Pendiente:</strong> <span class="text-warning fw-bold" id="display_diferencia">$0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="col-md-8"><label for="in_alumno" class="form-label">Alumno <span class="text-danger">*</span></label><input id="in_alumno" name="alumno" type="text" class="form-control form-control-sm" placeholder="Nombre completo del alumno" required></div>
                             <div class="col-md-4"><label for="in_matricula" class="form-label">Matrícula <span class="text-danger">*</span></label><input id="in_matricula" name="matricula" type="text" class="form-control form-control-sm" required></div>
                             <div class="col-md-4"><label for="in_nivel" class="form-label">Nivel <span class="text-danger">*</span></label><select id="in_nivel" name="nivel" class="form-select form-select-sm" required><option value="">Seleccione...</option><option value="Licenciatura">Licenciatura</option><option value="Maestría">Maestría</option><option value="Doctorado">Doctorado</option></select></div>
@@ -659,7 +719,6 @@ $currentUser = [
                                 <input id="in_anio" name="anio" type="number" min="2000" max="2100" class="form-control form-control-sm" placeholder="Ej: 2025" required>
                             </div>
                             
-                            <div class="col-md-4"><label for="in_dia_pago" class="form-label">Día Pago</label><input id="in_dia_pago" name="dia_pago" type="number" min="1" max="31" class="form-control form-control-sm" placeholder="Ej: 15"></div>
                             <div class="col-12"><label for="in_observaciones" class="form-label">Observaciones</label><textarea id="in_observaciones" name="observaciones" class="form-control form-control-sm" rows="2"></textarea></div>
                         </div>
                     </div>

@@ -52,7 +52,7 @@ class IngresoController {
     }
 
     /**
-     * Acción AJAX: Guarda un nuevo ingreso o actualiza uno existente (CON CAMPOS NUEVOS).
+     * Acción AJAX: Guarda un nuevo ingreso o actualiza uno existente (CON PAGOS DIVIDIDOS).
      */
     public function save() {
          header('Content-Type: application/json');
@@ -60,20 +60,13 @@ class IngresoController {
 
         $data = $_POST;
         
-        // DEBUG: Log para ver qué datos llegan
-        error_log("=== INGRESO SAVE DEBUG ===");
-        error_log("Modalidad recibida: " . var_export($data['modalidad'] ?? 'NO EXISTE', true));
-        error_log("Observaciones recibidas: " . var_export($data['observaciones'] ?? 'NO EXISTE', true));
-        error_log("Todos los datos: " . print_r($data, true));
-        
         // El ID del ingreso (folio_ingreso) viene en $data['id'] si es una actualización
         $folio_ingreso_id = $data['id'] ?? null;
         $isUpdate = !empty($folio_ingreso_id);
         $response = ['success' => false];
 
-        // Validación más completa según la estructura de la tabla ingresos
-    // Alinear con los names del formulario (usamos 'anio' en el form, no 'año')
-    $requiredFields = ['fecha', 'alumno', 'matricula', 'nivel', 'monto', 'metodo_de_pago', 'concepto', 'anio', 'programa', 'id_categoria'];
+        // Validación de campos obligatorios
+        $requiredFields = ['fecha', 'alumno', 'matricula', 'nivel', 'monto', 'metodo_de_pago', 'concepto', 'anio', 'programa', 'id_categoria'];
         foreach ($requiredFields as $field) {
             if (empty($data[$field])) {
                 $response['error'] = "El campo '" . ucfirst(str_replace('_', ' ', $field)) . "' es obligatorio.";
@@ -81,37 +74,65 @@ class IngresoController {
                 exit;
             }
         }
+        
         // Validaciones específicas
         if (!is_numeric($data['monto']) || $data['monto'] <= 0) { $response['error'] = 'El monto debe ser un número positivo.'; echo json_encode($response); exit; }
-    // Validar 'anio' (campo enviado por el formulario como 'anio')
-    if (!isset($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) || $data['anio'] < 2000 || $data['anio'] > 2100) { $response['error'] = 'El año debe ser válido (ej: 2025).'; echo json_encode($response); exit; }
-        if (isset($data['dia_pago']) && $data['dia_pago'] !== '' && (!filter_var($data['dia_pago'], FILTER_VALIDATE_INT) || $data['dia_pago'] < 1 || $data['dia_pago'] > 31)) { $response['error'] = 'El día de pago debe ser un número entre 1 y 31.'; echo json_encode($response); exit; }
+        if (!isset($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) || $data['anio'] < 2000 || $data['anio'] > 2100) { $response['error'] = 'El año debe ser válido (ej: 2025).'; echo json_encode($response); exit; }
         if (isset($data['grado']) && $data['grado'] !== '' && (!filter_var($data['grado'], FILTER_VALIDATE_INT) || $data['grado'] < 1 || $data['grado'] > 15)) { $response['error'] = 'El grado debe ser un número válido.'; echo json_encode($response); exit; }
+        
         $niveles_validos = ['Licenciatura','Maestría','Doctorado'];
         if (!in_array($data['nivel'], $niveles_validos)) { $response['error'] = 'Nivel académico inválido.'; echo json_encode($response); exit; }
-        $metodos_validos = ['Efectivo','Transferencia','Depósito'];
+        
+        $metodos_validos = ['Efectivo','Transferencia','Depósito','Tarjeta Débito','Tarjeta Crédito','Mixto'];
         if (!in_array($data['metodo_de_pago'], $metodos_validos)) { $response['error'] = 'Método de pago inválido.'; echo json_encode($response); exit; }
+        
         $conceptos_validos = ['Inscripción','Reinscripción','Titulación','Colegiatura','Constancia simple','Constancia con calificaciones','Historiales','Certificados','Equivalencias','Credenciales','Otros'];
         if (!in_array($data['concepto'], $conceptos_validos)) { $response['error'] = 'Concepto inválido.'; echo json_encode($response); exit; }
-        $modalidades_validas = ['Cuatrimestral','Semestral', null, '']; // Aceptar vacío o null
+        
+        $modalidades_validas = ['Cuatrimestral','Semestral', null, ''];
         if (isset($data['modalidad']) && !in_array($data['modalidad'], $modalidades_validas, true)) { $response['error'] = 'Modalidad inválida.'; echo json_encode($response); exit; }
 
+        // Validar y procesar pagos parciales
+        $pagos = [];
+        if (isset($data['pagos']) && !empty($data['pagos'])) {
+            $pagosJson = json_decode($data['pagos'], true);
+            if ($pagosJson && is_array($pagosJson)) {
+                $sumaPagos = 0;
+                foreach ($pagosJson as $pago) {
+                    if (!isset($pago['metodo']) || !isset($pago['monto'])) {
+                        $response['error'] = 'Cada pago debe tener método y monto.';
+                        echo json_encode($response);
+                        exit;
+                    }
+                    $sumaPagos += floatval($pago['monto']);
+                    $pagos[] = $pago;
+                }
+                
+                // Validar que la suma de pagos coincida con el monto total
+                $diferencia = abs(floatval($data['monto']) - $sumaPagos);
+                if ($diferencia >= 0.01) {
+                    $response['error'] = "La suma de pagos parciales ($sumaPagos) no coincide con el monto total ({$data['monto']}).";
+                    echo json_encode($response);
+                    exit;
+                }
+            }
+        }
 
         try {
             if (!$isUpdate) { // Crear
-                // Llamar a createIngreso del modelo
                 $newId = $this->ingresoModel->createIngreso($data);
                 if ($newId) {
+                    // Guardar pagos parciales si existen
+                    if (!empty($pagos)) {
+                        $this->ingresoModel->savePagosParciales($newId, $pagos);
+                    }
                     
-                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
-                    // El trigger 'trg_ingresos_after_insert_aud' se encarga de esto.
-
                     if (!$this->auditoriaModel->hasTriggerForTable('ingresos')) {
                         $det = 'Ingreso creado (folio: ' . $newId . ')';
                         $this->auditoriaModel->addLog('Ingreso', 'Insercion', $det, null, json_encode($data), null, $newId, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
-                    $response['newId'] = $newId; // Devolver el nuevo ID por si JS lo necesita
+                    $response['newId'] = $newId;
                 } else {
                      $response['error'] = 'No se pudo crear el ingreso en la base de datos.';
                 }
@@ -119,10 +140,11 @@ class IngresoController {
                 $oldData = $this->ingresoModel->getIngresoById($folio_ingreso_id);
                 $success = $this->ingresoModel->updateIngreso($folio_ingreso_id, $data);
                  if ($success) {
+                    // Actualizar pagos parciales
+                    if (!empty($pagos)) {
+                        $this->ingresoModel->savePagosParciales($folio_ingreso_id, $pagos);
+                    }
                     
-                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
-                    // El trigger 'trg_ingresos_after_update' se encarga de esto.
-
                     if (!$this->auditoriaModel->hasTriggerForTable('ingresos')) {
                         $det = 'Ingreso actualizado (folio: ' . $folio_ingreso_id . ')';
                         $this->auditoriaModel->addLog('Ingreso', 'Actualizacion', $det, json_encode($oldData), json_encode($data), null, $folio_ingreso_id, $_SESSION['user_id'] ?? null);
@@ -133,7 +155,6 @@ class IngresoController {
                  }
             }
         } catch (Exception $e) {
-            // Capturar excepción específica de matrícula duplicada
             if (strpos($e->getMessage(), 'Duplicate entry') !== false && strpos($e->getMessage(), "'matricula'") !== false) {
                  $response['error'] = "La matrícula '{$data['matricula']}' ya existe.";
             } else {
@@ -147,18 +168,19 @@ class IngresoController {
     }
 
     /**
-     * Acción AJAX: Obtiene los datos de un ingreso específico por su ID (folio_ingreso).
+     * Acción AJAX: Obtiene los datos de un ingreso específico por su ID (folio_ingreso) CON PAGOS PARCIALES.
      */
      public function getIngresoData() {
         header('Content-Type: application/json');
         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
-        // Recibe el ID del ingreso (folio_ingreso) como 'id' desde JS
         $folio_ingreso_id = $_GET['id'] ?? 0;
-        $ingreso = $this->ingresoModel->getIngresoById($folio_ingreso_id); // El modelo busca por PK
+        $ingreso = $this->ingresoModel->getIngresoById($folio_ingreso_id);
 
         if ($ingreso) {
-            // Asegurarse de devolver todos los campos necesarios para el formulario
+            // Obtener pagos parciales si existen
+            $pagosParciales = $this->ingresoModel->getPagosParciales($folio_ingreso_id);
+            $ingreso['pagos_parciales'] = $pagosParciales;
             echo json_encode($ingreso);
         } else {
              echo json_encode(['error' => 'Ingreso no encontrado.']);
