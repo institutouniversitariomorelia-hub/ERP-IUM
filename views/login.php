@@ -361,34 +361,51 @@
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Asegurar que el overlay esté oculto al cargar
+        window.addEventListener('DOMContentLoaded', function() {
+            const overlay = document.getElementById('easterEggOverlay');
+            const gif = document.getElementById('easterEggGif');
+            if (overlay) overlay.style.display = 'none';
+            if (gif) gif.style.display = 'none';
+        });
+        
         // Easter Egg - 5 clics en el logo
         let clickCount = 0;
         let clickTimer = null;
         
-        document.getElementById('logoIcon').addEventListener('click', function() {
-            clickCount++;
-            
-            // Resetear el contador después de 2 segundos de inactividad
-            clearTimeout(clickTimer);
-            clickTimer = setTimeout(() => {
-                clickCount = 0;
-            }, 2000);
-            
-            // Si se hacen 5 clics, mostrar el easter egg
-            if (clickCount === 5) {
-                showEasterEgg();
-                clickCount = 0;
-            }
-        });
+        const logoIcon = document.getElementById('logoIcon');
+        if (logoIcon) {
+            logoIcon.addEventListener('click', function() {
+                clickCount++;
+                
+                // Resetear el contador después de 2 segundos de inactividad
+                clearTimeout(clickTimer);
+                clickTimer = setTimeout(() => {
+                    clickCount = 0;
+                }, 2000);
+                
+                // Si se hacen 5 clics, mostrar el easter egg
+                if (clickCount === 5) {
+                    showEasterEgg();
+                    clickCount = 0;
+                }
+            });
+        }
         
         function showEasterEgg() {
-            document.getElementById('easterEggOverlay').style.display = 'block';
-            document.getElementById('easterEggGif').style.display = 'block';
+            const overlay = document.getElementById('easterEggOverlay');
+            const gif = document.getElementById('easterEggGif');
+            if (overlay && gif) {
+                overlay.style.display = 'block';
+                gif.style.display = 'block';
+            }
         }
         
         function closeEasterEgg() {
-            document.getElementById('easterEggOverlay').style.display = 'none';
-            document.getElementById('easterEggGif').style.display = 'none';
+            const overlay = document.getElementById('easterEggOverlay');
+            const gif = document.getElementById('easterEggGif');
+            if (overlay) overlay.style.display = 'none';
+            if (gif) gif.style.display = 'none';
         }
         
         // Cerrar con tecla ESC

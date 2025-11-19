@@ -382,6 +382,8 @@
 
 <script>
 // ========== FUNCIONES DE REPORTES DE AUDITORÍA ==========
+console.log('[Auditoría] Script de reportes cargado');
+
 let chartAuditoriaPorSeccion = null;
 let chartAuditoriaPorAccion = null;
 let chartAuditoriaPorUsuario = null;
@@ -393,12 +395,16 @@ function showNotification(message, type = 'info') {
 }
 
 function generarReporteAuditoria(tipo) {
+    console.log('[Auditoría] generarReporteAuditoria llamada con tipo:', tipo);
     const url = `<?php echo BASE_URL; ?>index.php?controller=auditoria&action=generarReporte&tipo=${tipo}`;
+    console.log('[Auditoría] URL:', url);
     
     fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Guardar el tipo y las fechas para las funciones de exportar/imprimir
+                data.tipo = tipo;
                 datosReporteAuditoria = data;
                 mostrarReporteAuditoria(data);
             } else {
@@ -427,6 +433,10 @@ function generarReporteAuditoriaPersonalizado(event) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Guardar el tipo y las fechas para las funciones de exportar/imprimir
+                data.tipo = 'personalizado';
+                data.fechaInicio = fechaInicio;
+                data.fechaFin = fechaFin;
                 datosReporteAuditoria = data;
                 mostrarReporteAuditoria(data);
                 // Cerrar el collapse
@@ -511,8 +521,8 @@ function mostrarReporteAuditoria(data) {
                 <tbody>
     `;
     
-    if (data.logs.length > 0) {
-        data.logs.forEach(log => {
+    if (data.movimientos && data.movimientos.length > 0) {
+        data.movimientos.forEach(log => {
             const fechaHora = formatDateTimeAud(log.fecha_hora);
             const usuario = log.usuario_nombre || 'Sistema';
             const seccion = log.seccion || '-';
@@ -711,61 +721,28 @@ function exportarReporteExcel() {
         return;
     }
 
-    // Crear CSV con BOM UTF-8
-    let csv = '\uFEFF';
+    // Usar archivo dedicado para exportar
+    const tipo = datosReporteAuditoria.tipo || 'personalizado';
+    const fechaInicio = datosReporteAuditoria.fechaInicio || '';
+    const fechaFin = datosReporteAuditoria.fechaFin || '';
     
-    // Encabezado del reporte
-    const tipo = datosReporteAuditoria.tipo || 'Personalizado';
-    const periodo = datosReporteAuditoria.periodo || '';
-    csv += `Reporte de Auditoría - ${tipo}\n`;
-    csv += `Período: ${periodo}\n`;
-    csv += `Total de Movimientos: ${datosReporteAuditoria.totalMovimientos || 0}\n`;
-    csv += `Secciones Afectadas: ${datosReporteAuditoria.seccionesAfectadas || 0}\n`;
-    csv += `Usuarios Activos: ${datosReporteAuditoria.usuariosActivos || 0}\n`;
-    csv += '\n';
-    
-    // Encabezados de la tabla
-    csv += 'Fecha/Hora,Usuario,Sección,Acción,Detalles\n';
-    
-    // Datos
-    datosReporteAuditoria.movimientos.forEach(mov => {
-        const fecha = mov.fecha_hora || '-';
-        const usuario = (mov.usuario_nombre || '-').replace(/,/g, ';');
-        const seccion = (mov.seccion || '-').replace(/,/g, ';');
-        const accion = (mov.accion || '-').replace(/,/g, ';');
-        const detalles = (mov.detalles || '-').replace(/,/g, ';').replace(/\n/g, ' ');
-        
-        csv += `${fecha},${usuario},${seccion},${accion},"${detalles}"\n`;
-    });
-    
-    // Descargar archivo
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    const fecha = new Date().toISOString().split('T')[0];
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Reporte_Auditoria_${tipo}_${fecha}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const url = `<?php echo BASE_URL; ?>generate_reporte_auditoria.php?tipo=${tipo}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&formato=excel`;
+    window.location.href = url;
 }
 
 function imprimirReporteAuditoria() {
-    // Ocultar gráficas temporalmente
-    const graficas = document.getElementById('graficasReporte');
-    if (graficas) {
-        graficas.style.display = 'none';
+    if (!datosReporteAuditoria || !datosReporteAuditoria.movimientos) {
+        alert('No hay datos de reporte para imprimir');
+        return;
     }
     
-    window.print();
+    // Abrir ventana nueva con vista de impresión
+    const tipo = datosReporteAuditoria.tipo || 'personalizado';
+    const fechaInicio = datosReporteAuditoria.fechaInicio || '';
+    const fechaFin = datosReporteAuditoria.fechaFin || '';
     
-    // Restaurar gráficas después de imprimir
-    setTimeout(() => {
-        if (graficas) {
-            graficas.style.display = '';
-        }
-    }, 100);
+    const url = `<?php echo BASE_URL; ?>generate_reporte_auditoria.php?tipo=${tipo}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&formato=html`;
+    window.open(url, '_blank');
 }
 
 function formatDateAud(dateStr) {
