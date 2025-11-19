@@ -83,9 +83,14 @@
                         <div class="card shadow-sm">
                             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte de Ingresos</h5>
-                                <button class="btn btn-light btn-sm" onclick="imprimirReporteIngresos()">
-                                    <i class="bi bi-printer me-1"></i>Imprimir
-                                </button>
+                                <div>
+                                    <button class="btn btn-light btn-sm me-2" onclick="exportarIngresosExcel()">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel
+                                    </button>
+                                    <button class="btn btn-light btn-sm" onclick="imprimirReporteIngresos()">
+                                        <i class="bi bi-printer me-1"></i>Imprimir
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div id="headerIngresos" class="mb-3"></div>
@@ -156,9 +161,14 @@
                         <div class="card shadow-sm">
                             <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte de Egresos</h5>
-                                <button class="btn btn-light btn-sm" onclick="imprimirReporteEgresos()">
-                                    <i class="bi bi-printer me-1"></i>Imprimir
-                                </button>
+                                <div>
+                                    <button class="btn btn-light btn-sm me-2" onclick="exportarEgresosExcel()">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel
+                                    </button>
+                                    <button class="btn btn-light btn-sm" onclick="imprimirReporteEgresos()">
+                                        <i class="bi bi-printer me-1"></i>Imprimir
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div id="headerEgresos" class="mb-3"></div>
@@ -229,9 +239,14 @@
                         <div class="card shadow-sm">
                             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte Consolidado</h5>
-                                <button class="btn btn-light btn-sm" onclick="imprimirReporteConsolidado()">
-                                    <i class="bi bi-printer me-1"></i>Imprimir
-                                </button>
+                                <div>
+                                    <button class="btn btn-light btn-sm me-2" onclick="exportarConsolidadoExcel()">
+                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel
+                                    </button>
+                                    <button class="btn btn-light btn-sm" onclick="imprimirReporteConsolidado()">
+                                        <i class="bi bi-printer me-1"></i>Imprimir
+                                    </button>
+                                </div>
                             </div>
                             <div class="card-body">
                                 <div id="headerConsolidado" class="mb-3"></div>
@@ -457,8 +472,24 @@ function renderChartIngresos(porCategoria) {
     });
 }
 
+function exportarIngresosExcel() {
+    if (!datosReporteIngresos) {
+        alert('No hay datos de reporte para exportar');
+        return;
+    }
+    
+    const url = `<?php echo BASE_URL; ?>generate_reporte_ingresos.php?tipo=${datosReporteIngresos.tipo}&fecha_inicio=${datosReporteIngresos.fechaInicio}&fecha_fin=${datosReporteIngresos.fechaFin}&formato=excel`;
+    window.location.href = url;
+}
+
 function imprimirReporteIngresos() {
-    window.print();
+    if (!datosReporteIngresos) {
+        alert('No hay datos de reporte para imprimir');
+        return;
+    }
+    
+    const url = `<?php echo BASE_URL; ?>generate_reporte_ingresos.php?tipo=${datosReporteIngresos.tipo}&fecha_inicio=${datosReporteIngresos.fechaInicio}&fecha_fin=${datosReporteIngresos.fechaFin}&formato=html`;
+    window.open(url, '_blank');
 }
 
 // ========== FUNCIONES PARA EGRESOS ==========
@@ -647,8 +678,24 @@ function renderChartEgresos(porCategoria) {
     });
 }
 
+function exportarEgresosExcel() {
+    if (!datosReporteEgresos) {
+        alert('No hay datos de reporte para exportar');
+        return;
+    }
+    
+    const url = `<?php echo BASE_URL; ?>generate_reporte_egresos.php?tipo=${datosReporteEgresos.tipo}&fecha_inicio=${datosReporteEgresos.fechaInicio}&fecha_fin=${datosReporteEgresos.fechaFin}&formato=excel`;
+    window.location.href = url;
+}
+
 function imprimirReporteEgresos() {
-    window.print();
+    if (!datosReporteEgresos) {
+        alert('No hay datos de reporte para imprimir');
+        return;
+    }
+    
+    const url = `<?php echo BASE_URL; ?>generate_reporte_egresos.php?tipo=${datosReporteEgresos.tipo}&fecha_inicio=${datosReporteEgresos.fechaInicio}&fecha_fin=${datosReporteEgresos.fechaFin}&formato=html`;
+    window.open(url, '_blank');
 }
 
 // ========== FUNCIONES PARA CONSOLIDADO ==========
@@ -823,27 +870,18 @@ function exportarConsolidadoExcel() {
         return;
     }
     
-    let csv = '\uFEFF';
-    csv += 'Reporte Consolidado\n';
-    csv += `Tipo: ${datosReporteConsolidado.tipo === 'semanal' ? 'Semanal' : datosReporteConsolidado.tipo === 'mensual' ? 'Mensual' : 'Personalizado'}\n`;
-    csv += `Período: ${formatDate(datosReporteConsolidado.fechaInicio)} - ${formatDate(datosReporteConsolidado.fechaFin)}\n`;
-    csv += `Total Ingresos: $${formatMoney(datosReporteConsolidado.totalIngresos)}\n`;
-    csv += `Total Egresos: $${formatMoney(datosReporteConsolidado.totalEgresos)}\n`;
-    csv += `Balance: $${formatMoney(Math.abs(datosReporteConsolidado.balance))}\n`;
-    csv += `Estado: ${datosReporteConsolidado.balance >= 0 ? 'Superávit' : 'Déficit'}\n`;
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `Reporte_Consolidado_${datosReporteConsolidado.tipo}_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const url = `<?php echo BASE_URL; ?>generate_reporte_consolidado.php?tipo=${datosReporteConsolidado.tipo}&fecha_inicio=${datosReporteConsolidado.fechaInicio}&fecha_fin=${datosReporteConsolidado.fechaFin}&formato=excel`;
+    window.location.href = url;
 }
 
 function imprimirReporteConsolidado() {
-    const graficas = document.querySelectorAll('#contenidoReporteConsolidado .grafica-reporte');
-    graficas.forEach(g => g.style.display = 'none');
-    window.print();
-    setTimeout(() => graficas.forEach(g => g.style.display = 'block'), 100);
+    if (!datosReporteConsolidado) {
+        alert('No hay datos de reporte para imprimir');
+        return;
+    }
+    
+    const url = `<?php echo BASE_URL; ?>generate_reporte_consolidado.php?tipo=${datosReporteConsolidado.tipo}&fecha_inicio=${datosReporteConsolidado.fechaInicio}&fecha_fin=${datosReporteConsolidado.fechaFin}&formato=html`;
+    window.open(url, '_blank');
 }
 
 // ========== FUNCIONES AUXILIARES ==========

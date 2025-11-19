@@ -9,20 +9,28 @@ class IngresoModel {
     }
 
     /**
-     * Obtiene todos los ingresos.
+     * Obtiene todos los ingresos con información de pagos parciales.
      */
     public function getAllIngresos() {
-        // Añadir alias 'id' para consistencia con JS (data-id)
-        // Y hacer JOIN con categorias para obtener el nombre
-        // Ordenar por folio_ingreso DESC (de mayor a menor)
+        // Usar LEFT JOIN para obtener información de pagos parciales agrupada
         $query = "SELECT 
                     i.*, 
                     i.folio_ingreso as id, 
-                    c.nombre AS nombre_categoria
+                    c.nombre AS nombre_categoria,
+                    GROUP_CONCAT(
+                        CONCAT(pp.metodo_pago, ': $', FORMAT(pp.monto, 2)) 
+                        ORDER BY pp.orden 
+                        SEPARATOR ' | '
+                    ) AS metodos_pago_detalle,
+                    COUNT(pp.id_pago_parcial) AS num_pagos
                   FROM 
                     ingresos i
                   LEFT JOIN 
                     categorias c ON i.id_categoria = c.id_categoria
+                  LEFT JOIN
+                    pagos_parciales pp ON i.folio_ingreso = pp.folio_ingreso
+                  GROUP BY
+                    i.folio_ingreso
                   ORDER BY 
                     i.folio_ingreso DESC";
         
@@ -246,6 +254,82 @@ class IngresoModel {
         } else {
             error_log("Error al preparar deleteIngreso: (" . $this->db->errno . ") " . $this->db->error);
             return false;
+        }
+    }
+
+    /**
+     * Guarda los pagos parciales de un ingreso. Elimina los existentes y crea nuevos.
+     * @param int $folio_ingreso ID del ingreso
+     * @param array $pagos Array de pagos con estructura: [['metodo' => 'Efectivo', 'monto' => 500.00], ...]
+     * @return bool True si se guardó correctamente
+     */
+    public function savePagosParciales($folio_ingreso, $pagos) {
+        try {
+            // Primero eliminar los pagos parciales existentes
+            $deleteQuery = "DELETE FROM pagos_parciales WHERE folio_ingreso = ?";
+            $stmt = $this->db->prepare($deleteQuery);
+            if (!$stmt) {
+                error_log("Error al preparar DELETE pagos_parciales: " . $this->db->error);
+                return false;
+            }
+            $stmt->bind_param("i", $folio_ingreso);
+            $stmt->execute();
+            $stmt->close();
+
+            // Ahora insertar los nuevos pagos parciales
+            if (empty($pagos)) {
+                return true; // Si no hay pagos, ya está
+            }
+
+            $insertQuery = "INSERT INTO pagos_parciales (folio_ingreso, metodo_pago, monto, orden) VALUES (?, ?, ?, ?)";
+            $stmt = $this->db->prepare($insertQuery);
+            if (!$stmt) {
+                error_log("Error al preparar INSERT pagos_parciales: " . $this->db->error);
+                return false;
+            }
+
+            $orden = 1;
+            foreach ($pagos as $pago) {
+                $metodo = $pago['metodo'];
+                $monto = (float)$pago['monto'];
+                
+                $stmt->bind_param("isdi", $folio_ingreso, $metodo, $monto, $orden);
+                if (!$stmt->execute()) {
+                    error_log("Error al insertar pago parcial: " . $stmt->error);
+                    $stmt->close();
+                    return false;
+                }
+                $orden++;
+            }
+
+            $stmt->close();
+            return true;
+
+        } catch (Exception $e) {
+            error_log("Excepción en savePagosParciales: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene los pagos parciales de un ingreso.
+     * @param int $folio_ingreso ID del ingreso
+     * @return array Array de pagos parciales
+     */
+    public function getPagosParciales($folio_ingreso) {
+        $query = "SELECT * FROM pagos_parciales WHERE folio_ingreso = ? ORDER BY orden ASC";
+        $stmt = $this->db->prepare($query);
+        
+        if ($stmt) {
+            $stmt->bind_param("i", $folio_ingreso);
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $pagos = $result->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+            return $pagos;
+        } else {
+            error_log("Error al preparar getPagosParciales: " . $this->db->error);
+            return [];
         }
     }
 } // Fin clase IngresoModel

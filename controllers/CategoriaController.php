@@ -138,7 +138,24 @@ class CategoriaController {
 
         if ($id > 0) {
             try {
-                // No necesitamos $categoria o $nombreCat, el trigger lo hace.
+                // Verificar si la categoría está siendo usada
+                $checkQuery = "SELECT 
+                    (SELECT COUNT(*) FROM ingresos WHERE id_categoria = ?) +
+                    (SELECT COUNT(*) FROM egresos WHERE id_categoria = ?) AS total_usos";
+                $stmtCheck = $this->db->prepare($checkQuery);
+                $stmtCheck->bind_param("ii", $id, $id);
+                $stmtCheck->execute();
+                $resultCheck = $stmtCheck->get_result();
+                $row = $resultCheck->fetch_assoc();
+                $stmtCheck->close();
+                
+                if ($row && $row['total_usos'] > 0) {
+                    $response['error'] = 'No se puede eliminar esta categoría porque está siendo utilizada en ' . $row['total_usos'] . ' registro(s) de ingresos o egresos.';
+                    echo json_encode($response);
+                    exit;
+                }
+                
+                // Si no está en uso, proceder con la eliminación
                 $success = $this->categoriaModel->deleteCategoria($id);
                 if ($success) {
                     if (!$this->auditoriaModel->hasTriggerForTable('categorias')) {
@@ -147,11 +164,23 @@ class CategoriaController {
                     }
                     $response['success'] = true;
                 } else {
-                    $response['error'] = 'No se pudo eliminar la categoría de la base de datos.';
+                    $dbError = $this->db->error;
+                    // Detectar errores de clave foránea
+                    if (strpos($dbError, '1451') !== false || strpos($dbError, 'foreign key constraint') !== false) {
+                        $response['error'] = 'No se puede eliminar esta categoría porque está siendo utilizada en otros registros.';
+                    } else {
+                        $response['error'] = 'No se pudo eliminar la categoría de la base de datos. ' . ($dbError ?: 'Error desconocido.');
+                    }
                 }
             } catch (Exception $e) {
                  error_log("Error en CategoriaController->delete: " . $e->getMessage());
-                 $response['error'] = 'Error interno del servidor al eliminar.';
+                 $errorMsg = $e->getMessage();
+                 // Detectar errores de clave foránea en la excepción
+                 if (strpos($errorMsg, '1451') !== false || strpos($errorMsg, 'foreign key') !== false) {
+                     $response['error'] = 'No se puede eliminar esta categoría porque está siendo utilizada en otros registros.';
+                 } else {
+                     $response['error'] = 'Error interno del servidor al eliminar: ' . $errorMsg;
+                 }
             }
         } else {
             $response['error'] = 'ID de categoría inválido.';

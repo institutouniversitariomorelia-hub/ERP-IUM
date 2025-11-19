@@ -129,6 +129,9 @@ class AuditoriaController {
             if ($tipo === 'semanal') {
                 $fechaFin = date('Y-m-d');
                 $fechaInicio = date('Y-m-d', strtotime('-7 days'));
+            } elseif ($tipo === 'mensual') {
+                $fechaFin = date('Y-m-d');
+                $fechaInicio = date('Y-m-01'); // Primer día del mes actual
             }
 
             if (!$fechaInicio || !$fechaFin) {
@@ -137,12 +140,17 @@ class AuditoriaController {
             }
 
             // Obtener logs del rango - Usar la estructura correcta de la tabla auditoria
-            $sql = "SELECT a.*, 
-                           u.nombre as usuario_nombre,
-                           u.username as usuario_username
+            $sql = "SELECT a.id_auditoria,
+                           a.fecha_hora,
+                           DATE(a.fecha_hora) as fecha,
+                           TIME(a.fecha_hora) as hora,
+                           a.seccion,
+                           a.accion,
+                           a.old_valor,
+                           a.new_valor,
+                           a.folio_egreso,
+                           a.folio_ingreso
                     FROM auditoria a 
-                    LEFT JOIN usuario_historial uh ON a.id_auditoria = uh.id_ha
-                    LEFT JOIN usuarios u ON uh.id_user = u.id_user
                     WHERE DATE(a.fecha_hora) BETWEEN ? AND ? 
                     ORDER BY a.fecha_hora DESC";
             
@@ -163,7 +171,23 @@ class AuditoriaController {
             $porAccion = [];
             $porUsuario = [];
             
+            // Formatear logs y calcular estadísticas
+            $movimientos = [];
             foreach ($logs as $log) {
+                // Extraer usuario del JSON (si está disponible en old_valor o new_valor)
+                $usuarioNombre = 'Sistema';
+                $usuarioUsername = '';
+                
+                if (!empty($log['new_valor'])) {
+                    $jsonData = json_decode($log['new_valor'], true);
+                    if (isset($jsonData['nombre'])) {
+                        $usuarioNombre = $jsonData['nombre'];
+                    }
+                    if (isset($jsonData['username'])) {
+                        $usuarioUsername = $jsonData['username'];
+                    }
+                }
+                
                 // Por sección
                 $seccion = $log['seccion'] ?? 'Sin especificar';
                 if (!isset($porSeccion[$seccion])) {
@@ -178,16 +202,12 @@ class AuditoriaController {
                 }
                 $porAccion[$accion]++;
 
-                // Por usuario
-                $usuario = $log['usuario_nombre'] ?? 'Sistema';
-                if (!isset($porUsuario[$usuario])) {
-                    $porUsuario[$usuario] = 0;
+                // Por usuario (usar el extraído del JSON o 'Sistema')
+                if (!isset($porUsuario[$usuarioNombre])) {
+                    $porUsuario[$usuarioNombre] = 0;
                 }
-                $porUsuario[$usuario]++;
-            }
+                $porUsuario[$usuarioNombre]++;
 
-            // Agregar información de detalles formateada para cada log
-            foreach ($logs as &$log) {
                 // Formatear detalles para mostrar en la tabla
                 $detalles = '';
                 if (!empty($log['old_valor']) && !empty($log['new_valor'])) {
@@ -197,7 +217,21 @@ class AuditoriaController {
                 } elseif (!empty($log['old_valor'])) {
                     $detalles = 'Registro eliminado';
                 }
-                $log['detalles'] = $detalles;
+                
+                // Crear objeto formateado para el frontend
+                $movimientos[] = [
+                    'id_auditoria' => $log['id_auditoria'],
+                    'fecha_hora' => $log['fecha_hora'],
+                    'fecha' => $log['fecha'],
+                    'hora' => $log['hora'],
+                    'usuario_nombre' => $usuarioNombre,
+                    'usuario_username' => $usuarioUsername,
+                    'seccion' => $seccion,
+                    'accion' => $accion,
+                    'detalles' => $detalles,
+                    'old_valor' => $log['old_valor'] ?? '',
+                    'new_valor' => $log['new_valor'] ?? ''
+                ];
             }
 
             echo json_encode([
@@ -205,7 +239,7 @@ class AuditoriaController {
                 'tipo' => $tipo,
                 'fechaInicio' => $fechaInicio,
                 'fechaFin' => $fechaFin,
-                'logs' => $logs,
+                'movimientos' => $movimientos,
                 'totalLogs' => $totalLogs,
                 'porSeccion' => $porSeccion,
                 'porAccion' => $porAccion,

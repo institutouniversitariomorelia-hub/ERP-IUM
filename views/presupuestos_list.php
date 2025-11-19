@@ -191,13 +191,50 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                                 $subMonto = floatval($sub['monto_limite'] ?? 0);
                                 $subCategoria = htmlspecialchars($sub['cat_nombre'] ?? 'Sin categoría');
                                 $subId = $sub['id'] ?? ($sub['id_presupuesto'] ?? 0);
+                                $subNombre = htmlspecialchars($sub['nombre'] ?? '');
+                                $subGastado = floatval($sub['gastado'] ?? 0);
+                                $subPorcentaje = $subMonto > 0 ? round(($subGastado / $subMonto) * 100, 2) : 0;
+                                
+                                // Determinar si está en alerta (>=90%)
+                                $enAlerta = $subPorcentaje >= 90;
+                                $claseAlerta = $enAlerta ? 'presupuesto-alerta' : '';
+                                
+                                // Color de la barra de progreso
+                                $colorBarra = 'success';
+                                if ($subPorcentaje >= 90) $colorBarra = 'danger';
+                                elseif ($subPorcentaje >= 75) $colorBarra = 'warning';
                             ?>
-                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom sub-presupuesto-item">
-                                <div>
-                                    <small class="fw-bold text-primary"><?php echo $subCategoria; ?></small>
+                            <div class="d-flex justify-content-between align-items-center py-3 border-bottom sub-presupuesto-item <?php echo $claseAlerta; ?>" style="<?php echo $enAlerta ? 'border-left: 4px solid #dc3545; padding-left: 8px;' : ''; ?>">
+                                <div class="flex-grow-1 me-3">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <small class="fw-bold text-primary"><?php echo $subCategoria; ?></small>
+                                        <?php if ($enAlerta): ?>
+                                        <span class="badge badge-alerta" style="font-size: 0.7rem;">
+                                            <ion-icon name="warning-outline" style="vertical-align: middle;"></ion-icon>
+                                            ALERTA
+                                        </span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if (!empty($subNombre)): ?>
+                                    <div class="text-muted small mb-1"><?php echo $subNombre; ?></div>
+                                    <?php endif; ?>
+                                    <div class="progress progress-custom mb-1" style="height: 8px;">
+                                        <div class="progress-bar bg-<?php echo $colorBarra; ?>" role="progressbar" 
+                                             style="width: <?php echo min($subPorcentaje, 100); ?>%;" 
+                                             aria-valuenow="<?php echo $subPorcentaje; ?>" aria-valuemin="0" aria-valuemax="100">
+                                        </div>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            Gastado: <span class="fw-bold text-danger">$<?php echo number_format($subGastado, 2); ?></span>
+                                            de <span class="fw-bold">$<?php echo number_format($subMonto, 2); ?></span>
+                                        </small>
+                                        <span class="badge bg-<?php echo $colorBarra; ?> badge-porcentaje">
+                                            <?php echo $subPorcentaje; ?>%
+                                        </span>
+                                    </div>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <small class="text-success fw-bold monto-display">$<?php echo number_format($subMonto, 2); ?></small>
                                     <?php if ($hasActions): ?>
                                     <div class="btn-group btn-group-sm">
                                         <?php if (roleCan('edit','presupuestos')): ?>

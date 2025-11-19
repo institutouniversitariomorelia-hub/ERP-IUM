@@ -209,7 +209,18 @@
                                     </tr>
                                     <tr>
                                         <th>Método de Pago</th>
-                                        <td><?php echo htmlspecialchars($ingreso['metodo_de_pago'] ?? 'N/A'); ?></td>
+                                        <td>
+                                            <?php 
+                                            if (!empty($ingreso['metodos_pago_detalle'])) {
+                                                // Tiene pagos divididos
+                                                echo '<span class="badge bg-info text-dark">Pago Dividido (' . $ingreso['num_pagos'] . ' métodos)</span><br>';
+                                                echo '<small>' . htmlspecialchars($ingreso['metodos_pago_detalle']) . '</small>';
+                                            } else {
+                                                // Pago único
+                                                echo htmlspecialchars($ingreso['metodo_de_pago'] ?? 'N/A');
+                                            }
+                                            ?>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <th>Mes Correspondiente</th>
@@ -218,10 +229,6 @@
                                     <tr>
                                         <th>Año</th>
                                         <td><?php echo htmlspecialchars($ingreso['anio'] ?? '-'); ?></td>
-                                    </tr>
-                                    <tr>
-                                        <th>Día de Pago</th>
-                                        <td><?php echo htmlspecialchars($ingreso['dia_pago'] ?? '-'); ?></td>
                                     </tr>
                                     <tr>
                                         <th>Observaciones</th>

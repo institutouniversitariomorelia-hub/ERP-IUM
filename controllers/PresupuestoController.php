@@ -25,6 +25,12 @@ class PresupuestoController {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login'); exit; }
 
         $presupuestos = $this->presupuestoModel->getAllPresupuestos();
+        
+        // Calcular gastado para cada presupuesto
+        foreach ($presupuestos as &$p) {
+            $p['gastado'] = $this->presupuestoModel->getGastadoEnPresupuesto($p['id_presupuesto']);
+            $p['porcentaje'] = $p['monto_limite'] > 0 ? round(($p['gastado'] / $p['monto_limite']) * 100, 2) : 0;
+        }
 
         $pageTitle = "Presupuestos";
         $activeModule = "presupuestos";
@@ -186,7 +192,7 @@ class PresupuestoController {
          if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
          $pres = $this->presupuestoModel->getAllPresupuestos();
-         // Normalizar salida: id, monto_limite, fecha
+         // Normalizar salida: id, monto_limite, fecha, nombre
          $out = [];
          foreach ($pres as $p) {
              $out[] = [
@@ -194,15 +200,36 @@ class PresupuestoController {
                  'monto_limite' => $p['monto_limite'] ?? ($p['monto'] ?? null),
                  'fecha' => $p['fecha'] ?? null,
                 'id_categoria' => $p['id_categoria'] ?? null,
-                'cat_nombre' => $p['cat_nombre'] ?? ($p['categoria'] ?? null)
+                'cat_nombre' => $p['cat_nombre'] ?? ($p['categoria'] ?? null),
+                'parent_presupuesto' => $p['parent_presupuesto'] ?? null,
+                'nombre' => $p['nombre'] ?? null
              ];
          }
-        // Añadir parent_presupuesto si existe
-        foreach ($out as $k => $v) {
-            $p = $pres[$k] ?? null;
-            $out[$k]['parent_presupuesto'] = $p['parent_presupuesto'] ?? null;
-        }
          echo json_encode($out);
+         exit;
+     }
+
+     /**
+      * Acción AJAX: Devuelve solo sub-presupuestos para dropdown de egresos
+      */
+     public function getSubPresupuestos() {
+         header('Content-Type: application/json');
+         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+         $subPresupuestos = $this->presupuestoModel->getSubPresupuestos();
+         echo json_encode($subPresupuestos);
+         exit;
+     }
+
+     /**
+      * Acción AJAX: Devuelve el conteo de presupuestos en alerta (>=90% consumidos)
+      */
+     public function getAlertasCount() {
+         header('Content-Type: application/json');
+         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+         $alertas = $this->presupuestoModel->getPresupuestosEnAlerta();
+         echo json_encode(['count' => count($alertas), 'alertas' => $alertas]);
          exit;
      }
 
