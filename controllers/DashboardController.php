@@ -80,19 +80,27 @@ class DashboardController {
     }
 
     /**
-     * Obtiene datos para gráfica de ingresos vs egresos por mes (últimos 6 meses)
+     * Obtiene datos para gráfica de ingresos vs egresos por mes
      * Retorna JSON con arrays de meses, ingresos y egresos
+     * Acepta parámetro 'meses' para definir el rango (default: 6)
      */
     public function getIngresosEgresosPorMes() {
         header('Content-Type: application/json');
         
         try {
+            // Obtener número de meses del parámetro GET, por defecto 6
+            $numMeses = isset($_GET['meses']) ? intval($_GET['meses']) : 6;
+            
+            // Validar que sea un número razonable
+            if ($numMeses < 1) $numMeses = 1;
+            if ($numMeses > 12) $numMeses = 12;
+            
             $meses = [];
             $ingresos = [];
             $egresos = [];
             
-            // Obtener últimos 6 meses
-            for ($i = 5; $i >= 0; $i--) {
+            // Obtener los últimos N meses
+            for ($i = $numMeses - 1; $i >= 0; $i--) {
                 $mes = date('Y-m', strtotime("-$i months"));
                 $nombreMes = date('M Y', strtotime("-$i months"));
                 

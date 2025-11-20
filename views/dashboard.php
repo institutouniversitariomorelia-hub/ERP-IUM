@@ -69,10 +69,23 @@
     <div class="col-12">
         <div class="card shadow-sm">
             <div class="card-header bg-white">
-                <h5 class="mb-0">
-                    <ion-icon name="bar-chart-outline" style="vertical-align: middle; color: #B80000;"></ion-icon>
-                    Ingresos vs Egresos (Últimos 6 Meses)
-                </h5>
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <h5 class="mb-0">
+                        <ion-icon name="bar-chart-outline" style="vertical-align: middle; color: #B80000;"></ion-icon>
+                        <span id="tituloComparativa">Ingresos vs Egresos (Últimos 6 Meses)</span>
+                    </h5>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-danger" onclick="cambiarPeriodoComparativa(1)">
+                            <ion-icon name="calendar-outline"></ion-icon> 1 Mes
+                        </button>
+                        <button type="button" class="btn btn-outline-danger active" id="btn6meses" onclick="cambiarPeriodoComparativa(6)">
+                            <ion-icon name="calendar-outline"></ion-icon> 6 Meses
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="imprimirComparativa()">
+                            <ion-icon name="print-outline"></ion-icon> Imprimir
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="chartIngresosEgresos" style="max-height: 300px;"></canvas>
@@ -154,12 +167,40 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Cargar todas las gráficas
     cargarResumenMensual();
-    cargarGraficaIngresosEgresos();
+    cargarGraficaIngresosEgresos(6); // Por defecto 6 meses
     cargarGraficaIngresosCategorias();
     cargarGraficaEgresosCategorias();
     cargarAlertasPresupuesto();
     cargarTendenciaBalance();
 });
+
+// Variable global para guardar la instancia del chart
+let chartIngresosEgresosInstance = null;
+let periodoActualComparativa = 6;
+
+// Función para cambiar el período de la comparativa
+function cambiarPeriodoComparativa(meses) {
+    periodoActualComparativa = meses;
+    
+    // Actualizar botones activos
+    document.querySelectorAll('.btn-group .btn-outline-danger').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.closest('button').classList.add('active');
+    
+    // Actualizar título
+    const titulo = meses === 1 ? 'Ingresos vs Egresos (Último Mes)' : `Ingresos vs Egresos (Últimos ${meses} Meses)`;
+    document.getElementById('tituloComparativa').textContent = titulo;
+    
+    // Recargar gráfica
+    cargarGraficaIngresosEgresos(meses);
+}
+
+// Función para imprimir comparativa
+function imprimirComparativa() {
+    const url = `<?php echo BASE_URL; ?>generate_comparativa_dashboard.php?meses=${periodoActualComparativa}&formato=html`;
+    window.open(url, '_blank', 'width=1200,height=800');
+}
 
 // Función para cargar resumen mensual (tarjetas superiores)
 function cargarResumenMensual() {
@@ -189,12 +230,18 @@ function cargarResumenMensual() {
 }
 
 // Función para cargar gráfica de ingresos vs egresos
-function cargarGraficaIngresosEgresos() {
-    ajaxCall('dashboard', 'getIngresosEgresosPorMes', {}, 'GET')
+function cargarGraficaIngresosEgresos(meses = 6) {
+    ajaxCall('dashboard', 'getIngresosEgresosPorMes', { meses: meses }, 'GET')
         .done(function(data) {
             if (data.success) {
                 const ctx = document.getElementById('chartIngresosEgresos').getContext('2d');
-                new Chart(ctx, {
+                
+                // Destruir gráfica anterior si existe
+                if (chartIngresosEgresosInstance) {
+                    chartIngresosEgresosInstance.destroy();
+                }
+                
+                chartIngresosEgresosInstance = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: data.meses,
