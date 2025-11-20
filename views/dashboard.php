@@ -88,6 +88,50 @@
                 </div>
             </div>
             <div class="card-body">
+                <!-- Buscador por Mes/Año -->
+                <div class="row mb-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label"><small><strong>Buscar por Mes</strong></small></label>
+                        <select id="mesBusqueda" class="form-select form-select-sm">
+                            <option value="">Todos los meses</option>
+                            <option value="1">Enero</option>
+                            <option value="2">Febrero</option>
+                            <option value="3">Marzo</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Mayo</option>
+                            <option value="6">Junio</option>
+                            <option value="7">Julio</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label"><small><strong>Buscar por Año</strong></small></label>
+                        <select id="anioBusqueda" class="form-select form-select-sm">
+                            <option value="">Año actual</option>
+                            <?php
+                            $anioActual = date('Y');
+                            for ($i = $anioActual; $i >= $anioActual - 5; $i--) {
+                                echo "<option value='$i'>$i</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-danger btn-sm w-100" onclick="buscarComparativa()">
+                            <ion-icon name="search-outline"></ion-icon> Buscar
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="limpiarBusqueda()">
+                            <ion-icon name="refresh-outline"></ion-icon> Limpiar
+                        </button>
+                    </div>
+                </div>
+                
                 <canvas id="chartIngresosEgresos" style="max-height: 300px;"></canvas>
             </div>
         </div>
@@ -177,6 +221,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Variable global para guardar la instancia del chart
 let chartIngresosEgresosInstance = null;
 let periodoActualComparativa = 6;
+let mesBusquedaActual = null;
+let anioBusquedaActual = null;
 
 // Función para cambiar el período de la comparativa
 function cambiarPeriodoComparativa(meses) {
@@ -192,14 +238,70 @@ function cambiarPeriodoComparativa(meses) {
     const titulo = meses === 1 ? 'Ingresos vs Egresos (Último Mes)' : `Ingresos vs Egresos (Últimos ${meses} Meses)`;
     document.getElementById('tituloComparativa').textContent = titulo;
     
+    // Limpiar búsqueda específica
+    mesBusquedaActual = null;
+    anioBusquedaActual = null;
+    document.getElementById('mesBusqueda').value = '';
+    document.getElementById('anioBusqueda').value = '';
+    
     // Recargar gráfica
     cargarGraficaIngresosEgresos(meses);
 }
 
+// Función para buscar comparativa por mes/año específico
+function buscarComparativa() {
+    const mes = document.getElementById('mesBusqueda').value;
+    const anio = document.getElementById('anioBusqueda').value;
+    
+    if (!mes || !anio) {
+        alert('Por favor selecciona mes y año para buscar');
+        return;
+    }
+    
+    mesBusquedaActual = mes;
+    anioBusquedaActual = anio;
+    
+    // Actualizar título
+    const mesesNombres = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    document.getElementById('tituloComparativa').textContent = `Ingresos vs Egresos (${mesesNombres[mes]} ${anio})`;
+    
+    // Cargar gráfica con parámetros específicos
+    cargarGraficaIngresosEgresos(1, mes, anio);
+}
+
+// Función para limpiar búsqueda
+function limpiarBusqueda() {
+    mesBusquedaActual = null;
+    anioBusquedaActual = null;
+    document.getElementById('mesBusqueda').value = '';
+    document.getElementById('anioBusqueda').value = '';
+    
+    // Volver a la vista por defecto (6 meses)
+    periodoActualComparativa = 6;
+    document.getElementById('tituloComparativa').textContent = 'Ingresos vs Egresos (Últimos 6 Meses)';
+    
+    // Reactivar botón 6 meses
+    document.querySelectorAll('.btn-group .btn-outline-danger').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.getElementById('btn6meses').classList.add('active');
+    
+    cargarGraficaIngresosEgresos(6);
+}
+
 // Función para imprimir comparativa
 function imprimirComparativa() {
-    const url = `<?php echo BASE_URL; ?>generate_comparativa_dashboard.php?meses=${periodoActualComparativa}&formato=html`;
-    window.open(url, '_blank', 'width=1200,height=800');
+    let url = `<?php echo BASE_URL; ?>generate_comparativa_dashboard.php?formato=html`;
+    
+    if (mesBusquedaActual && anioBusquedaActual) {
+        // Si hay búsqueda específica, usar esos parámetros
+        url += `&mes=${mesBusquedaActual}&anio=${anioBusquedaActual}`;
+    } else {
+        // Si no, usar el período actual
+        url += `&meses=${periodoActualComparativa}`;
+    }
+    
+    window.open(url, '_blank');
 }
 
 // Función para cargar resumen mensual (tarjetas superiores)
@@ -230,8 +332,18 @@ function cargarResumenMensual() {
 }
 
 // Función para cargar gráfica de ingresos vs egresos
-function cargarGraficaIngresosEgresos(meses = 6) {
-    ajaxCall('dashboard', 'getIngresosEgresosPorMes', { meses: meses }, 'GET')
+function cargarGraficaIngresosEgresos(meses = 6, mesEspecifico = null, anioEspecifico = null) {
+    let params = {};
+    
+    if (mesEspecifico && anioEspecifico) {
+        // Búsqueda específica por mes/año
+        params = { mes: mesEspecifico, anio: anioEspecifico };
+    } else {
+        // Búsqueda por rango de meses
+        params = { meses: meses };
+    }
+    
+    ajaxCall('dashboard', 'getIngresosEgresosPorMes', params, 'GET')
         .done(function(data) {
             if (data.success) {
                 const ctx = document.getElementById('chartIngresosEgresos').getContext('2d');

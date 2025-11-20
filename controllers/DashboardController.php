@@ -82,27 +82,24 @@ class DashboardController {
     /**
      * Obtiene datos para gráfica de ingresos vs egresos por mes
      * Retorna JSON con arrays de meses, ingresos y egresos
-     * Acepta parámetro 'meses' para definir el rango (default: 6)
+     * Acepta parámetros: 'meses' (rango), o 'mes' + 'anio' (específico)
      */
     public function getIngresosEgresosPorMes() {
         header('Content-Type: application/json');
         
         try {
-            // Obtener número de meses del parámetro GET, por defecto 6
-            $numMeses = isset($_GET['meses']) ? intval($_GET['meses']) : 6;
-            
-            // Validar que sea un número razonable
-            if ($numMeses < 1) $numMeses = 1;
-            if ($numMeses > 12) $numMeses = 12;
-            
             $meses = [];
             $ingresos = [];
             $egresos = [];
             
-            // Obtener los últimos N meses
-            for ($i = $numMeses - 1; $i >= 0; $i--) {
-                $mes = date('Y-m', strtotime("-$i months"));
-                $nombreMes = date('M Y', strtotime("-$i months"));
+            // Verificar si se solicita un mes específico
+            $mesEspecifico = isset($_GET['mes']) ? intval($_GET['mes']) : null;
+            $anioEspecifico = isset($_GET['anio']) ? intval($_GET['anio']) : null;
+            
+            if ($mesEspecifico && $anioEspecifico) {
+                // Búsqueda específica por mes/año
+                $mes = sprintf('%04d-%02d', $anioEspecifico, $mesEspecifico);
+                $nombreMes = date('M Y', strtotime("$anioEspecifico-$mesEspecifico-01"));
                 
                 // Ingresos del mes
                 $queryI = "SELECT COALESCE(SUM(monto), 0) as total 
@@ -127,6 +124,44 @@ class DashboardController {
                 $meses[] = $nombreMes;
                 $ingresos[] = floatval($totalI);
                 $egresos[] = floatval($totalE);
+                
+            } else {
+                // Búsqueda por rango de meses
+                $numMeses = isset($_GET['meses']) ? intval($_GET['meses']) : 6;
+                
+                // Validar que sea un número razonable
+                if ($numMeses < 1) $numMeses = 1;
+                if ($numMeses > 12) $numMeses = 12;
+                
+                // Obtener los últimos N meses
+                for ($i = $numMeses - 1; $i >= 0; $i--) {
+                    $mes = date('Y-m', strtotime("-$i months"));
+                    $nombreMes = date('M Y', strtotime("-$i months"));
+                    
+                    // Ingresos del mes
+                    $queryI = "SELECT COALESCE(SUM(monto), 0) as total 
+                              FROM ingresos 
+                              WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                    $stmtI = $this->db->prepare($queryI);
+                    $stmtI->bind_param('s', $mes);
+                    $stmtI->execute();
+                    $totalI = $stmtI->get_result()->fetch_assoc()['total'];
+                    $stmtI->close();
+                    
+                    // Egresos del mes
+                    $queryE = "SELECT COALESCE(SUM(monto), 0) as total 
+                              FROM egresos 
+                              WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                    $stmtE = $this->db->prepare($queryE);
+                    $stmtE->bind_param('s', $mes);
+                    $stmtE->execute();
+                    $totalE = $stmtE->get_result()->fetch_assoc()['total'];
+                    $stmtE->close();
+                    
+                    $meses[] = $nombreMes;
+                    $ingresos[] = floatval($totalI);
+                    $egresos[] = floatval($totalE);
+                }
             }
             
             echo json_encode([

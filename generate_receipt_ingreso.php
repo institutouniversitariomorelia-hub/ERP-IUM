@@ -157,9 +157,9 @@ if (!empty($pagosParciales)) {
         <div class="top">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:120px;">
-                    <img src="<?php echo $logoPath; ?>" alt="Logo" style="max-width:100%; display:block;">
+                    <img src="<?php echo $logoPath; ?>" alt="Logo" style="height: 56px; background-color: #9e1b32; padding: 4px; border-radius: 4px;">
                 </div>
-                <div style="font-size:13px; color:#555;">Instituto Universitario Morelia</div>
+                
             </div>
 
             <div class="title">
