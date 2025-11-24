@@ -12,20 +12,34 @@ define('DEFAULT_CONTROLLER', 'user'); // Controlador por defecto si hay sesión
 define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
 
 // Incluir archivos necesarios
-require_once 'db.php'; // Conexión BD
-require_once 'password.php'; // Compatibilidad de hash
-require_once 'helpers.php'; // Permisos y utilidades
+require_once __DIR__ . '/config/database.php'; // Conexión BD
+require_once __DIR__ . '/utils/password.php'; // Compatibilidad de hash
+require_once __DIR__ . '/shared/Helpers/helpers.php'; // Permisos y utilidades
 
 // Determinar controlador y acción
 $controllerName = $_GET['controller'] ?? (isset($_SESSION['user_id']) ? DEFAULT_CONTROLLER : 'auth');
 $actionName = $_GET['action'] ?? (isset($_SESSION['user_id']) ? DEFAULT_ACTION : 'login');
 
+// Mapeo de controladores a sus rutas modulares
+$controllerMap = [
+    'auth' => 'src/Auth/Controllers/AuthController.php',
+    'user' => 'src/Auth/Controllers/UserController.php',
+    'ingreso' => 'src/Ingresos/Controllers/IngresoController.php',
+    'egreso' => 'src/Egresos/Controllers/EgresoController.php',
+    'categoria' => 'src/Categorias/Controllers/CategoriaController.php',
+    'presupuesto' => 'src/Presupuestos/Controllers/PresupuestoController.php',
+    'auditoria' => 'src/Auditoria/Controllers/AuditoriaController.php',
+    'dashboard' => 'src/Dashboard/Controllers/DashboardController.php',
+    'reporte' => 'src/Reportes/Controllers/ReporteController.php'
+];
+
 // Formatear nombres
 $controllerClassName = ucfirst($controllerName) . 'Controller';
-$controllerFile = 'controllers/' . $controllerClassName . '.php';
+$controllerFile = $controllerMap[$controllerName] ?? null;
 
-// Verificar si el archivo del controlador existe
-if (file_exists($controllerFile)) {
+// Verificar si el controlador está mapeado y el archivo existe
+if ($controllerFile && file_exists(__DIR__ . '/' . $controllerFile)) {
+    $controllerFile = __DIR__ . '/' . $controllerFile;
     require_once $controllerFile;
     // Verificar si la clase existe
     if (class_exists($controllerClassName)) {
