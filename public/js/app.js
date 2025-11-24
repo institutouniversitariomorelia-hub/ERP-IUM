@@ -556,13 +556,11 @@ $('#modalEgreso').on('show.bs.modal', function (event) {
                             $('#eg_destinatario').val(data.destinatario);
                             $('#eg_forma_pago').val(data.forma_pago);
                             $('#eg_documento_de_amparo').val(data.documento_de_amparo);
-                            $('#eg_activo_fijo').val(data.activo_fijo);
                             $('#eg_descripcion').val(data.descripcion);
                         } else { $('#modalEgreso').modal('hide'); alert('Error al cargar: '+(data.error||'')); }
                     }).fail((xhr) => {mostrarError('cargar datos egreso', xhr); $('#modalEgreso').modal('hide');});
             } else {
                 $('#modalEgresoTitle').text('Registrar Nuevo Egreso');
-                $('#eg_activo_fijo').val('NO'); // Valor por defecto
             }
         }).fail((xhr) => {
             // Intentar fallback: si falla el endpoint combinado, solicitar categorías desde el controlador 'categoria'
@@ -680,7 +678,6 @@ $('#modalIngreso').on('show.bs.modal', function (event) {
                             $('#in_modalidad').val(data.modalidad);
                             $('#in_grupo').val(data.grupo);
                             $selectCat.val(data.id_categoria);
-                            $('#in_concepto').val(data.concepto);
                             $('#in_mes_correspondiente').val(data.mes_correspondiente);
                             $('#in_anio').val(data.anio);
                             $('#in_observaciones').val(data.observaciones);
@@ -957,9 +954,115 @@ $(document).on('click', '.btn-del-ingreso', function() {
 
 
 // --- Eventos Módulo: Categorías ---
-$('#modalCategoria').on('show.bs.modal', function(event) { const button = event.relatedTarget; const catId = button ? $(button).data('id') : null; const $form = $('#formCategoria'); if (!$form.length) { console.error("Form #formCategoria no encontrado."); return; } $form[0].reset(); $('#categoria_id').val(''); if (catId) { $('#modalCategoriaTitle').text('Editar Categoría'); ajaxCall('categoria', 'getCategoriaData', { id: catId }, 'GET').done(data => { if(data && !data.error) { $('#categoria_id').val(data.id_categoria); $('#cat_nombre').val(data.nombre); $('#cat_tipo').val(data.tipo); $('#cat_descripcion').val(data.descripcion); } else { $('#modalCategoria').modal('hide'); alert('Error al cargar: '+(data.error||'')); } }).fail((xhr) => {mostrarError('cargar datos categoría', xhr); $('#modalCategoria').modal('hide');}); } else { $('#modalCategoriaTitle').text('Agregar Nueva Categoría'); } });
-$(document).on('submit', '#formCategoria', function(e) { e.preventDefault(); ajaxCall('categoria', 'save', $(this).serialize()).done(r => { if(r.success) window.location.reload(); else alert('Error: ' + (r.error || 'Error.')); }).fail((xhr) => mostrarError('guardar categoría', xhr)); });
-$(document).on('click', '.btn-del-categoria', function() { if (confirm('¿Eliminar esta categoría?')) { ajaxCall('categoria', 'delete', { id: $(this).data('id') }).done(r => { if(r.success) window.location.reload(); else alert('Error: ' + (r.error || 'Error.')); }).fail((xhr) => mostrarError('eliminar categoría', xhr)); } });
+
+// Toggle visibilidad del campo concepto según tipo
+$(document).on('change', '#cat_tipo', function() {
+    const tipo = $(this).val();
+    if (tipo === 'Ingreso') {
+        $('#div_cat_concepto').slideDown(200);
+        $('#cat_concepto').prop('required', true);
+    } else {
+        $('#div_cat_concepto').slideUp(200);
+        $('#cat_concepto').val('').prop('required', false);
+    }
+});
+
+$('#modalCategoria').on('show.bs.modal', function(event) {
+    const button = event.relatedTarget;
+    const catId = button ? $(button).data('id') : null;
+    const $form = $('#formCategoria');
+    
+    if (!$form.length) {
+        console.error("Form #formCategoria no encontrado.");
+        return;
+    }
+    
+    // Reset form y ocultar alertas
+    $form[0].reset();
+    $('#categoria_id').val('');
+    $('#categoria_no_borrable').val('0');
+    $('#div_cat_concepto').hide();
+    $('#alert_categoria_protegida').hide();
+    $('#cat_concepto').prop('required', false);
+    
+    if (catId) {
+        $('#modalCategoriaTitle').text('Editar Categoría');
+        ajaxCall('categoria', 'getCategoriaData', { id: catId }, 'GET').done(data => {
+            if(data && !data.error) {
+                $('#categoria_id').val(data.id_categoria);
+                $('#cat_nombre').val(data.nombre);
+                $('#cat_tipo').val(data.tipo);
+                $('#cat_descripcion').val(data.descripcion);
+                $('#categoria_no_borrable').val(data.no_borrable || 0);
+                
+                // Manejar campo concepto
+                if (data.tipo === 'Ingreso') {
+                    $('#div_cat_concepto').show();
+                    $('#cat_concepto').val(data.concepto || '').prop('required', true);
+                }
+                
+                // Mostrar alerta si es categoría protegida
+                if (data.no_borrable == 1) {
+                    $('#alert_categoria_protegida').show();
+                }
+            } else {
+                $('#modalCategoria').modal('hide');
+                alert('Error al cargar: '+(data.error||''));
+            }
+        }).fail((xhr) => {
+            mostrarError('cargar datos categoría', xhr);
+            $('#modalCategoria').modal('hide');
+        });
+    } else {
+        $('#modalCategoriaTitle').text('Agregar Nueva Categoría');
+        // Por defecto mostrar campo concepto para nuevas categorías tipo Ingreso
+        if ($('#cat_tipo').val() === 'Ingreso') {
+            $('#div_cat_concepto').show();
+            $('#cat_concepto').prop('required', true);
+        }
+    }
+});
+
+$(document).on('submit', '#formCategoria', function(e) {
+    e.preventDefault();
+    
+    // Validación adicional: si es Ingreso, concepto es requerido
+    const tipo = $('#cat_tipo').val();
+    const concepto = $('#cat_concepto').val();
+    
+    if (tipo === 'Ingreso' && !concepto) {
+        alert('El campo Concepto es requerido para categorías de tipo Ingreso.');
+        return;
+    }
+    
+    ajaxCall('categoria', 'save', $(this).serialize()).done(r => {
+        if(r.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (r.error || 'Error al guardar.'));
+        }
+    }).fail((xhr) => mostrarError('guardar categoría', xhr));
+});
+
+$(document).on('click', '.btn-del-categoria', function() {
+    const noBorrable = $(this).data('no-borrable');
+    
+    if (noBorrable == 1) {
+        alert('Esta categoría es del sistema y no puede ser eliminada.');
+        return;
+    }
+    
+    if (confirm('¿Eliminar esta categoría?')) {
+        ajaxCall('categoria', 'delete', { id: $(this).data('id') }).done(r => {
+            if(r.success) {
+                window.location.reload();
+            } else {
+                alert('Error: ' + (r.error || 'Esta categoría no puede ser eliminada porque está en uso.'));
+            }
+        }).fail((xhr) => mostrarError('eliminar categoría', xhr));
+    }
+});
+
 $(document).on('click', '#btnRefrescarCategorias', () => window.location.reload());
 
 // --- Eventos Módulo: Presupuestos ---
