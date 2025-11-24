@@ -291,7 +291,8 @@ function limpiarBusqueda() {
 
 // Función para imprimir comparativa
 function imprimirComparativa() {
-    let url = `<?php echo BASE_URL; ?>generate_comparativa_dashboard.php?formato=html`;
+    // Construir ruta relativa desde el index.php hasta el archivo de generación
+    let url = `generate_comparativa_dashboard.php?formato=html`;
     
     if (mesBusquedaActual && anioBusquedaActual) {
         // Si hay búsqueda específica, usar esos parámetros

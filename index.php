@@ -16,6 +16,18 @@ require_once __DIR__ . '/config/database.php'; // Conexión BD
 require_once __DIR__ . '/utils/password.php'; // Compatibilidad de hash
 require_once __DIR__ . '/shared/Helpers/helpers.php'; // Permisos y utilidades
 
+// Archivos PHP directos que no necesitan enrutador (redirectores, generadores)
+// Estos archivos se acceden directamente y NO pasan por index.php
+// Esta lista es solo para documentación - el servidor web los sirve directamente
+$directFiles = [
+    'generate_receipt_ingreso.php',
+    'generate_receipt_egreso.php',
+    'generate_comparativa_dashboard.php',
+    'generate_reporte_consolidado.php',
+    'generate_reporte_ingresos.php',
+    'generate_reporte_egresos.php'
+];
+
 // Determinar controlador y acción
 $controllerName = $_GET['controller'] ?? (isset($_SESSION['user_id']) ? DEFAULT_CONTROLLER : 'auth');
 $actionName = $_GET['action'] ?? (isset($_SESSION['user_id']) ? DEFAULT_ACTION : 'login');
