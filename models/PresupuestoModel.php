@@ -49,6 +49,24 @@ class PresupuestoModel {
     }
 
     /**
+     * Obtiene solo los presupuestos generales (presupuestos con parent_presupuesto IS NULL)
+     * Para usar en el dropdown de sub-presupuestos
+     * @return array Lista de presupuestos generales con nombre y fecha
+     */
+    public function getPresupuestosGenerales() {
+        $query = "SELECT p.id_presupuesto, p.nombre, p.fecha, p.monto_limite
+                  FROM presupuestos p
+                  WHERE p.parent_presupuesto IS NULL
+                  ORDER BY p.fecha DESC, p.id_presupuesto DESC";
+        $result = $this->db->query($query);
+        if ($result) {
+            return $result->fetch_all(MYSQLI_ASSOC);
+        }
+        error_log('Error al obtener presupuestos generales: ' . $this->db->error);
+        return [];
+    }
+
+    /**
      * Obtiene presupuestos en alerta (>=90% consumidos)
      * @return array Lista de presupuestos con alerta
      */

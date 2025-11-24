@@ -222,6 +222,30 @@ class PresupuestoController {
      }
 
      /**
+      * Acción AJAX: Devuelve solo presupuestos generales (sin padre) para dropdown
+      */
+     public function getPresupuestosGenerales() {
+         header('Content-Type: application/json');
+         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+         $presupuestosGenerales = $this->presupuestoModel->getPresupuestosGenerales();
+         echo json_encode($presupuestosGenerales);
+         exit;
+     }
+
+     /**
+      * Acción AJAX: Devuelve categorías de tipo Egreso para presupuestos
+      */
+     public function getCategoriasPresupuesto() {
+         header('Content-Type: application/json');
+         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+         $categorias = $this->categoriaModel->getCategoriasByTipo('Egreso');
+         echo json_encode($categorias);
+         exit;
+     }
+
+     /**
       * Acción AJAX: Devuelve el conteo de presupuestos en alerta (>=90% consumidos)
       */
      public function getAlertasCount() {
