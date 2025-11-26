@@ -5,6 +5,32 @@
  */
 
 /**
+ * Sistema de notificaciones visuales para mostrar logs y mensajes del sistema
+ */
+function showNotification(message, type = 'info', timeout = 4000) {
+    // Crea el contenedor si no existe
+    let $container = $('#notification-container');
+    if (!$container.length) {
+        $container = $('<div id="notification-container" style="position:fixed;top:20px;right:20px;z-index:9999;max-width:350px;"></div>');
+        $('body').append($container);
+    }
+    // Estilos por tipo
+    let bgColor = '#17a2b8', icon = 'information-circle-outline';
+    if (type === 'success') { bgColor = '#28a745'; icon = 'checkmark-circle-outline'; }
+    if (type === 'danger' || type === 'error') { bgColor = '#dc3545'; icon = 'close-circle-outline'; }
+    if (type === 'warning') { bgColor = '#ffc107'; icon = 'alert-circle-outline'; }
+    // Notificación HTML
+    const $notif = $(`<div class="notification shadow-sm mb-2" style="background:${bgColor};color:#fff;padding:12px 18px;border-radius:8px;display:flex;align-items:center;gap:10px;font-size:1rem;animation:fadeInNotif 0.3s;"><ion-icon name="${icon}" style="font-size:1.3em;"></ion-icon><span>${message}</span></div>`);
+    $container.append($notif);
+    setTimeout(() => { $notif.fadeOut(400, () => $notif.remove()); }, timeout);
+}
+
+// Animación fadeInNotif
+const styleNotif = document.createElement('style');
+styleNotif.innerHTML = `@keyframes fadeInNotif{from{opacity:0;transform:translateY(-10px);}to{opacity:1;transform:translateY(0);}}`;
+document.head.appendChild(styleNotif);
+
+/**
  * Función genérica para hacer llamadas AJAX a los controladores vía el enrutador index.php.
  * @param {string} controller Nombre del controlador.
  * @param {string} action Nombre de la acción/método.
@@ -62,7 +88,7 @@ function mostrarError(action, jqXHR = null) {
     }
     errorMsg += `\nDetalle: ${serverError}`;
     console.error(`Error durante ${action}:`, serverError, jqXHR);
-    alert(errorMsg + "\nPor favor, revise la consola (F12) para más detalles técnicos.");
+    showNotification(errorMsg + " Por favor, revise la consola (F12) para más detalles técnicos.", 'danger');
 }
 
 /**
@@ -265,7 +291,7 @@ $(document).on('submit', '#formEditarMiPerfil', function(e) {
                 $('#modalEditarMiPerfil').modal('hide');
                 window.location.reload();
             } else {
-                alert('Error al guardar: ' + (r.error || 'Verifique datos.'));
+                showNotification('Error al guardar: ' + (r.error || 'Verifique datos.'), 'danger');
             }
         })
         .fail((xhr) => mostrarError('guardar perfil', xhr));
@@ -385,12 +411,12 @@ $(document).on('submit', '#formCambiarPasswordNuevo', function(e) {
     console.log('Validando contraseñas...');
     
     if (passwordNueva !== passwordConfirmar) {
-        alert('Las contraseñas no coinciden.');
+        showNotification('Las contraseñas no coinciden.', 'warning');
         return;
     }
     
     if (!passwordActual || !passwordNueva) {
-        alert('Todos los campos son requeridos.');
+        showNotification('Todos los campos son requeridos.', 'warning');
         return;
     }
     
@@ -401,11 +427,11 @@ $(document).on('submit', '#formCambiarPasswordNuevo', function(e) {
             console.log('Respuesta recibida:', r);
             if (r.success) {
                 $('#modalCambiarPasswordNuevo').modal('hide');
-                alert('Contraseña actualizada correctamente.');
+                showNotification('Contraseña actualizada correctamente.', 'success');
                 // Si cambió su propia contraseña, redirigir al login
                 window.location.href = BASE_URL + 'index.php?controller=auth&action=logout';
             } else {
-                alert('Error: ' + (r.error || 'No se pudo cambiar la contraseña.'));
+                showNotification('Error: ' + (r.error || 'No se pudo cambiar la contraseña.'), 'danger');
             }
         })
         .fail((xhr) => mostrarError('cambiar contraseña', xhr));
@@ -428,7 +454,7 @@ $(document).on('submit', '#formUsuario', function(e) {
             $('#modalUsuario').modal('hide');
             window.location.reload();
         } else {
-            alert('Error al guardar: ' + (r.error || 'Verifique datos.')); 
+            showNotification('Error al guardar: ' + (r.error || 'Verifique datos.'), 'danger'); 
         }
     }).fail((xhr) => mostrarError('guardar usuario', xhr)); 
 });
@@ -439,7 +465,7 @@ $(document).on('click', '.btn-delete-user', function() {
     if (confirm('¿Eliminar este usuario?')) { 
         ajaxCall('user', 'delete', { id: id }).done(r => { 
             if (r.success) window.location.reload(); 
-            else alert('Error al eliminar: ' + (r.error || 'No se pudo eliminar.')); 
+            else showNotification('Error al eliminar: ' + (r.error || 'No se pudo eliminar.'), 'danger'); 
         }).fail((xhr) => mostrarError('eliminar usuario', xhr)); 
     }
 });
@@ -460,9 +486,9 @@ $(document).on('submit', '#formCambiarPassword', function(e) {
     ajaxCall('auth', 'changePassword', $(this).serialize()).done(r => { 
         if (r.success) { 
             $('#modalCambiarPassword').modal('hide'); 
-            alert('Contraseña actualizada.'); 
+            showNotification('Contraseña actualizada.', 'success'); 
         } else { 
-            alert('Error: ' + (r.error || 'No se pudo cambiar.')); 
+            showNotification('Error: ' + (r.error || 'No se pudo cambiar.'), 'danger'); 
         } 
     }).fail((xhr) => mostrarError('cambiar contraseña', xhr)); 
 });
@@ -557,7 +583,7 @@ $('#modalEgreso').on('show.bs.modal', function (event) {
                             $('#eg_forma_pago').val(data.forma_pago);
                             $('#eg_documento_de_amparo').val(data.documento_de_amparo);
                             $('#eg_descripcion').val(data.descripcion);
-                        } else { $('#modalEgreso').modal('hide'); alert('Error al cargar: '+(data.error||'')); }
+                        } else { $('#modalEgreso').modal('hide'); showNotification('Error al cargar: '+(data.error||''), 'danger'); }
                     }).fail((xhr) => {mostrarError('cargar datos egreso', xhr); $('#modalEgreso').modal('hide');});
             } else {
                 $('#modalEgresoTitle').text('Registrar Nuevo Egreso');
@@ -594,10 +620,10 @@ $(document).on('submit', '#formEgreso', function(e) {
     ajaxCall('egreso', 'save', $(this).serialize())
         .done(r => { 
             if(r.success) {
-                $(document).trigger('egresoGuardado'); // Trigger para actualizar alertas
-                window.location.reload(); 
+                showNotification('Egreso guardado correctamente', 'success');
+                setTimeout(() => window.location.reload(), 1200);
             } else {
-                alert('Error al guardar: ' + (r.error || 'Verifique datos.')); 
+                showNotification('Error al guardar: ' + (r.error || 'Verifique datos.'), 'danger');
             }
         })
         .fail((xhr) => mostrarError('guardar egreso', xhr)); 
@@ -612,7 +638,7 @@ $(document).on('click', '.btn-del-egreso', function() {
                     $(document).trigger('egresoEliminado'); // Trigger para actualizar alertas
                     window.location.reload(); 
                 } else {
-                    alert('Error al eliminar: ' + (r.error || 'Error.')); 
+                    showNotification('Error al eliminar: ' + (r.error || 'Error.'), 'danger'); 
                 }
             })
             .fail((xhr) => mostrarError('eliminar egreso', xhr)); 
@@ -623,6 +649,7 @@ $(document).on('click', '.btn-del-egreso', function() {
 // --- Eventos Módulo: Ingresos (CON SISTEMA DE PAGOS DIVIDIDOS) ---
 
 // Variable global para contar pagos parciales
+const MAX_PAGOS = 5; // Límite máximo de métodos de pago en cobro dividido
 let contadorPagos = 0;
 
 // Evento cuando se abre el modal de ingreso
@@ -694,7 +721,7 @@ $('#modalIngreso').on('show.bs.modal', function (event) {
                             }
                         } else {
                             $('#modalIngreso').modal('hide');
-                            alert('Error al cargar datos del ingreso: '+(data.error || 'Registro no encontrado.'));
+                            showNotification('Error al cargar datos del ingreso: '+(data.error || 'Registro no encontrado.'), 'danger');
                         }
                     }).fail((xhr) => {
                         mostrarError('cargar datos ingreso', xhr);
@@ -773,13 +800,25 @@ $(document).on('input', '#in_monto', function() {
     }
 });
 
-// Agregar nueva fila de pago parcial
+// Agregar nueva fila de pago parcial (con límite)
 $(document).on('click', '#btnAgregarPago', function() {
+    const totalActual = $('.pago-parcial-item').length;
+    if (totalActual >= MAX_PAGOS) {
+        showNotification(`Ha alcanzado el máximo de ${MAX_PAGOS} métodos de pago.`, 'warning');
+        $(this).prop('disabled', true);
+        return;
+    }
     agregarFilaPago();
 });
 
 // Función para agregar fila de pago
 function agregarFilaPago(metodo = '', monto = '') {
+    const totalActual = $('.pago-parcial-item').length;
+    if (totalActual >= MAX_PAGOS) {
+        showNotification(`No se pueden agregar más de ${MAX_PAGOS} métodos de pago.`, 'warning');
+        $('#btnAgregarPago').prop('disabled', true);
+        return;
+    }
     contadorPagos++;
     const html = `
         <div class="row g-3 mb-2 pago-parcial-item" data-pago-id="${contadorPagos}">
@@ -789,9 +828,9 @@ function agregarFilaPago(metodo = '', monto = '') {
                     <option value="">Seleccione...</option>
                     <option value="Efectivo" ${metodo === 'Efectivo' ? 'selected' : ''}>Efectivo</option>
                     <option value="Transferencia" ${metodo === 'Transferencia' ? 'selected' : ''}>Transferencia</option>
-                    <option value="Depósito" ${metodo === 'Depósito' ? 'selected' : ''}>Depósito</option>
-                    <option value="Tarjeta Débito" ${metodo === 'Tarjeta Débito' ? 'selected' : ''}>Tarjeta Débito</option>
                     <option value="Tarjeta Crédito" ${metodo === 'Tarjeta Crédito' ? 'selected' : ''}>Tarjeta Crédito</option>
+                    <option value="Tarjeta Débito" ${metodo === 'Tarjeta Débito' ? 'selected' : ''}>Tarjeta Débito</option>
+                    <option value="Depósito" ${metodo === 'Depósito' ? 'selected' : ''}>Depósito</option>
                 </select>
             </div>
             <div class="col-md-6">
@@ -808,6 +847,13 @@ function agregarFilaPago(metodo = '', monto = '') {
     $('#contenedor_pagos_parciales').append(html);
     actualizarResumenPagos();
     actualizarBotonesEliminar();
+
+    // Deshabilitar botón si alcanzamos el máximo
+    if ($('.pago-parcial-item').length >= MAX_PAGOS) {
+        $('#btnAgregarPago').prop('disabled', true);
+    } else {
+        $('#btnAgregarPago').prop('disabled', false);
+    }
 }
 
 // Actualizar visibilidad de botones eliminar
@@ -828,7 +874,14 @@ $(document).on('click', '.btn-eliminar-pago', function() {
         actualizarResumenPagos();
         actualizarBotonesEliminar();
     } else {
-        alert('Debe mantener al menos un método de pago en el cobro dividido.');
+        showNotification('Debe mantener al menos un método de pago en el cobro dividido.', 'warning');
+    }
+});
+
+// Asegurar que al eliminar también se reactive el botón de añadir si está por debajo del máximo
+$(document).on('DOMNodeRemoved', '#contenedor_pagos_parciales', function() {
+    if ($('.pago-parcial-item').length < MAX_PAGOS) {
+        $('#btnAgregarPago').prop('disabled', false);
     }
 });
 
@@ -889,7 +942,7 @@ $(document).on('submit', '#formIngreso', function(e) {
         // Pago único
         const metodoUnico = $('#in_metodo_unico').val();
         if (!metodoUnico) {
-            alert('Debe seleccionar un método de pago.');
+            showNotification('Debe seleccionar un método de pago.', 'warning');
             return;
         }
         dataObj.metodo_de_pago = metodoUnico;
@@ -918,13 +971,13 @@ $(document).on('submit', '#formIngreso', function(e) {
         });
         
         if (!valido) {
-            alert('Todos los pagos parciales deben tener un método y un monto válido.');
+            showNotification('Todos los pagos parciales deben tener un método y un monto válido.', 'warning');
             return;
         }
         
         const diferencia = Math.abs(montoTotal - sumaParciales);
         if (diferencia >= 0.01) {
-            alert(`La suma de los pagos parciales ($${sumaParciales.toFixed(2)}) no coincide con el monto total ($${montoTotal.toFixed(2)}).\nDiferencia: $${diferencia.toFixed(2)}`);
+            showNotification(`La suma de los pagos parciales ($${sumaParciales.toFixed(2)}) no coincide con el monto total ($${montoTotal.toFixed(2)}). Diferencia: $${diferencia.toFixed(2)}`, 'warning');
             return;
         }
         
@@ -934,9 +987,10 @@ $(document).on('submit', '#formIngreso', function(e) {
     
     ajaxCall('ingreso', 'save', dataObj).done(r => { 
         if(r.success) {
-            window.location.reload();
+            showNotification('Ingreso guardado correctamente', 'success');
+            setTimeout(() => window.location.reload(), 1200);
         } else {
-            alert('Error al guardar: ' + (r.error || 'Verifique datos.')); 
+            showNotification('Error al guardar: ' + (r.error || 'Verifique datos.'), 'danger');
         }
     }).fail((xhr) => mostrarError('guardar ingreso', xhr)); 
 });
@@ -947,7 +1001,7 @@ $(document).on('click', '.btn-del-ingreso', function() {
     if (confirm('¿Eliminar este ingreso? Se eliminarán también todos los pagos parciales asociados.')) { 
         ajaxCall('ingreso', 'delete', { id: id }).done(r => { 
             if(r.success) window.location.reload(); 
-            else alert('Error al eliminar: ' + (r.error || 'Error.')); 
+            else showNotification('Error al eliminar: ' + (r.error || 'Error.'), 'danger'); 
         }).fail((xhr) => mostrarError('eliminar ingreso', xhr)); 
     }
 });
@@ -1007,7 +1061,7 @@ $('#modalCategoria').on('show.bs.modal', function(event) {
                 }
             } else {
                 $('#modalCategoria').modal('hide');
-                alert('Error al cargar: '+(data.error||''));
+                showNotification('Error al cargar: '+(data.error||''), 'danger');
             }
         }).fail((xhr) => {
             mostrarError('cargar datos categoría', xhr);
@@ -1031,7 +1085,7 @@ $(document).on('submit', '#formCategoria', function(e) {
     const concepto = $('#cat_concepto').val();
     
     if (tipo === 'Ingreso' && !concepto) {
-        alert('El campo Concepto es requerido para categorías de tipo Ingreso.');
+        showNotification('El campo Concepto es requerido para categorías de tipo Ingreso.', 'warning');
         return;
     }
     
