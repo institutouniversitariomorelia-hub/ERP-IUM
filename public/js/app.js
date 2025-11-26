@@ -297,145 +297,51 @@ $(document).on('submit', '#formEditarMiPerfil', function(e) {
         .fail((xhr) => mostrarError('guardar perfil', xhr));
 });
 
-// Botón para abrir modal de cambiar contraseña desde el modal de editar perfil
+
+
+// Refuerzo: solo el modal correcto para cada caso
 $(document).ready(function() {
-    $('#btnAbrirCambiarPassword, #modalEditarMiPerfil').on('click', '#btnAbrirCambiarPassword', function(e) {
+    // Botón de la tabla de usuarios (admin): debe tener data-username
+    $(document).on('click', '.btn-cambiar-pass-usuario', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Botón cambiar contraseña clickeado!');
-        
-        // Cerrar el modal de editar perfil
+        const username = $(this).data('username');
+        if (!username) {
+            showNotification('No se encontró el usuario a modificar.', 'danger');
+            return;
+        }
+        // Cerrar modal de perfil si está abierto
         var modalEditarPerfil = bootstrap.Modal.getInstance(document.getElementById('modalEditarMiPerfil'));
         if (modalEditarPerfil) {
             modalEditarPerfil.hide();
         } else {
             $('#modalEditarMiPerfil').modal('hide');
         }
-        
-        // Esperar a que se cierre y abrir el de cambiar contraseña
         setTimeout(function() {
-            console.log('Abriendo modal de cambiar contraseña...');
+            $('#change_pass_username').val(username);
+            $('#username_display').text(username);
+            $('#modalCambiarPassword').modal('show');
+        }, 400);
+    });
+
+    // Botón de perfil propio (sin data-username): solo para el logueado
+    $(document).on('click', '#btnAbrirCambiarPassword', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Cerrar modal de perfil si está abierto
+        var modalEditarPerfil = bootstrap.Modal.getInstance(document.getElementById('modalEditarMiPerfil'));
+        if (modalEditarPerfil) {
+            modalEditarPerfil.hide();
+        } else {
+            $('#modalEditarMiPerfil').modal('hide');
+        }
+        setTimeout(function() {
             $('#changepass_username').val(CURRENT_USER.user_username || CURRENT_USER.username);
             $('#modalCambiarPasswordNuevo').modal('show');
-        }, 500);
-    });
-    
-    // Event delegation adicional
-    $(document).off('click.cambiarPass').on('click.cambiarPass', '#btnAbrirCambiarPassword', function(e) {
-        e.preventDefault();
-        console.log('Event delegation - cambiar password');
+        }, 400);
     });
 });
 
-// Modal: Cambiar Contraseña (Nueva Versión con 3 campos)
-$('#modalCambiarPasswordNuevo').on('show.bs.modal', function (event) {
-    const $form = $('#formCambiarPasswordNuevo');
-    if(!$form.length) { console.error("Form #formCambiarPasswordNuevo no encontrado."); return; }
-    
-    $form[0].reset();
-    // Si no se estableció antes, usar el usuario actual
-    if (!$('#changepass_username').val()) {
-        $('#changepass_username').val(CURRENT_USER.user_username || CURRENT_USER.username);
-    }
-    $('#passwordMatchMessage').text('').removeClass('text-success text-danger');
-    $('#btnGuardarPasswordNueva').prop('disabled', false);
-});
-
-// Toggle mostrar/ocultar contraseñas
-$(document).on('click', '#togglePasswordActual', function() {
-    const $input = $('#password_actual');
-    const $icon = $(this).find('ion-icon');
-    if ($input.attr('type') === 'password') {
-        $input.attr('type', 'text');
-        $icon.attr('name', 'eye-off-outline');
-    } else {
-        $input.attr('type', 'password');
-        $icon.attr('name', 'eye-outline');
-    }
-});
-
-$(document).on('click', '#togglePasswordNueva', function() {
-    const $input = $('#password_nueva');
-    const $icon = $(this).find('ion-icon');
-    if ($input.attr('type') === 'password') {
-        $input.attr('type', 'text');
-        $icon.attr('name', 'eye-off-outline');
-    } else {
-        $input.attr('type', 'password');
-        $icon.attr('name', 'eye-outline');
-    }
-});
-
-$(document).on('click', '#togglePasswordConfirmar', function() {
-    const $input = $('#password_confirmar');
-    const $icon = $(this).find('ion-icon');
-    if ($input.attr('type') === 'password') {
-        $input.attr('type', 'text');
-        $icon.attr('name', 'eye-off-outline');
-    } else {
-        $input.attr('type', 'password');
-        $icon.attr('name', 'eye-outline');
-    }
-});
-
-// Validación en tiempo real de contraseñas coincidentes
-$(document).on('input', '#password_nueva, #password_confirmar', function() {
-    const nueva = $('#password_nueva').val();
-    const confirmar = $('#password_confirmar').val();
-    const $message = $('#passwordMatchMessage');
-    const $btnSubmit = $('#btnGuardarPasswordNueva');
-    
-    if (confirmar.length > 0) {
-        if (nueva === confirmar) {
-            $message.text('✓ Las contraseñas coinciden').removeClass('text-danger').addClass('text-success');
-            $btnSubmit.prop('disabled', false);
-        } else {
-            $message.text('✗ Las contraseñas no coinciden').removeClass('text-success').addClass('text-danger');
-            $btnSubmit.prop('disabled', true);
-        }
-    } else {
-        $message.text('').removeClass('text-success text-danger');
-        $btnSubmit.prop('disabled', false);
-    }
-});
-
-// Submit: Cambiar Contraseña (Nueva Versión)
-$(document).on('submit', '#formCambiarPasswordNuevo', function(e) {
-    e.preventDefault();
-    console.log('Formulario de cambiar contraseña enviado');
-    
-    const passwordActual = $('#password_actual').val();
-    const passwordNueva = $('#password_nueva').val();
-    const passwordConfirmar = $('#password_confirmar').val();
-    
-    console.log('Validando contraseñas...');
-    
-    if (passwordNueva !== passwordConfirmar) {
-        showNotification('Las contraseñas no coinciden.', 'warning');
-        return;
-    }
-    
-    if (!passwordActual || !passwordNueva) {
-        showNotification('Todos los campos son requeridos.', 'warning');
-        return;
-    }
-    
-    console.log('Enviando petición al servidor...');
-    
-    ajaxCall('auth', 'changePasswordWithValidation', $(this).serialize())
-        .done(r => {
-            console.log('Respuesta recibida:', r);
-            if (r.success) {
-                $('#modalCambiarPasswordNuevo').modal('hide');
-                showNotification('Contraseña actualizada correctamente.', 'success');
-                // Si cambió su propia contraseña, redirigir al login
-                window.location.href = BASE_URL + 'index.php?controller=auth&action=logout';
-            } else {
-                showNotification('Error: ' + (r.error || 'No se pudo cambiar la contraseña.'), 'danger');
-            }
-        })
-        .fail((xhr) => mostrarError('cambiar contraseña', xhr));
-});
 
 // Modal: Registrar Nuevo Usuario (formulario separado)
 $('#modalUsuario').on('show.bs.modal', function (event) {
