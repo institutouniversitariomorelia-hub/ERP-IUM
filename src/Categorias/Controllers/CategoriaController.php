@@ -138,6 +138,24 @@ class CategoriaController {
      }
 
     /**
+     * Acción AJAX: Obtiene las categorías de tipo 'Egreso' (ID y Nombre).
+     * Añadido para compatibilidad con llamadas desde frontend (getCategoriasEgreso).
+     */
+    public function getCategoriasEgreso() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+        try {
+            $categorias = $this->categoriaModel->getCategoriasByTipo('Egreso');
+            echo json_encode($categorias);
+        } catch (Exception $e) {
+            if (function_exists('debug_log')) debug_log('Error getCategoriasEgreso: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            echo json_encode(['error' => 'Error al obtener categorías.']);
+        }
+        exit;
+    }
+
+    /**
      * Acción AJAX: Elimina una categoría.
      */
     public function delete() {

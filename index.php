@@ -54,6 +54,16 @@ $controllerClassName = ucfirst($controllerName) . 'Controller';
 $controllerFile = $controllerMap[$controllerName] ?? null;
 
 // Verificar si el controlador está mapeado y el archivo existe
+// Log básico de la petición para diagnóstico (si está habilitado)
+if (function_exists('debug_log')) {
+    debug_log('Request routing', [
+        'controller' => $controllerName,
+        'action' => $actionName,
+        'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+        'uri' => $_SERVER['REQUEST_URI'] ?? null,
+        'session_user' => $_SESSION['user_id'] ?? null
+    ]);
+}
 if ($controllerFile && file_exists(__DIR__ . '/' . $controllerFile)) {
     $controllerFile = __DIR__ . '/' . $controllerFile;
     require_once $controllerFile;
