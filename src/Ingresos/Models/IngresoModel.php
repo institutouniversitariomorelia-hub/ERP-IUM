@@ -159,7 +159,7 @@ class IngresoModel {
         if (empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['alumno']) || empty($data['matricula']) || empty($data['nivel']) ||
             !isset($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
-            empty($data['metodo_de_pago']) || empty($data['concepto']) ||
+            empty($data['metodo_de_pago']) ||
             empty($data['anio']) || !filter_var($data['anio'], FILTER_VALIDATE_INT) ||
             empty($data['programa']) ||
             empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT))
@@ -196,7 +196,7 @@ class IngresoModel {
 
     // Cadena de tipos EXACTA para los 16 parámetros en el orden del UPDATE (+ WHERE al final)
     // (mismos 15 que en INSERT) + folio_ingreso(i)
-    $types = "ssssdssisisssii";
+    $types = "ssssdssisissssii";
         // ==========================================================
 
         $bindResult = $stmt->bind_param(
