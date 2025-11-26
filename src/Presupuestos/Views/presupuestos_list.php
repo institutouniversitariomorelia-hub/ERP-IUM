@@ -54,7 +54,7 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                 Presupuestos Generales
             </h4>
             <?php if (roleCan('add','presupuestos')): ?>
-                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalPresupuesto" id="btnNuevoPresupuestoGeneral">
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalPresupuestoGeneral" id="btnNuevoPresupuestoGeneral">
                     <ion-icon name="add-circle-outline" class="me-1"></ion-icon>
                     Nuevo Presupuesto General
                 </button>
@@ -67,7 +67,7 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                 <h4 class="mt-3 text-warning">No hay Presupuestos Generales</h4>
                 <p class="text-muted mb-3">Para comenzar a usar el sistema de presupuestos, primero debe crear un Presupuesto General.</p>
                 <?php if (roleCan('add','presupuestos')): ?>
-                <button class="btn btn-warning btn-lg" data-bs-toggle="modal" data-bs-target="#modalPresupuesto" id="btnPrimerPresupuesto">
+                <button class="btn btn-warning btn-lg" data-bs-toggle="modal" data-bs-target="#modalPresupuestoGeneral" id="btnPrimerPresupuesto">
                     <ion-icon name="add-circle-outline" class="me-2"></ion-icon>
                     Crear Primer Presupuesto General
                 </button>
@@ -172,7 +172,7 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                             <div class="text-center">
                                 <button class="btn btn-outline-primary btn-sm btn-add-sub btn-add-sub-presupuesto" 
                                         data-parent-id="<?php echo $presId; ?>"
-                                        data-bs-toggle="modal" data-bs-target="#modalPresupuestoCategoria">
+                                        data-bs-toggle="modal" data-bs-target="#modalSubPresupuesto">
                                     <ion-icon name="add-outline" class="me-1"></ion-icon>
                                     Agregar Sub-presupuesto
                                 </button>
@@ -240,7 +240,7 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                                         <?php if (roleCan('edit','presupuestos')): ?>
                                         <button class="btn btn-outline-warning btn-sm btn-edit-presupuesto" 
                                                 data-id="<?php echo $subId; ?>" 
-                                                data-bs-toggle="modal" data-bs-target="#modalPresupuestoCategoria"
+                                                data-bs-toggle="modal" data-bs-target="#modalSubPresupuesto"
                                                 title="Editar">
                                             <ion-icon name="create-outline"></ion-icon>
                                         </button>

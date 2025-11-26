@@ -111,6 +111,48 @@ class AuditoriaController {
     }
 
     /**
+     * Acción AJAX: Devuelve detalles completos de un registro de auditoría (para el modal de detalles).
+     */
+    public function getDetalle() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { 
+            echo json_encode(['success' => false, 'message' => 'No autorizado']); 
+            exit; 
+        }
+        
+        $id = $_GET['id'] ?? 0;
+        $id = (int)$id;
+        
+        if ($id <= 0) { 
+            echo json_encode(['success' => false, 'message' => 'ID inválido']); 
+            exit; 
+        }
+        
+        $log = $this->auditoriaModel->getAuditoriaById($id);
+        
+        if ($log) {
+            // Enriquecer con información del usuario si está disponible en los valores JSON
+            $usuarioNombre = 'Sistema';
+            
+            if (!empty($log['new_valor'])) {
+                $jsonData = json_decode($log['new_valor'], true);
+                if (isset($jsonData['nombre'])) {
+                    $usuarioNombre = $jsonData['nombre'];
+                } elseif (isset($jsonData['username'])) {
+                    $usuarioNombre = $jsonData['username'];
+                }
+            }
+            
+            $log['usuario'] = $usuarioNombre;
+            
+            echo json_encode(['success' => true, 'data' => $log]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Registro no encontrado']);
+        }
+        exit;
+    }
+
+    /**
      * Generar reporte de auditoría
      */
     public function generarReporte() {

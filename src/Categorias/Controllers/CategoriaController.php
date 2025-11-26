@@ -1,3 +1,4 @@
+
 <?php
 // src/Categorias/Controllers/CategoriaController.php
 
@@ -69,6 +70,9 @@ class CategoriaController {
                 // El trigger 'trg_categorias_after_insert_aud' se encarga de esto.
 
             } else { // Actualizar
+                // Obtener datos antes de actualizar
+                $oldData = $this->categoriaModel->getCategoriaById($id);
+                
                 $success = $this->categoriaModel->updateCategoria($id, $data);
 
                 // <-- ¡CORRECCIÓN 3: BORRAMOS LA LLAMADA A addAudit()!
@@ -78,8 +82,15 @@ class CategoriaController {
             if ($success) {
                 // Añadir log si no hay triggers para categorias
                 if (!$this->auditoriaModel->hasTriggerForTable('categorias')) {
-                    $det = 'Categoría guardada: ' . ($data['nombre'] ?? '');
-                    $this->auditoriaModel->addLog('Categoria', empty($id) ? 'Insercion' : 'Actualizacion', $det, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                    if (empty($id)) {
+                        // Inserción
+                        $this->auditoriaModel->addLog('Categoria', 'Insercion', null, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                    } else {
+                        // Actualización - guardar old y new
+                        $oldValor = $oldData ? json_encode($oldData) : null;
+                        $newValor = json_encode($data);
+                        $this->auditoriaModel->addLog('Categoria', 'Actualizacion', null, $oldValor, $newValor, null, null, $_SESSION['user_id'] ?? null);
+                    }
                 }
                 $response['success'] = true;
             } else {
@@ -174,8 +185,9 @@ class CategoriaController {
                 $success = $this->categoriaModel->deleteCategoria($id);
                 if ($success) {
                     if (!$this->auditoriaModel->hasTriggerForTable('categorias')) {
-                        $det = 'Categoría eliminada (id: ' . $id . ')';
-                        $this->auditoriaModel->addLog('Categoria', 'Eliminacion', $det, null, null, null, null, $_SESSION['user_id'] ?? null);
+                        // Guardar objeto completo en old_valor antes de eliminar
+                        $oldValor = $categoria ? json_encode($categoria) : null;
+                        $this->auditoriaModel->addLog('Categoria', 'Eliminacion', $oldValor, null, null, null, null, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
                 } else {

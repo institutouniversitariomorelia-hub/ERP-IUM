@@ -14,7 +14,8 @@ if ($folio <= 0) {
     exit;
 }
 
-$sql = "SELECT i.*, c.nombre AS nombre_categoria, c.concepto 
+// Eliminado campo concepto
+$sql = "SELECT i.*, c.nombre AS nombre_categoria 
         FROM ingresos i
         LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
         WHERE i.folio_ingreso = ? LIMIT 1";

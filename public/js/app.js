@@ -1,3 +1,143 @@
+    /**
+     * Maneja la apertura del modal exclusivo de subpresupuesto
+     */
+    function initModalSubPresupuestoExclusivo() {
+        $('#modalSubPresupuesto').on('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const presId = button ? $(button).data('id') : null;
+            const $form = $('#formSubPresupuesto');
+            const $selectCat = $('#subpres_categoria');
+            const $selectPadre = $('#subpres_parent');
+            const $alert = $('#subpresupuestoAlert');
+            const $msgNoCat = $('#msgNoCategoriasEgreso');
+
+            if (!$form.length) {
+                console.error('[ERROR] Formulario #formSubPresupuesto no encontrado');
+                return;
+            }
+
+            $form[0].reset();
+            $alert.addClass('d-none').text('');
+            $('#subpresupuesto_id').val('');
+            ERPUtils.ensureNumberEditable('#subpres_monto');
+            $msgNoCat.addClass('d-none');
+
+            // Cargar presupuestos generales como padres
+            $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
+
+            ERPUtils.ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
+                .done(presupuestos => {
+                    $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
+                    if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
+                        presupuestos.forEach(p => {
+                            const id = p.id_presupuesto || '';
+                            const nombre = p.nombre || 'Sin nombre';
+                            const fecha = p.fecha || '';
+                            const label = `${nombre} — ${fecha}`;
+                            $selectPadre.append(`<option value="${id}">${ERPUtils.escapeHtml(label)}</option>`);
+                        });
+                    } else {
+                        $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
+                    }
+                    $selectPadre.prop('disabled', false);
+                    // Cargar solo categorías de egreso
+                    return ERPUtils.ajaxCall('categoria', 'getCategoriasEgreso', {}, 'GET');
+                })
+                .done(categorias => {
+                    $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
+
+                    let countEgreso = 0;
+                    const idsAgregados = new Set();
+                    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+                        categorias.forEach(cat => {
+                            const catId = cat.id_categoria || cat.id || '';
+                            const nombre = cat.nombre || cat.cat_nombre || 'Sin nombre';
+                            // Solo tipo Egreso y sin duplicados
+                            if (cat.tipo === 'Egreso' && catId && !idsAgregados.has(catId)) {
+                                $selectCat.append(`<option value="${catId}">${ERPUtils.escapeHtml(nombre)}</option>`);
+                                idsAgregados.add(catId);
+                                countEgreso++;
+                            }
+                        });
+                    }
+                    if (countEgreso === 0) {
+                        $msgNoCat.removeClass('d-none');
+                    }
+                    $selectCat.prop('disabled', false);
+
+                    if (presId) {
+                        $('#modalSubPresupuestoTitle').text('Editar Sub-Presupuesto');
+                        ERPUtils.ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
+                            .done(data => {
+                                if (data && !data.error) {
+                                    $('#subpresupuesto_id').val(data.id_presupuesto || data.id);
+                                    $('#subpres_nombre').val(data.nombre);
+                                    $('#subpres_monto').val(data.monto_limite || data.monto);
+                                    if (data.id_categoria) {
+                                        $selectCat.val(data.id_categoria);
+                                    }
+                                    if (data.parent_presupuesto) {
+                                        $selectPadre.val(data.parent_presupuesto);
+                                    }
+                                    $('#subpres_fecha').val(data.fecha);
+                                } else {
+                                    $('#modalSubPresupuesto').modal('hide');
+                                    alert('Error: ' + (data.error || ''));
+                                }
+                            })
+                            .fail(xhr => {
+                                ERPUtils.mostrarError('cargar sub-presupuesto', xhr);
+                                $('#modalSubPresupuesto').modal('hide');
+                            });
+                    } else {
+                        $('#modalSubPresupuestoTitle').text('Agregar Sub-Presupuesto');
+                    }
+                })
+                .fail(xhr => ERPUtils.mostrarError('cargar datos subpresupuesto', xhr));
+        });
+    }
+
+    /**
+     * Maneja el envío del formulario exclusivo de subpresupuesto
+     */
+    function initSubmitSubPresupuestoExclusivo() {
+        $(document).on('submit', '#formSubPresupuesto', function(e) {
+            e.preventDefault();
+            const $form = $(this);
+            const $alert = $('#subpresupuestoAlert');
+            $alert.addClass('d-none').text('');
+
+            // Validación visual de campos requeridos
+            const parent = $('#subpres_parent').val();
+            const cat = $('#subpres_categoria').val();
+            const monto = $('#subpres_monto').val();
+            const fecha = $('#subpres_fecha').val();
+            if (!parent || !cat || !monto || !fecha) {
+                $alert.removeClass('d-none').text('Todos los campos marcados con * son obligatorios.');
+                return;
+            }
+
+            // Deshabilitar botón para evitar doble envío
+            const $btn = $('#btnGuardarSubPresupuesto');
+            $btn.prop('disabled', true);
+
+            ERPUtils.ajaxCall('presupuesto', 'save', $form.serialize())
+                .done(r => {
+                    if (r.success) {
+                        window.location.reload();
+                    } else {
+                        $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
+                    }
+                })
+                .fail(xhr => {
+                    ERPUtils.mostrarError('guardar sub-presupuesto', xhr);
+                    $alert.removeClass('d-none').text('Error inesperado al guardar.');
+                })
+                .always(() => {
+                    $btn.prop('disabled', false);
+                });
+        });
+    }
 /**
  * ============================================================================
  * ERP IUM - Sistema de Gestión Financiera
@@ -486,26 +626,22 @@ const IngresosModule = (function() {
                 console.error('[ERROR] Formulario #formIngreso no encontrado');
                 return;
             }
-            
-            // Reset del formulario
-            $form[0].reset();
+
+            // Limpiar solo campos editables, no el DOM ni los métodos de pago aún
+            $form.find('input, select, textarea').not(':button, :submit, :reset, :hidden').val('');
             $('#ingreso_id').val('');
-            contadorPagos = 0;
-            $('#contenedor_pagos_parciales').empty();
-            $('#seccion_pago_unico').show();
-            $('#seccion_cobro_dividido').hide();
-            $('#toggleCobroDividido').prop('checked', false);
             $('#in_monto').prop('readonly', false).prop('disabled', false).css('background-color', '');
             $('#in_metodo_unico').val('');
             $('#in_monto_unico').val('');
-            
+            $('#seccion_pago_unico').show();
+            $('#seccion_cobro_dividido').hide();
+            $('#toggleCobroDividido').prop('checked', false);
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
 
             // Cargar categorías de Ingreso
             ajaxCall('ingreso', 'getCategoriasIngreso', {}, 'GET')
                 .done(categorias => {
                     $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
-                    
                     if (categorias && Array.isArray(categorias) && categorias.length > 0) {
                         categorias.forEach(cat => {
                             if (cat && cat.id_categoria !== undefined && cat.nombre !== undefined) {
@@ -532,14 +668,19 @@ const IngresosModule = (function() {
                                     $('#in_modalidad').val(data.modalidad);
                                     $('#in_grupo').val(data.grupo);
                                     $selectCat.val(data.id_categoria);
-                                    $('#in_concepto').val(data.concepto);
                                     $('#in_mes_correspondiente').val(data.mes_correspondiente);
                                     $('#in_anio').val(data.anio);
                                     $('#in_observaciones').val(data.observaciones);
-                                    
+
+                                    // Limpiar métodos de pago antes de agregar los correctos
+                                    $('#contenedor_pagos_parciales').empty();
+                                    contadorPagos = 0;
+
                                     // Cargar pagos parciales si existen
                                     if (data.pagos_parciales && data.pagos_parciales.length > 0) {
                                         $('#toggleCobroDividido').prop('checked', true).trigger('change');
+                                        $('#contenedor_pagos_parciales').empty();
+                                        contadorPagos = 0;
                                         data.pagos_parciales.forEach(pago => {
                                             agregarFilaPago(pago.metodo_pago, pago.monto);
                                         });
@@ -562,6 +703,8 @@ const IngresosModule = (function() {
                         $('#seccion_pago_unico').show();
                         $('#seccion_cobro_dividido').hide();
                         $('#toggleCobroDividido').prop('checked', false);
+                        $('#contenedor_pagos_parciales').empty();
+                        contadorPagos = 0;
                     }
                 })
                 .fail(xhr => mostrarError('cargar categorías ingreso', xhr));
@@ -1154,6 +1297,9 @@ const CategoriasModule = (function() {
             
             $form[0].reset();
             $('#categoria_id').val('');
+            // Ocultar campo concepto por defecto
+            $('#div_cat_concepto').hide();
+            $('#cat_concepto').val('');
             
             if (catId) {
                 $('#modalCategoriaTitle').text('Editar Categoría');
@@ -1164,6 +1310,22 @@ const CategoriasModule = (function() {
                             $('#cat_nombre').val(data.nombre);
                             $('#cat_tipo').val(data.tipo);
                             $('#cat_descripcion').val(data.descripcion);
+                            $('#categoria_no_borrable').val(data.no_borrable || 0);
+                            // Mostrar campo concepto si es ingreso y setear valor
+                            if (data.tipo === 'Ingreso') {
+                                $('#div_cat_concepto').show();
+                                $('#cat_concepto').val(data.concepto || '');
+                            } else {
+                                $('#div_cat_concepto').hide();
+                                $('#cat_concepto').val('');
+                            }
+                            
+                            // Mostrar alerta si es protegida
+                            if (data.no_borrable == 1) {
+                                $('#alert_categoria_protegida').show();
+                            } else {
+                                $('#alert_categoria_protegida').hide();
+                            }
                         } else {
                             $('#modalCategoria').modal('hide');
                             alert('Error al cargar: ' + (data.error || ''));
@@ -1175,7 +1337,22 @@ const CategoriasModule = (function() {
                     });
             } else {
                 $('#modalCategoriaTitle').text('Agregar Nueva Categoría');
+                // Por defecto, si tipo es Ingreso, mostrar campo concepto
+                if ($('#cat_tipo').val() === 'Ingreso') {
+                    $('#div_cat_concepto').show();
+                } else {
+                    $('#div_cat_concepto').hide();
+                }
             }
+            // Evento al cambiar tipo
+            $('#cat_tipo').off('change.categoria').on('change.categoria', function() {
+                if ($(this).val() === 'Ingreso') {
+                    $('#div_cat_concepto').show();
+                } else {
+                    $('#div_cat_concepto').hide();
+                    $('#cat_concepto').val('');
+                }
+            });
         });
     }
 
@@ -1185,7 +1362,15 @@ const CategoriasModule = (function() {
     function initSubmitCategoria() {
         $(document).on('submit', '#formCategoria', function(e) {
             e.preventDefault();
-            
+            // Validación: si tipo es Ingreso, concepto es obligatorio
+            const tipo = $('#cat_tipo').val();
+            const concepto = $('#cat_concepto').val();
+            if (tipo === 'Ingreso' && !concepto) {
+                alert('Debes seleccionar un concepto para las categorías de tipo Ingreso.');
+                $('#cat_concepto').focus();
+                return false;
+            }
+
             ajaxCall('categoria', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
@@ -1328,8 +1513,7 @@ const PresupuestosModule = (function() {
     function initSubmitPresupuestoGeneral() {
         $(document).on('submit', '#formPresupuestoGeneral', function(e) {
             e.preventDefault();
-            
-            ajaxCall('presupuesto', 'savePresupuestoGeneral', $(this).serialize())
+            ajaxCall('presupuesto', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
                         window.location.reload();
@@ -1351,24 +1535,24 @@ const PresupuestosModule = (function() {
             const $form = $('#formPresupuesto');
             const $selectCat = $('#pres_categoria');
             const $selectPadre = $('#pres_parent');
-            
+            const $alert = $('#presupuestoAlert');
+
             if (!$form.length) {
                 console.error('[ERROR] Formulario #formPresupuesto no encontrado');
                 return;
             }
-            
+
             $form[0].reset();
+            $alert.addClass('d-none').text('');
             $('#presupuesto_id').val('');
             ensureNumberEditable('#pres_monto');
-            
+
             // Cargar presupuestos generales como padres
             $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
-            
+
             ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
                 .done(presupuestos => {
-                    console.log('[DEBUG] Presupuestos generales recibidos:', presupuestos);
                     $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
-                    
                     if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
                         presupuestos.forEach(p => {
                             const id = p.id_presupuesto || '';
@@ -1381,37 +1565,28 @@ const PresupuestosModule = (function() {
                         $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
                     }
                     $selectPadre.prop('disabled', false);
-                    
                     return populatePresupuestoCategoria(presId);
                 })
                 .done(() => {
-                    // Auto-sync categoría con presupuesto padre
                     $selectPadre.off('change.subpresSync').on('change.subpresSync', function() {
-                        const padreId = $(this).val();
-                        if (padreId) {
-                            console.log('[INFO] Presupuesto padre seleccionado:', padreId);
-                        }
+                        // Si se quiere, aquí se puede auto-filtrar categorías según el padre
                     });
-
-                    // Si es edición, cargar datos
                     if (presId) {
                         $('#modalPresupuestoTitle').text('Editar Sub-Presupuesto');
                         ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
                             .done(data => {
                                 if (data && !data.error) {
-                                    $('#presupuesto_id').val(data.id_presupuesto);
+                                    $('#presupuesto_id').val(data.id_presupuesto || data.id);
                                     $('#pres_nombre').val(data.nombre);
-                                    $('#pres_monto').val(data.monto);
+                                    $('#pres_monto').val(data.monto_limite || data.monto);
                                     if (data.id_categoria) {
                                         $selectCat.val(data.id_categoria);
                                     }
-                                    
-                                    if (data.id_padre) {
-                                        $selectPadre.val(data.id_padre);
+                                    if (data.parent_presupuesto) {
+                                        $selectPadre.val(data.parent_presupuesto);
                                     }
-                                    
                                     $('#pres_fecha').val(data.fecha);
-                                    $('#pres_descripcion').val(data.descripcion);
+                                    if (data.descripcion) $('#pres_descripcion').val(data.descripcion);
                                 } else {
                                     $('#modalPresupuesto').modal('hide');
                                     alert('Error: ' + (data.error || ''));
@@ -1435,16 +1610,39 @@ const PresupuestosModule = (function() {
     function initSubmitSubPresupuesto() {
         $(document).on('submit', '#formPresupuesto', function(e) {
             e.preventDefault();
-            
-            ajaxCall('presupuesto', 'save', $(this).serialize())
+            const $form = $(this);
+            const $alert = $('#presupuestoAlert');
+            $alert.addClass('d-none').text('');
+
+            // Validación visual de campos requeridos
+            const parent = $('#pres_parent').val();
+            const cat = $('#pres_categoria').val();
+            const monto = $('#pres_monto').val();
+            const fecha = $('#pres_fecha').val();
+            if (!parent || !cat || !monto || !fecha) {
+                $alert.removeClass('d-none').text('Todos los campos marcados con * son obligatorios.');
+                return;
+            }
+
+            // Deshabilitar botón para evitar doble envío
+            const $btn = $('#btnGuardarPresupuesto');
+            $btn.prop('disabled', true);
+
+            ajaxCall('presupuesto', 'save', $form.serialize())
                 .done(r => {
                     if (r.success) {
                         window.location.reload();
                     } else {
-                        alert('Error: ' + (r.error || 'Error.'));
+                        $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
                     }
                 })
-                .fail(xhr => mostrarError('guardar sub-presupuesto', xhr));
+                .fail(xhr => {
+                    mostrarError('guardar sub-presupuesto', xhr);
+                    $alert.removeClass('d-none').text('Error inesperado al guardar.');
+                })
+                .always(() => {
+                    $btn.prop('disabled', false);
+                });
         });
     }
 
@@ -1512,7 +1710,7 @@ const PresupuestosModule = (function() {
                         ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
                             .done(data => {
                                 if (data && !data.error) {
-                                    $('#presupuesto_categoria_id').val(data.id_presupuesto);
+                                    $('#presupuesto_categoria_id').val(data.id_presupuesto || data.id);
                                     $('#pres_nombre_categoria').val(data.nombre);
                                     $('#pres_monto_categoria').val(data.monto_limite || data.monto);
                                     if (data.id_categoria) {
@@ -1607,6 +1805,7 @@ const PresupuestosModule = (function() {
     /**
      * Inicializa todos los componentes del módulo
      */
+
     function init() {
         initModalPresupuestoGeneral();
         initSubmitPresupuestoGeneral();
@@ -1616,6 +1815,9 @@ const PresupuestosModule = (function() {
         initSubmitPresupuestoCategoria();
         initEliminarPresupuesto();
         initRefrescarPresupuestos();
+        // NUEVO: Inicializar el flujo exclusivo de subpresupuestos
+        initModalSubPresupuestoExclusivo();
+        initSubmitSubPresupuestoExclusivo();
         console.log('[✓] Módulo Presupuestos inicializado');
     }
 

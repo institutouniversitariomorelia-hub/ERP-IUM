@@ -178,8 +178,8 @@ class EgresoController {
                     $success = $this->egresoModel->deleteEgreso($folio_egreso_id);
                 if ($success) {
                         if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
-                            $det = 'Egreso eliminado (folio: ' . $folio_egreso_id . ')';
-                            $this->auditoriaModel->addLog('Egreso', 'Eliminacion', $det, json_encode($oldData), null, $folio_egreso_id, null, $_SESSION['user_id'] ?? null);
+                            $oldValor = $oldData ? json_encode($oldData) : null;
+                            $this->auditoriaModel->addLog('Egreso', 'Eliminacion', null, $oldValor, null, $folio_egreso_id, null, $_SESSION['user_id'] ?? null);
                         }
                         $response['success'] = true;
                 } else {

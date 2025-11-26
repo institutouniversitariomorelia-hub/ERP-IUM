@@ -12,6 +12,10 @@ define('DEFAULT_CONTROLLER', 'user'); // Controlador por defecto si hay sesión
 define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
 
 // Incluir archivos necesarios
+// Cargar configuración de aplicación (APP_DEBUG, rutas de logs)
+require_once __DIR__ . '/config/app.php';
+
+// Conexión a BD
 require_once __DIR__ . '/config/database.php'; // Conexión BD
 require_once __DIR__ . '/utils/password.php'; // Compatibilidad de hash
 require_once __DIR__ . '/shared/Helpers/helpers.php'; // Permisos y utilidades

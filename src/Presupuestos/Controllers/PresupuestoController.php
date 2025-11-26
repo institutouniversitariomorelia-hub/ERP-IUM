@@ -1,3 +1,4 @@
+
 <?php
 // src/Presupuestos/Controllers/PresupuestoController.php
 
@@ -53,7 +54,8 @@ class PresupuestoController {
         // <-- ¡CORRECCIÓN 1: AÑADIR EL ID DE USUARIO DE LA SESIÓN!
         $data['id_user'] = $_SESSION['user_id'];
         
-        $id = $data['id'] ?? null; // ID puede venir si es una edición (id_presupuesto)
+        // Permitir que el id venga como 'id', 'id_presupuesto' o 'presupuesto_id' (según el formulario)
+        $id = $data['id'] ?? $data['id_presupuesto'] ?? $data['presupuesto_id'] ?? null;
         $response = ['success' => false];
 
         // Validación básica (ajustada a nuestra BD)
@@ -113,13 +115,19 @@ class PresupuestoController {
             }
             // El modelo ahora hace un simple INSERT o UPDATE
             // Antes de guardar: si es presupuesto por categoría, validar que la suma de hijos no exceda el padre
+            
+            // Obtener datos anteriores si es actualización
+            $oldData = null;
+            if (!empty($id)) {
+                $oldData = $this->presupuestoModel->getPresupuestoById($id);
+            }
+            
             if (!$isGeneral && $parentPres > 0) {
                 $sumaHijos = $this->presupuestoModel->getSumaPresupuestosHijos($parentPres);
                 $nuevoMonto = floatval($data['monto_limite']);
                 // Si estamos editando un hijo, restar su monto anterior para validar correctamente
-                if (!empty($id)) {
-                    $old = $this->presupuestoModel->getPresupuestoById($id);
-                    $oldMonto = $old['monto_limite'] ?? 0;
+                if ($oldData) {
+                    $oldMonto = $oldData['monto_limite'] ?? 0;
                     $sumaHijos = max(0, $sumaHijos - floatval($oldMonto));
                 }
                 $parent = $this->presupuestoModel->getPresupuestoById($parentPres);
@@ -136,8 +144,15 @@ class PresupuestoController {
             if ($success) {
                 // Si no existen triggers en la BD para presupuestos, hacemos fallback en PHP
                 if (!$this->auditoriaModel->hasTriggerForTable('presupuestos')) {
-                    $det = 'Presupuesto ' . (empty($id) ? 'creado' : 'actualizado') . ': ' . ($data['descripcion'] ?? '') . ' monto: ' . ($data['monto_limite'] ?? '');
-                    $this->auditoriaModel->addLog('Presupuesto', empty($id) ? 'Insercion' : 'Actualizacion', $det, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                    if (empty($id)) {
+                        // Inserción
+                        $this->auditoriaModel->addLog('Presupuesto', 'Insercion', null, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                    } else {
+                        // Actualización
+                        $oldValor = $oldData ? json_encode($oldData) : null;
+                        $newValor = json_encode($data);
+                        $this->auditoriaModel->addLog('Presupuesto', 'Actualizacion', null, $oldValor, $newValor, null, null, $_SESSION['user_id'] ?? null);
+                    }
                 }
                 $response['success'] = true;
             } else {
@@ -222,6 +237,32 @@ class PresupuestoController {
      }
 
      /**
+      * Acción AJAX: Devuelve solo presupuestos generales (sin parent_presupuesto)
+      * Para usar en el dropdown al crear sub-presupuestos
+      */
+     public function getPresupuestosGenerales() {
+         header('Content-Type: application/json');
+         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+         // Obtener solo presupuestos generales (parent_presupuesto IS NULL)
+         $query = "SELECT id_presupuesto, nombre, fecha, monto_limite 
+                   FROM presupuestos 
+                   WHERE parent_presupuesto IS NULL 
+                   ORDER BY fecha DESC, id_presupuesto DESC";
+         $result = $this->db->query($query);
+         
+         $presupuestos = [];
+         if ($result) {
+             while ($row = $result->fetch_assoc()) {
+                 $presupuestos[] = $row;
+             }
+         }
+         
+         echo json_encode($presupuestos);
+         exit;
+     }
+
+     /**
       * Acción AJAX: Devuelve el conteo de presupuestos en alerta (>=90% consumidos)
       */
      public function getAlertasCount() {
@@ -245,12 +286,14 @@ class PresupuestoController {
 
         if ($id > 0) {
             try {
-                // No necesitamos $presupuesto, el trigger lo hace.
+                // Obtener datos del presupuesto antes de eliminarlo
+                $presupuesto = $this->presupuestoModel->getPresupuestoById($id);
+                
                 $success = $this->presupuestoModel->deletePresupuesto($id);
                 if ($success) {
                     if (!$this->auditoriaModel->hasTriggerForTable('presupuestos')) {
-                        $det = 'Presupuesto eliminado (id: ' . $id . ')';
-                        $this->auditoriaModel->addLog('Presupuesto', 'Eliminacion', $det, null, null, null, null, $_SESSION['user_id'] ?? null);
+                        $oldValor = $presupuesto ? json_encode($presupuesto) : null;
+                        $this->auditoriaModel->addLog('Presupuesto', 'Eliminacion', null, $oldValor, null, null, null, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
                 } else {
