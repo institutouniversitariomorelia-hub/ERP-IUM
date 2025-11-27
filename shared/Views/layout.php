@@ -359,7 +359,7 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto fw-bold"></span>
+            <span class="me-auto fw-bold" style="font-size:1.25rem; letter-spacing:1px;">INSTITUTO UNIVERSITARIO MORELIA</span>
             <div class="user-info-header">
                 <div class="d-none d-md-block">
                     <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
@@ -452,11 +452,7 @@ $currentUser = [
                             </div>
                         <?php endif; ?>
                         <hr>
-                        <div class="d-grid">
-                            <button type="button" class="btn btn-outline-secondary" id="btnAbrirCambiarPassword">
-                                <ion-icon name="key-outline" style="vertical-align: middle;"></ion-icon> Cambiar Contraseña
-                            </button>
-                        </div>
+                        
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -476,6 +472,24 @@ $currentUser = [
                         <h5 class="modal-title" id="modalUsuarioTitle">Registrar Nuevo Usuario</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    <script>
+                    // Cambia el título del modal según si es edición o registro
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var modalUsuario = document.getElementById('modalUsuario');
+                        if (modalUsuario) {
+                            modalUsuario.addEventListener('show.bs.modal', function (event) {
+                                var title = document.getElementById('modalUsuarioTitle');
+                                var form = document.getElementById('formUsuario');
+                                var idInput = document.getElementById('usuario_id');
+                                if (idInput && idInput.value) {
+                                    title.textContent = 'Editar Usuario';
+                                } else {
+                                    title.textContent = 'Registrar Nuevo Usuario';
+                                }
+                            });
+                        }
+                    });
+                    </script>
                     <div class="modal-body">
                         <input type="hidden" id="usuario_id" name="id">
                         <div class="mb-3">
@@ -511,55 +525,8 @@ $currentUser = [
     </div>
 
     <!-- Modal: Cambiar Contraseña (Nueva Versión) -->
-    <div class="modal fade" id="modalCambiarPasswordNuevo" tabindex="-1" aria-labelledby="modalCambiarPasswordNuevoLabel" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen-sm-down">
-            <div class="modal-content">
-                <form id="formCambiarPasswordNuevo">
-                    <div class="modal-header modal-header-danger">
-                        <h5 class="modal-title" id="modalCambiarPasswordNuevoLabel">Cambiar Contraseña</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <input type="hidden" id="changepass_username" name="username">
-                        <div class="mb-3">
-                            <label for="password_actual" class="form-label">Contraseña Actual</label>
-                            <div class="input-group">
-                                <input id="password_actual" name="password_actual" type="password" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordActual">
-                                    <ion-icon name="eye-outline"></ion-icon>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password_nueva" class="form-label">Contraseña Nueva</label>
-                            <div class="input-group">
-                                <input id="password_nueva" name="password_nueva" type="password" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordNueva">
-                                    <ion-icon name="eye-outline"></ion-icon>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password_confirmar" class="form-label">Confirmar Contraseña Nueva</label>
-                            <div class="input-group">
-                                <input id="password_confirmar" name="password_confirmar" type="password" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirmar">
-                                    <ion-icon name="eye-outline"></ion-icon>
-                                </button>
-                            </div>
-                            <div class="form-text" id="passwordMatchMessage"></div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-danger" id="btnGuardarPasswordNueva">Cambiar Contraseña</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
-    <!-- Modal: Cambiar Contraseña (Versión Antigua para Admin) -->
+    <!-- Modal: Cambiar Contraseña (Universal) -->
     <div class="modal fade" id="modalCambiarPassword" tabindex="-1" aria-labelledby="modalCambiarPasswordLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content">
