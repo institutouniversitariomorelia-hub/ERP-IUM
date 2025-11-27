@@ -301,13 +301,19 @@ $(document).on('submit', '#formEditarMiPerfil', function(e) {
 
 // Refuerzo: solo el modal correcto para cada caso
 $(document).ready(function() {
-    // Botón de la tabla de usuarios (admin): debe tener data-username
-    $(document).on('click', '.btn-cambiar-pass-usuario', function(e) {
+    // Botón amarillo editar usuario: solo abre el modal de editar usuario
+    $(document).on('click', '.btn-edit-user', function(e) {
+        // No hacer nada especial, Bootstrap maneja el modal
+        // Si hay algún modal abierto, se cierra automáticamente
+    });
+
+    // Botón candado cambiar contraseña: solo abre el modal de contraseña
+    $(document).on('click', '.btn-change-pass', function(e) {
         e.preventDefault();
         e.stopPropagation();
         const username = $(this).data('username');
         if (!username) {
-            showNotification('No se encontró el usuario a modificar.', 'danger');
+            showNotification('No se encontró el usuario para cambiar contraseña.', 'danger');
             return;
         }
         // Cerrar modal de perfil si está abierto
@@ -317,14 +323,15 @@ $(document).ready(function() {
         } else {
             $('#modalEditarMiPerfil').modal('hide');
         }
-        setTimeout(function() {
-            $('#change_pass_username').val(username);
-            $('#username_display').text(username);
-            $('#modalCambiarPassword').modal('show');
-        }, 400);
+        // Resetear y setear datos antes de mostrar el modal
+        var $form = $('#formCambiarPassword');
+        if ($form.length) $form[0].reset();
+        $('#change_pass_username').val(username);
+        $('#username_display').text(username);
+        $('#modalCambiarPassword').modal('show');
     });
 
-    // Botón de perfil propio (sin data-username): solo para el logueado
+    // Botón de perfil propio (sin data-username): usa el mismo modal universal
     $(document).on('click', '#btnAbrirCambiarPassword', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -335,10 +342,16 @@ $(document).ready(function() {
         } else {
             $('#modalEditarMiPerfil').modal('hide');
         }
-        setTimeout(function() {
-            $('#changepass_username').val(CURRENT_USER.user_username || CURRENT_USER.username);
-            $('#modalCambiarPasswordNuevo').modal('show');
-        }, 400);
+        // Resetear y setear datos SIEMPRE antes de mostrar el modal
+        var username = CURRENT_USER.user_username || CURRENT_USER.username;
+        var $form = $('#formCambiarPassword');
+        if ($form.length) $form[0].reset();
+        $('#change_pass_username').val(username);
+        $('#username_display').text(username);
+        console.log('[DEBUG] Abriendo modal #modalCambiarPassword para:', username);
+        console.log('[DEBUG] Valor en input oculto:', $('#change_pass_username').val());
+        console.log('[DEBUG] Texto en label:', $('#username_display').text());
+        $('#modalCambiarPassword').modal('show');
     });
 });
 
@@ -377,26 +390,21 @@ $(document).on('click', '.btn-delete-user', function() {
 });
 
 // Modal: Cambiar Contraseña (Versión Admin - para otros usuarios)
-$('#modalCambiarPassword').on('show.bs.modal', function (event) { 
-    const button = event.relatedTarget; 
-    const username = button ? $(button).data('username') || CURRENT_USER.username : CURRENT_USER.username; 
-    const $form = $('#formCambiarPassword'); 
-    if(!$form.length) { console.error("Form #formCambiarPassword no encontrado."); return; } 
-    $form[0].reset(); 
-    $('#change_pass_username').val(username); 
-    $('#username_display').text(username); 
-});
+// Eliminado el handler 'show.bs.modal' para evitar sobreescribir el username correcto.
 
 $(document).on('submit', '#formCambiarPassword', function(e) { 
-    e.preventDefault(); 
-    ajaxCall('auth', 'changePassword', $(this).serialize()).done(r => { 
-        if (r.success) { 
-            $('#modalCambiarPassword').modal('hide'); 
-            showNotification('Contraseña actualizada.', 'success'); 
-        } else { 
-            showNotification('Error: ' + (r.error || 'No se pudo cambiar.'), 'danger'); 
-        } 
-    }).fail((xhr) => mostrarError('cambiar contraseña', xhr)); 
+    e.preventDefault();
+    var username = $('#change_pass_username').val();
+    var password = $('#change_pass_password').val();
+    console.log('[DEBUG][submit] Enviando cambio de contraseña para:', username, 'con password:', password);
+    ajaxCall('auth', 'changePassword', $(this).serialize()).done(r => {
+        if (r.success) {
+            $('#modalCambiarPassword').modal('hide');
+            showNotification('Contraseña actualizada.', 'success');
+        } else {
+            showNotification('Error: ' + (r.error || 'No se pudo cambiar.'), 'danger');
+        }
+    }).fail((xhr) => mostrarError('cambiar contraseña', xhr));
 });
 
 // --- Eventos Módulo: Egresos ---
@@ -1408,7 +1416,7 @@ $(document).ready(function() {
         console.log("Sección usuarios registrados (#seccionUsuariosRegistrados):", $('#seccionUsuariosRegistrados').length);
         console.log("Botón abrir cambiar password (#btnAbrirCambiarPassword):", $('#btnAbrirCambiarPassword').length);
         console.log("Modal editar perfil (#modalEditarMiPerfil):", $('#modalEditarMiPerfil').length);
-        console.log("Modal cambiar password (#modalCambiarPasswordNuevo):", $('#modalCambiarPasswordNuevo').length);
+        console.log("Modal cambiar password (#modalCambiarPassword):", $('#modalCambiarPassword').length);
         
         // Agregar eventos de click para debugging
         if ($('#btnToggleUsuarios').length === 0) {
