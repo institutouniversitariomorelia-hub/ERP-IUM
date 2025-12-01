@@ -196,7 +196,7 @@ class IngresoModel {
 
     // Cadena de tipos EXACTA para los 16 parámetros en el orden del UPDATE (+ WHERE al final)
     // (mismos 15 que en INSERT) + folio_ingreso(i)
-    $types = "ssssdssisisssii";
+    $types = "ssssdssisissssii";
         // ==========================================================
 
         $types = "ssssdssisisssiii";

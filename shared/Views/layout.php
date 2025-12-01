@@ -334,8 +334,6 @@ $currentUser = [
         <!-- Header del Sidebar -->
         <div class="logo-container" id="logoContainer" style="cursor: pointer;">
             <img src="<?php echo BASE_URL; ?>public/logo ium blanco.png" alt="Logo IUM" class="sidebar-logo">
-            <h6 class="sidebar-title">Sistema ERP</h6>
-            <p class="sidebar-subtitle">Instituto Universitario Morelia</p>
         </div>
         
         <!-- User Info Section (Moved from Footer) -->
@@ -447,10 +445,7 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto fw-bold">
-                <span class="d-none d-md-inline">SISTEMA DE CONTROL DE INGRESOS Y EGRESOS IUM</span>
-                <span class="d-md-none">Sistema ERP</span>
-            </span>
+            <span class="me-auto fw-bold"></span>
             <div class="user-info-header">
                 <div class="d-none d-md-block">
                     <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
