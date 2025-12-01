@@ -47,10 +47,16 @@ class AuditoriaModel {
             }
         }
 
-        // Filtrar por acción (parcial, case-insensitive)
-        if (!empty($filtros['accion'])) {
-            $where .= " AND LOWER(a.accion) LIKE LOWER(?)";
-            $params[] = '%' . $filtros['accion'] . '%'; $types .= 's';
+        // Filtrar por tipo de acción (Insercion / Actualizacion / Eliminacion)
+        if (!empty($filtros['accion_tipo'])) {
+            $tipo = mb_strtolower($filtros['accion_tipo']);
+            if (mb_stripos($tipo, 'inser') !== false || mb_stripos($tipo, 'registro') !== false) {
+                $where .= " AND (LOWER(a.accion) LIKE '%insert%' OR LOWER(a.accion) LIKE '%registro%')";
+            } elseif (mb_stripos($tipo, 'actual') !== false || mb_stripos($tipo, 'update') !== false) {
+                $where .= " AND (LOWER(a.accion) LIKE '%actualiz%' OR LOWER(a.accion) LIKE '%update%')";
+            } elseif (mb_stripos($tipo, 'elim') !== false || mb_stripos($tipo, 'delete') !== false) {
+                $where .= " AND (LOWER(a.accion) LIKE '%elim%' OR LOWER(a.accion) LIKE '%delete%')";
+            }
         }
 
         // Rango de fechas (fecha_inicio y fecha_fin esperadas en YYYY-MM-DD)
@@ -63,13 +69,7 @@ class AuditoriaModel {
             $params[] = $filtros['fecha_fin']; $types .= 's';
         }
 
-        // Búsqueda de texto en old_valor/new_valor (case-insensitive)
-        if (!empty($filtros['q'])) {
-            $q = '%' . $filtros['q'] . '%';
-            // La tabla no contiene 'detalles' en la BD original; usamos old_valor/new_valor
-            $where .= " AND (LOWER(a.old_valor) LIKE LOWER(?) OR LOWER(a.new_valor) LIKE LOWER(?) OR LOWER(CONCAT(IFNULL(a.old_valor,''),' ',IFNULL(a.new_valor,''))) LIKE LOWER(?))";
-            $params[] = $q; $params[] = $q; $params[] = $q; $types .= 'sss';
-        }
+        // Nota: búsqueda por texto libre ('q') eliminada para simplificar la interfaz.
 
         // Primero obtener el total para paginación
         $countSql = "SELECT COUNT(*) as cnt" . $baseFrom . $where;

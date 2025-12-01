@@ -21,13 +21,13 @@
                                 <select id="subpres_categoria" name="id_categoria" class="form-select" required>
                                     <option value="">Seleccione una categoría...</option>
                                 </select>
-                                <div id="msgNoCategoriasEgreso" class="form-text text-danger d-none">No hay categorías de egreso disponibles. <b>Este es el formulario NUEVO de subpresupuesto.</b></div>
+                                <div id="msgNoCategoriasEgreso" class="form-text text-danger d-none">No hay categorías de egreso disponibles.</div>
                             </div>
                             <div class="mb-3">
                                 <label for="subpres_nombre" class="form-label">Nombre del Sub-Presupuesto <span class="text-muted">(opcional)</span></label>
                                 <input id="subpres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Subpresupuesto Nómina Q1">
                                 <div class="form-text">Nombre descriptivo para identificar fácilmente el subpresupuesto</div>
-                                <div class="form-text text-primary"><b>Formulario NUEVO de subpresupuesto activo</b></div>
+                                
                             </div>
                             <div class="mb-3">
                                 <label for="subpres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
@@ -334,8 +334,6 @@ $currentUser = [
         <!-- Header del Sidebar -->
         <div class="logo-container" id="logoContainer" style="cursor: pointer;">
             <img src="<?php echo BASE_URL; ?>public/logo ium blanco.png" alt="Logo IUM" class="sidebar-logo">
-            <h6 class="sidebar-title">Sistema ERP</h6>
-            <p class="sidebar-subtitle">Instituto Universitario Morelia</p>
         </div>
         
         <!-- User Info Section (Moved from Footer) -->
@@ -447,10 +445,7 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto fw-bold">
-                <span class="d-none d-md-inline">SISTEMA DE CONTROL DE INGRESOS Y EGRESOS IUM</span>
-                <span class="d-md-none">Sistema ERP</span>
-            </span>
+            <span class="me-auto fw-bold"></span>
             <div class="user-info-header">
                 <div class="d-none d-md-block">
                     <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>

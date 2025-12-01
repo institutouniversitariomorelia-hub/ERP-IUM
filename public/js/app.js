@@ -1,143 +1,3 @@
-    /**
-     * Maneja la apertura del modal exclusivo de subpresupuesto
-     */
-    function initModalSubPresupuestoExclusivo() {
-        $('#modalSubPresupuesto').on('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const presId = button ? $(button).data('id') : null;
-            const $form = $('#formSubPresupuesto');
-            const $selectCat = $('#subpres_categoria');
-            const $selectPadre = $('#subpres_parent');
-            const $alert = $('#subpresupuestoAlert');
-            const $msgNoCat = $('#msgNoCategoriasEgreso');
-
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formSubPresupuesto no encontrado');
-                return;
-            }
-
-            $form[0].reset();
-            $alert.addClass('d-none').text('');
-            $('#subpresupuesto_id').val('');
-            ERPUtils.ensureNumberEditable('#subpres_monto');
-            $msgNoCat.addClass('d-none');
-
-            // Cargar presupuestos generales como padres
-            $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
-
-            ERPUtils.ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
-                .done(presupuestos => {
-                    $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
-                    if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
-                        presupuestos.forEach(p => {
-                            const id = p.id_presupuesto || '';
-                            const nombre = p.nombre || 'Sin nombre';
-                            const fecha = p.fecha || '';
-                            const label = `${nombre} — ${fecha}`;
-                            $selectPadre.append(`<option value="${id}">${ERPUtils.escapeHtml(label)}</option>`);
-                        });
-                    } else {
-                        $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
-                    }
-                    $selectPadre.prop('disabled', false);
-                    // Cargar solo categorías de egreso
-                    return ERPUtils.ajaxCall('categoria', 'getCategoriasEgreso', {}, 'GET');
-                })
-                .done(categorias => {
-                    $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
-
-                    let countEgreso = 0;
-                    const idsAgregados = new Set();
-                    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
-                        categorias.forEach(cat => {
-                            const catId = cat.id_categoria || cat.id || '';
-                            const nombre = cat.nombre || cat.cat_nombre || 'Sin nombre';
-                            // Solo tipo Egreso y sin duplicados
-                            if (cat.tipo === 'Egreso' && catId && !idsAgregados.has(catId)) {
-                                $selectCat.append(`<option value="${catId}">${ERPUtils.escapeHtml(nombre)}</option>`);
-                                idsAgregados.add(catId);
-                                countEgreso++;
-                            }
-                        });
-                    }
-                    if (countEgreso === 0) {
-                        $msgNoCat.removeClass('d-none');
-                    }
-                    $selectCat.prop('disabled', false);
-
-                    if (presId) {
-                        $('#modalSubPresupuestoTitle').text('Editar Sub-Presupuesto');
-                        ERPUtils.ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
-                            .done(data => {
-                                if (data && !data.error) {
-                                    $('#subpresupuesto_id').val(data.id_presupuesto || data.id);
-                                    $('#subpres_nombre').val(data.nombre);
-                                    $('#subpres_monto').val(data.monto_limite || data.monto);
-                                    if (data.id_categoria) {
-                                        $selectCat.val(data.id_categoria);
-                                    }
-                                    if (data.parent_presupuesto) {
-                                        $selectPadre.val(data.parent_presupuesto);
-                                    }
-                                    $('#subpres_fecha').val(data.fecha);
-                                } else {
-                                    $('#modalSubPresupuesto').modal('hide');
-                                    alert('Error: ' + (data.error || ''));
-                                }
-                            })
-                            .fail(xhr => {
-                                ERPUtils.mostrarError('cargar sub-presupuesto', xhr);
-                                $('#modalSubPresupuesto').modal('hide');
-                            });
-                    } else {
-                        $('#modalSubPresupuestoTitle').text('Agregar Sub-Presupuesto');
-                    }
-                })
-                .fail(xhr => ERPUtils.mostrarError('cargar datos subpresupuesto', xhr));
-        });
-    }
-
-    /**
-     * Maneja el envío del formulario exclusivo de subpresupuesto
-     */
-    function initSubmitSubPresupuestoExclusivo() {
-        $(document).on('submit', '#formSubPresupuesto', function(e) {
-            e.preventDefault();
-            const $form = $(this);
-            const $alert = $('#subpresupuestoAlert');
-            $alert.addClass('d-none').text('');
-
-            // Validación visual de campos requeridos
-            const parent = $('#subpres_parent').val();
-            const cat = $('#subpres_categoria').val();
-            const monto = $('#subpres_monto').val();
-            const fecha = $('#subpres_fecha').val();
-            if (!parent || !cat || !monto || !fecha) {
-                $alert.removeClass('d-none').text('Todos los campos marcados con * son obligatorios.');
-                return;
-            }
-
-            // Deshabilitar botón para evitar doble envío
-            const $btn = $('#btnGuardarSubPresupuesto');
-            $btn.prop('disabled', true);
-
-            ERPUtils.ajaxCall('presupuesto', 'save', $form.serialize())
-                .done(r => {
-                    if (r.success) {
-                        window.location.reload();
-                    } else {
-                        $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
-                    }
-                })
-                .fail(xhr => {
-                    ERPUtils.mostrarError('guardar sub-presupuesto', xhr);
-                    $alert.removeClass('d-none').text('Error inesperado al guardar.');
-                })
-                .always(() => {
-                    $btn.prop('disabled', false);
-                });
-        });
-    }
 /**
  * ============================================================================
  * ERP IUM - Sistema de Gestión Financiera
@@ -656,42 +516,21 @@ const IngresosModule = (function() {
                         $('#modalIngresoTitle').text('Editar Ingreso');
                         ajaxCall('ingreso', 'getIngresoData', { id: ingresoId }, 'GET')
                             .done(data => {
-                                if (data && !data.error && data.folio_ingreso !== undefined) {
-                                    $('#ingreso_id').val(data.folio_ingreso);
-                                    $('#in_fecha').val(data.fecha);
-                                    $('#in_monto').val(data.monto);
-                                    $('#in_alumno').val(data.alumno);
-                                    $('#in_matricula').val(data.matricula);
-                                    $('#in_nivel').val(data.nivel);
-                                    $('#in_programa').val(data.programa);
-                                    $('#in_grado').val(data.grado);
-                                    $('#in_modalidad').val(data.modalidad);
-                                    $('#in_grupo').val(data.grupo);
-                                    $selectCat.val(data.id_categoria);
-                                    $('#in_mes_correspondiente').val(data.mes_correspondiente);
-                                    $('#in_anio').val(data.anio);
-                                    $('#in_observaciones').val(data.observaciones);
-
-                                    // Limpiar métodos de pago antes de agregar los correctos
-                                    $('#contenedor_pagos_parciales').empty();
-                                    contadorPagos = 0;
-
-                                    // Cargar pagos parciales si existen
-                                    if (data.pagos_parciales && data.pagos_parciales.length > 0) {
-                                        $('#toggleCobroDividido').prop('checked', true).trigger('change');
-                                        $('#contenedor_pagos_parciales').empty();
-                                        contadorPagos = 0;
-                                        data.pagos_parciales.forEach(pago => {
-                                            agregarFilaPago(pago.metodo_pago, pago.monto);
-                                        });
-                                    } else if (data.metodo_de_pago && data.metodo_de_pago !== 'Mixto') {
-                                        $('#toggleCobroDividido').prop('checked', false).trigger('change');
-                                        $('#in_metodo_unico').val(data.metodo_de_pago);
-                                    }
-                                } else {
-                                    $('#modalIngreso').modal('hide');
-                                    alert('Error al cargar datos del ingreso: ' + (data.error || 'Registro no encontrado.'));
+                                // Esperamos un objeto con los datos del ingreso
+                                $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
+                                if (!data || data.error) {
+                                    console.error('[ERROR] getIngresoData:', data && data.error ? data.error : 'Respuesta inválida');
+                                    $selectCat.append('<option value="">-- No hay categorías --</option>');
+                                    $selectCat.prop('disabled', false);
+                                    return;
                                 }
+
+                                // Si el servidor devuelve categoría seleccionada, la marcamos
+                                if (data.id_categoria) {
+                                    $selectCat.append(`<option value="${data.id_categoria}">${escapeHtml(data.cat_nombre || data.nombre || 'Seleccionado')}</option>`);
+                                    $selectCat.val(String(data.id_categoria));
+                                }
+                                $selectCat.prop('disabled', false);
                             })
                             .fail(xhr => {
                                 mostrarError('cargar datos ingreso', xhr);
@@ -1023,7 +862,7 @@ const EgresosModule = (function() {
 
             // Cargar sub-presupuestos
             ajaxCall('presupuesto', 'getSubPresupuestos', {}, 'GET')
-                .done(presupuestos => {
+                .then(presupuestos => {
                     console.log('[DEBUG] Sub-presupuestos recibidos:', presupuestos);
                     $selectPres.empty().append('<option value="">Seleccione un presupuesto...</option>');
                     
@@ -1051,7 +890,7 @@ const EgresosModule = (function() {
 
                     return ajaxCall('egreso', 'getCategoriasEgreso', {}, 'GET');
                 })
-                .done(categorias => {
+                .then(categorias => {
                     console.log('[DEBUG] Categorías egreso recibidas:', categorias);
                     $selectCat.empty().append('<option value="">Seleccione...</option>');
                     
@@ -1429,6 +1268,149 @@ const CategoriasModule = (function() {
 const PresupuestosModule = (function() {
     const { ajaxCall, mostrarError, ensureNumberEditable, escapeHtml } = ERPUtils;
 
+    // --- FUNCIONES NUEVAS INTEGRADAS ---
+
+    /**
+     * Maneja la apertura del modal exclusivo de subpresupuesto
+     */
+    function initModalSubPresupuestoExclusivo() {
+        $('#modalSubPresupuesto').on('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const presId = button ? $(button).data('id') : null;
+            const $form = $('#formSubPresupuesto');
+            const $selectCat = $('#subpres_categoria');
+            const $selectPadre = $('#subpres_parent');
+            const $alert = $('#subpresupuestoAlert');
+            const $msgNoCat = $('#msgNoCategoriasEgreso');
+
+            if (!$form.length) {
+                console.error('[ERROR] Formulario #formSubPresupuesto no encontrado');
+                return;
+            }
+
+            $form[0].reset();
+            $alert.addClass('d-none').text('');
+            $('#subpresupuesto_id').val('');
+            ensureNumberEditable('#subpres_monto'); // Corregido para usar la referencia local
+            $msgNoCat.addClass('d-none');
+
+            // Cargar presupuestos generales como padres
+            $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
+
+            ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
+                .then(presupuestos => {
+                    $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
+                    if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
+                        presupuestos.forEach(p => {
+                            const id = p.id_presupuesto || '';
+                            const nombre = p.nombre || 'Sin nombre';
+                            const fecha = p.fecha || '';
+                            const label = `${nombre} — ${fecha}`;
+                            $selectPadre.append(`<option value="${id}">${escapeHtml(label)}</option>`);
+                        });
+                    } else {
+                        $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
+                    }
+                    $selectPadre.prop('disabled', false);
+                    // Cargar solo categorías de egreso
+                    return ajaxCall('categoria', 'getCategoriasEgreso', {}, 'GET');
+                })
+                .then(categorias => {
+                    $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
+
+                    let countEgreso = 0;
+                    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+                        categorias.forEach(cat => {
+                            const catId = (cat && (cat.id_categoria !== undefined && cat.id_categoria !== null)) ? cat.id_categoria : (cat && (cat.id !== undefined && cat.id !== null) ? cat.id : null);
+                            const nombre = (cat && (cat.nombre || cat.cat_nombre)) ? (cat.nombre || cat.cat_nombre) : (typeof cat === 'string' ? cat : 'Sin nombre');
+                            if (catId !== null && catId !== '') {
+                                $selectCat.append(`<option value="${escapeHtml(String(catId))}">${escapeHtml(nombre)}</option>`);
+                                countEgreso++;
+                            }
+                        });
+                    }
+
+                    if (countEgreso === 0) {
+                        $msgNoCat.removeClass('d-none');
+                    }
+                    $selectCat.prop('disabled', false);
+
+                    if (presId) {
+                        $('#modalSubPresupuestoTitle').text('Editar Sub-Presupuesto');
+                        ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
+                            .done(data => {
+                                if (data && !data.error) {
+                                    $('#subpresupuesto_id').val(data.id_presupuesto || data.id);
+                                    $('#subpres_nombre').val(data.nombre);
+                                    $('#subpres_monto').val(data.monto_limite || data.monto);
+                                    if (data.id_categoria) {
+                                        $selectCat.val(data.id_categoria);
+                                    }
+                                    if (data.parent_presupuesto) {
+                                        $selectPadre.val(data.parent_presupuesto);
+                                    }
+                                    $('#subpres_fecha').val(data.fecha);
+                                } else {
+                                    $('#modalSubPresupuesto').modal('hide');
+                                    alert('Error: ' + (data.error || ''));
+                                }
+                            })
+                            .fail(xhr => {
+                                mostrarError('cargar sub-presupuesto', xhr);
+                                $('#modalSubPresupuesto').modal('hide');
+                            });
+                    } else {
+                        $('#modalSubPresupuestoTitle').text('Agregar Sub-Presupuesto');
+                    }
+                })
+                .fail(xhr => mostrarError('cargar datos subpresupuesto', xhr));
+        });
+    }
+
+    /**
+     * Maneja el envío del formulario exclusivo de subpresupuesto
+     */
+    function initSubmitSubPresupuestoExclusivo() {
+        $(document).on('submit', '#formSubPresupuesto', function(e) {
+            e.preventDefault();
+            const $form = $(this);
+            const $alert = $('#subpresupuestoAlert');
+            $alert.addClass('d-none').text('');
+
+            // Validación visual de campos requeridos
+            const parent = $('#subpres_parent').val();
+            const cat = $('#subpres_categoria').val();
+            const monto = $('#subpres_monto').val();
+            const fecha = $('#subpres_fecha').val();
+            if (!parent || !cat || !monto || !fecha) {
+                $alert.removeClass('d-none').text('Todos los campos marcados con * son obligatorios.');
+                return;
+            }
+
+            // Deshabilitar botón para evitar doble envío
+            const $btn = $('#btnGuardarSubPresupuesto');
+            $btn.prop('disabled', true);
+
+            ajaxCall('presupuesto', 'save', $form.serialize())
+                .done(r => {
+                    if (r.success) {
+                        window.location.reload();
+                    } else {
+                        $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
+                    }
+                })
+                .fail(xhr => {
+                    mostrarError('guardar sub-presupuesto', xhr);
+                    $alert.removeClass('d-none').text('Error inesperado al guardar.');
+                })
+                .always(() => {
+                    $btn.prop('disabled', false);
+                });
+        });
+    }
+
+    // --- FIN FUNCIONES NUEVAS ---
+
     /**
      * Popula el selector de categorías en el modal de presupuesto
      * @param {number} presId - ID del presupuesto (para edición)
@@ -1441,7 +1423,7 @@ const PresupuestosModule = (function() {
 
         return ajaxCall('presupuesto', 'getCategoriasPresupuesto', {}, 'GET')
             .then(categorias => {
-                console.log('[DEBUG] Categorías presupuesto recibidas:', categorias);
+                // console.log('[DEBUG] Categorías presupuesto recibidas:', categorias);
                 $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
                 
                 if (categorias && Array.isArray(categorias) && categorias.length > 0) {
@@ -1487,11 +1469,13 @@ const PresupuestosModule = (function() {
                 ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
                     .done(data => {
                         if (data && !data.error) {
-                            $('#presgen_id').val(data.id_presupuesto);
-                            $('#presgen_nombre').val(data.nombre);
-                            $('#presgen_monto').val(data.monto);
-                            $('#presgen_fecha').val(data.fecha);
-                            $('#presgen_descripcion').val(data.descripcion);
+                            $('#presgen_id').val(data.id_presupuesto ?? data.id ?? '');
+                            $('#presgen_nombre').val(data.nombre ?? data.nombre_presupuesto ?? '');
+                            // El backend devuelve `monto_limite` (nombre de columna); usarlo si existe, si no usar `monto` como fallback
+                            const montoVal = (typeof data.monto_limite !== 'undefined') ? data.monto_limite : (data.monto || '');
+                            $('#presgen_monto').val(montoVal);
+                            $('#presgen_fecha').val(data.fecha ?? '');
+                            $('#presgen_descripcion').val(data.descripcion ?? '');
                         } else {
                             $('#modalPresupuestoGeneral').modal('hide');
                             alert('Error: ' + (data.error || ''));
@@ -1551,7 +1535,7 @@ const PresupuestosModule = (function() {
             $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
 
             ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
-                .done(presupuestos => {
+                .then(presupuestos => {
                     $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
                     if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
                         presupuestos.forEach(p => {
@@ -1669,8 +1653,7 @@ const PresupuestosModule = (function() {
             $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
             
             ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
-                .done(presupuestos => {
-                    console.log('[DEBUG] Presupuestos generales (modal categoría):', presupuestos);
+                .then(presupuestos => {
                     $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
                     
                     if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
@@ -1689,8 +1672,7 @@ const PresupuestosModule = (function() {
                     // Cargar categorías
                     return ajaxCall('presupuesto', 'getCategoriasPresupuesto', {}, 'GET');
                 })
-                .done(categorias => {
-                    console.log('[DEBUG] Categorías (modal categoría):', categorias);
+                .then(categorias => {
                     $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
                     
                     if (categorias && Array.isArray(categorias) && categorias.length > 0) {
@@ -1815,7 +1797,7 @@ const PresupuestosModule = (function() {
         initSubmitPresupuestoCategoria();
         initEliminarPresupuesto();
         initRefrescarPresupuestos();
-        // NUEVO: Inicializar el flujo exclusivo de subpresupuestos
+        // AHORA SÍ: Inicializar el flujo exclusivo de subpresupuestos porque las funciones YA EXISTEN dentro del módulo
         initModalSubPresupuestoExclusivo();
         initSubmitSubPresupuestoExclusivo();
         console.log('[✓] Módulo Presupuestos inicializado');
