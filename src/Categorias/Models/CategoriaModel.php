@@ -14,20 +14,22 @@ class CategoriaModel {
      * @return array Lista de categorías.
      */
     public function getCategoriasByTipo($tipo = null) {
-        // CORREGIDO: Seleccionamos 'id_categoria' como 'id' para que el JS (data-id) funcione
-        $query = "SELECT *, id_categoria as id FROM categorias"; 
+        // Use an explicit, safe column list to avoid compatibility issues
+        $query = "SELECT id_categoria AS id, nombre, tipo, concepto, descripcion, id_user, no_borrable FROM categorias";
+
         $params = [];
         $types = '';
-
+        $where = '';
         if ($tipo !== null) {
-            $query .= " WHERE tipo = ?";
+            $where = " WHERE tipo = ?";
             $params[] = $tipo;
             $types .= 's';
         }
-        $query .= " ORDER BY id_categoria DESC";
+
+        $order = " ORDER BY id_categoria DESC";
+        $query = $query . $where . $order;
 
         $stmt = $this->db->prepare($query);
-
         if (!$stmt) {
             error_log("Error al preparar getCategoriasByTipo: " . $this->db->error);
             return [];

@@ -27,10 +27,9 @@ class AuditoriaController {
             'usuario' => $_GET['usuario'] ?? null,
             'fecha_inicio' => $_GET['fecha_inicio'] ?? null,
             'fecha_fin' => $_GET['fecha_fin'] ?? null,
-            'accion' => $_GET['accion'] ?? null,
-            // soporte para filtro por tipo (accion_tipo) desde la UI: Registro/Actualizacion/Eliminacion
+            // soporte para filtro por tipo (accion_tipo) desde la UI: Insercion/Actualizacion/Eliminacion
             'accion_tipo' => $_GET['accion_tipo'] ?? null,
-            'q' => $_GET['q'] ?? null,
+            // Nota: filtros 'accion' y 'q' eliminados para simplificar la interfaz y evitar búsquedas difusas.
         ];
 
         // Mapear nombres legibles de la UI a los valores reales en la BD (evita mismatch por mayúsculas/plurales)
@@ -45,14 +44,7 @@ class AuditoriaController {
             $filtros['seccion'] = $seccionMap[$filtros['seccion']];
         }
 
-        // Si se indicó accion_tipo y NO está vacío, priorizarlo (sobreescribe campo 'accion')
-        if (isset($filtros['accion_tipo']) && $filtros['accion_tipo'] !== '') {
-            // Valores esperados: Insercion, Actualizacion, Eliminacion
-            $filtros['accion'] = $filtros['accion_tipo'];
-        } elseif (isset($filtros['accion_tipo']) && $filtros['accion_tipo'] === '') {
-            // Si es cadena vacía (Todas), limpiar también el campo 'accion' para no filtrar
-            $filtros['accion'] = null;
-        }
+        // Mantener 'accion_tipo' tal cual; el filtrado específico se realiza en el modelo.
 
     // Pedir datos a los Modelos
     // Soporte de paginación: leer página y tamaño desde GET
@@ -107,6 +99,48 @@ class AuditoriaController {
         $log = $this->auditoriaModel->getAuditoriaById($id);
         if ($log) echo json_encode(['success' => true, 'data' => $log]);
         else echo json_encode(['success' => false, 'error' => 'Registro no encontrado.']);
+        exit;
+    }
+
+    /**
+     * Acción AJAX: Devuelve detalles completos de un registro de auditoría (para el modal de detalles).
+     */
+    public function getDetalle() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { 
+            echo json_encode(['success' => false, 'message' => 'No autorizado']); 
+            exit; 
+        }
+        
+        $id = $_GET['id'] ?? 0;
+        $id = (int)$id;
+        
+        if ($id <= 0) { 
+            echo json_encode(['success' => false, 'message' => 'ID inválido']); 
+            exit; 
+        }
+        
+        $log = $this->auditoriaModel->getAuditoriaById($id);
+        
+        if ($log) {
+            // Enriquecer con información del usuario si está disponible en los valores JSON
+            $usuarioNombre = 'Sistema';
+            
+            if (!empty($log['new_valor'])) {
+                $jsonData = json_decode($log['new_valor'], true);
+                if (isset($jsonData['nombre'])) {
+                    $usuarioNombre = $jsonData['nombre'];
+                } elseif (isset($jsonData['username'])) {
+                    $usuarioNombre = $jsonData['username'];
+                }
+            }
+            
+            $log['usuario'] = $usuarioNombre;
+            
+            echo json_encode(['success' => true, 'data' => $log]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Registro no encontrado']);
+        }
         exit;
     }
 

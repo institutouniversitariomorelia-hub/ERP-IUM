@@ -75,8 +75,7 @@
                         if (!empty($filtrosActuales['usuario'])) $baseParams['usuario'] = $filtrosActuales['usuario'];
                         if (!empty($filtrosActuales['fecha_inicio'])) $baseParams['fecha_inicio'] = $filtrosActuales['fecha_inicio'];
                         if (!empty($filtrosActuales['fecha_fin'])) $baseParams['fecha_fin'] = $filtrosActuales['fecha_fin'];
-                        if (!empty($filtrosActuales['accion'])) $baseParams['accion'] = $filtrosActuales['accion'];
-                        if (!empty($filtrosActuales['q'])) $baseParams['q'] = $filtrosActuales['q'];
+                        if (!empty($filtrosActuales['accion_tipo'])) $baseParams['accion_tipo'] = $filtrosActuales['accion_tipo'];
                         // Helper para construir url
                         function aud_query($params) {
                             return htmlspecialchars(BASE_URL . 'index.php?' . http_build_query($params));
@@ -109,18 +108,7 @@
                     </button>
                 </div>
             </div>
-            <!-- Segunda fila de filtros: acción y búsqueda libre -->
-            <div class="row g-3 mt-2 align-items-end">
-                <div class="col-md-4">
-                    <label for="filtro_accion" class="form-label">Acción (texto)</label>
-                    <input id="filtro_accion" name="accion" class="form-control form-control-sm" value="<?php echo htmlspecialchars($filtrosActuales['accion'] ?? ''); ?>" placeholder="p.ej. Insercion, Eliminacion, Actualizacion">
-                </div>
-                <div class="col-md-6">
-                    <label for="filtro_q" class="form-label">Buscar (detalles / old / new)</label>
-                    <input id="filtro_q" name="q" class="form-control form-control-sm" value="<?php echo htmlspecialchars($filtrosActuales['q'] ?? ''); ?>" placeholder="Texto libre para buscar en detalles">
-                </div>
-                <div class="col-md-2"></div>
-            </div>
+            <!-- Segunda fila de filtros: (Acción y búsqueda libre) eliminadas por requerimiento -->
             <!-- Paginación y tamaño de página (oculto, se puede ajustar) -->
             <input type="hidden" name="page" value="<?php echo (int)($filtrosActuales['page'] ?? 1); ?>">
             <input type="hidden" name="pageSize" value="<?php echo (int)($filtrosActuales['pageSize'] ?? 10); ?>">
@@ -762,6 +750,264 @@ function formatDateTimeAud(dateTimeStr) {
         minute: '2-digit'
     });
 }
+
+// Event listener para abrir modal de detalles al hacer click en filas
+document.addEventListener('DOMContentLoaded', function() {
+    // Delegación de eventos para filas clickeables
+    document.body.addEventListener('click', function(e) {
+        const row = e.target.closest('.clickable-row');
+        if (row) {
+            const auditoriaId = row.getAttribute('data-id');
+            if (auditoriaId) {
+                abrirModalDetalleAuditoria(auditoriaId);
+            }
+        }
+    });
+});
+
+// Función helper para formatear valores bonitos
+function formatearValorBonito(key, value, allData = null) {
+    if (value === null || value === undefined || value === '') return '<span class="text-muted">(vacío)</span>';
+    
+    // Formatear id_user mostrando nombre si está disponible
+    if (key === 'id_user' && allData) {
+        const nombre = allData.nombre || allData.username || null;
+        if (nombre) {
+            return `<span class="badge bg-primary">${nombre}</span> <small class="text-muted">(ID: ${value})</small>`;
+        }
+    }
+    
+    // Parsear arrays JSON (como pagos)
+    if (typeof value === 'string' && value.startsWith('[{')) {
+        try {
+            const arr = JSON.parse(value);
+            if (Array.isArray(arr)) {
+                let html = '<div class="ms-2">';
+                arr.forEach((item, idx) => {
+                    html += `<div class="badge bg-secondary me-1 mb-1">`;
+                    if (item.metodo) html += `${item.metodo}: `;
+                    if (item.monto) html += `$${parseFloat(item.monto).toFixed(2)}`;
+                    html += `</div>`;
+                });
+                html += '</div>';
+                return html;
+            }
+        } catch (e) {}
+    }
+    
+    // Formatear fechas
+    if (key.toLowerCase().includes('fecha') && value.match(/^\d{4}-\d{2}-\d{2}/)) {
+        const fecha = new Date(value + 'T00:00:00');
+        return fecha.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    
+    // Formatear montos
+    if ((key.toLowerCase().includes('monto') || key.toLowerCase().includes('precio')) && !isNaN(value)) {
+        return `$${parseFloat(value).toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+    
+    return value;
+}
+
+// Función para abrir el modal con detalles de auditoría
+function abrirModalDetalleAuditoria(auditoriaId) {
+    fetch(`<?php echo BASE_URL; ?>index.php?controller=auditoria&action=getDetalle&id=${auditoriaId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const auditoria = data.data;
+                const accion = (auditoria.accion || '').trim();
+                
+                // Formatear fecha correctamente
+                let fechaFormateada = '-';
+                if (auditoria.fecha_hora) {
+                    try {
+                        // Parsear la fecha sin conversión UTC
+                        const partes = auditoria.fecha_hora.split(/[- :]/);
+                        if (partes.length >= 3) {
+                            const fecha = new Date(partes[0], partes[1]-1, partes[2], partes[3]||0, partes[4]||0, partes[5]||0);
+                            fechaFormateada = fecha.toLocaleString('es-MX', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit'
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error formateando fecha:', e);
+                        fechaFormateada = auditoria.fecha_hora;
+                    }
+                }
+                
+                // Llenar encabezado
+                document.getElementById('aud_det_fecha').textContent = fechaFormateada;
+                document.getElementById('aud_det_usuario').textContent = auditoria.usuario || 'Sistema';
+                document.getElementById('aud_det_seccion').textContent = auditoria.seccion || '-';
+                document.getElementById('aud_det_accion').textContent = accion;
+                
+                const oldValor = auditoria.old_valor || '';
+                const newValor = auditoria.new_valor || '';
+                
+                console.log('Debug - Acción:', accion, 'oldValor:', oldValor ? 'Existe' : 'Vacío', 'newValor:', newValor ? 'Existe' : 'Vacío');
+                
+                // ========== ACTUALIZACIÓN (Comparativa) ==========
+                if (oldValor && newValor) {
+                    document.getElementById('aud_compare_container').style.display = 'block';
+                    document.getElementById('aud_det_detalles_container').style.display = 'none';
+                    
+                    try {
+                        const oldJson = JSON.parse(oldValor);
+                        const newJson = JSON.parse(newValor);
+                        
+                        let oldHtml = '<table class="table table-sm table-hover mb-0"><tbody>';
+                        let newHtml = '<table class="table table-sm table-hover mb-0"><tbody>';
+                        
+                        // Ordenar claves: IDs primero, luego resto
+                        const priorityKeys = ['id', 'id_user', 'id_categoria', 'id_presupuesto', 'folio_egreso', 'folio_ingreso', 'fecha'];
+                        const allKeys = [...new Set([...Object.keys(oldJson), ...Object.keys(newJson)])];
+                        const orderedKeys = [
+                            ...priorityKeys.filter(k => allKeys.includes(k)),
+                            ...allKeys.filter(k => !priorityKeys.includes(k))
+                        ];
+                        
+                        orderedKeys.forEach(key => {
+                            const oldVal = oldJson[key];
+                            const newVal = newJson[key];
+                            const oldFormatted = formatearValorBonito(key, oldVal, oldJson);
+                            const newFormatted = formatearValorBonito(key, newVal, newJson);
+                            
+                            // Detectar cambio
+                            const changed = JSON.stringify(oldVal) !== JSON.stringify(newVal);
+                            const bgClass = changed ? 'table-warning' : '';
+                            const icon = changed ? '🔄' : '';
+                            
+                            oldHtml += `<tr class="${bgClass}"><td class="text-end pe-2 fw-semibold" style="width:35%">${icon} ${key}:</td><td>${oldFormatted}</td></tr>`;
+                            newHtml += `<tr class="${bgClass}"><td class="text-end pe-2 fw-semibold" style="width:35%">${icon} ${key}:</td><td>${newFormatted}</td></tr>`;
+                        });
+                        
+                        oldHtml += '</tbody></table>';
+                        newHtml += '</tbody></table>';
+                        
+                        document.getElementById('aud_old_values').innerHTML = oldHtml;
+                        document.getElementById('aud_new_values').innerHTML = newHtml;
+                    } catch (e) {
+                        console.error('Error parseando JSON:', e);
+                        document.getElementById('aud_compare_container').style.display = 'block';
+                        document.getElementById('aud_det_detalles_container').style.display = 'none';
+                        document.getElementById('aud_old_values').innerHTML = `<pre class="mb-0 small">${oldValor}</pre>`;
+                        document.getElementById('aud_new_values').innerHTML = `<pre class="mb-0 small">${newValor}</pre>`;
+                    }
+                } 
+                // ========== INSERCIÓN ==========
+                else if (newValor && !oldValor) {
+                    document.getElementById('aud_compare_container').style.display = 'none';
+                    document.getElementById('aud_det_detalles_container').style.display = 'block';
+                    
+                    try {
+                        const json = JSON.parse(newValor);
+                        let html = '<div class="card border-success shadow-sm"><div class="card-header bg-success text-white"><strong>✅ Nuevo Registro Creado</strong></div>';
+                        html += '<div class="card-body"><table class="table table-sm table-striped mb-0"><tbody>';
+                        
+                        const keys = Object.keys(json);
+                        const priorityKeys = ['id', 'folio_egreso', 'folio_ingreso', 'id_user', 'id_categoria', 'id_presupuesto', 'fecha', 'nombre'];
+                        const orderedKeys = [
+                            ...priorityKeys.filter(k => keys.includes(k)),
+                            ...keys.filter(k => !priorityKeys.includes(k))
+                        ];
+                        
+                        orderedKeys.forEach(key => {
+                            const formatted = formatearValorBonito(key, json[key], json);
+                            html += `<tr><td class="text-end fw-semibold text-success" style="width:30%">${key}:</td><td>${formatted}</td></tr>`;
+                        });
+                        
+                        html += '</tbody></table></div></div>';
+                        document.getElementById('aud_det_detalles').innerHTML = html;
+                    } catch (e) {
+                        console.error('Error:', e);
+                        document.getElementById('aud_det_detalles').innerHTML = `<div class="alert alert-success"><strong>Nuevo registro</strong><pre class="mb-0 mt-2">${newValor}</pre></div>`;
+                    }
+                }
+                // ========== ELIMINACIÓN ==========
+                else if (oldValor && !newValor) {
+                    document.getElementById('aud_compare_container').style.display = 'none';
+                    document.getElementById('aud_det_detalles_container').style.display = 'block';
+                    
+                    try {
+                        const json = JSON.parse(oldValor);
+                        let html = '<div class="card border-danger shadow-sm"><div class="card-header bg-danger text-white"><strong>🗑️ Registro Eliminado</strong></div>';
+                        html += '<div class="card-body"><table class="table table-sm table-striped mb-0"><tbody>';
+                        
+                        const keys = Object.keys(json);
+                        const priorityKeys = ['id', 'folio_egreso', 'folio_ingreso', 'id_user', 'id_categoria', 'id_presupuesto', 'fecha', 'nombre'];
+                        const orderedKeys = [
+                            ...priorityKeys.filter(k => keys.includes(k)),
+                            ...keys.filter(k => !priorityKeys.includes(k))
+                        ];
+                        
+                        orderedKeys.forEach(key => {
+                            const formatted = formatearValorBonito(key, json[key], json);
+                            html += `<tr><td class="text-end fw-semibold text-danger" style="width:30%">${key}:</td><td class="text-decoration-line-through">${formatted}</td></tr>`;
+                        });
+                        
+                        html += '</tbody></table></div></div>';
+                        document.getElementById('aud_det_detalles').innerHTML = html;
+                    } catch (e) {
+                        console.error('Error:', e);
+                        document.getElementById('aud_det_detalles').innerHTML = `<div class="alert alert-danger"><strong>Registro eliminado</strong><pre class="mb-0 mt-2">${oldValor}</pre></div>`;
+                    }
+                }
+                // ========== SIN DATOS ==========
+                else {
+                    document.getElementById('aud_compare_container').style.display = 'none';
+                    document.getElementById('aud_det_detalles_container').style.display = 'block';
+                    document.getElementById('aud_det_detalles').innerHTML = '<div class="alert alert-warning mb-0"><strong>⚠️ Sin detalles disponibles</strong><br>La información se ha perdido (eliminación en cascada).</div>';
+                }
+                
+                // Datos técnicos JSON
+                const rawData = {
+                    id: auditoria.id_auditoria,
+                    fecha_hora: auditoria.fecha_hora,
+                    seccion: auditoria.seccion,
+                    accion: auditoria.accion,
+                    old_valor: oldValor || null,
+                    new_valor: newValor || null,
+                    folio_egreso: auditoria.folio_egreso || null,
+                    folio_ingreso: auditoria.folio_ingreso || null
+                };
+                document.getElementById('aud_raw_consulta').textContent = JSON.stringify(rawData, null, 2);
+                
+                // Abrir modal
+                const modal = new bootstrap.Modal(document.getElementById('modalAuditoriaDetalle'));
+                modal.show();
+            } else {
+                alert('Error al cargar detalles: ' + (data.message || 'Error desconocido'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cargar los detalles de auditoría');
+        });
+}
+
+// Toggle para mostrar/ocultar JSON raw
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleBtn = document.getElementById('aud_toggle_raw');
+    const rawPre = document.getElementById('aud_raw_consulta');
+    
+    if (toggleBtn && rawPre) {
+        toggleBtn.addEventListener('click', function() {
+            if (rawPre.style.display === 'none') {
+                rawPre.style.display = 'block';
+                toggleBtn.innerHTML = '<ion-icon name="code-slash-outline"></ion-icon> Ocultar datos técnicos';
+            } else {
+                rawPre.style.display = 'none';
+                toggleBtn.innerHTML = '<ion-icon name="code-outline"></ion-icon> Ver datos técnicos (JSON)';
+            }
+        });
+    }
+});
 </script>
 
 <style>

@@ -1,4 +1,5 @@
 # 📋 CHANGELOG - Sistema ERP-IUM
+
 ## Refactorización Módulo de Categorías y Sistema de Recibos
 
 **Fecha:** Noviembre 23, 2025  
@@ -10,12 +11,14 @@
 ## 🎯 OBJETIVOS COMPLETADOS
 
 ### 1. Refactorización Módulo de Categorías
+
 - [x] Independizar categorías de presupuestos
 - [x] Agregar sistema de conceptos para diferenciar tipos de ingresos
 - [x] Implementar categorías protegidas del sistema (no borrables)
 - [x] Sincronizar base de datos principal y espejo
 
 ### 2. Sistema de Recibos Diferenciados
+
 - [x] Implementar 4 tipos de recibos de ingreso según concepto
 - [x] Implementar recibo de egreso
 - [x] Crear recibo en blanco para impresión manual
@@ -23,6 +26,7 @@
 - [x] Formato horizontal compacto (media carta: 8.5" x 5.5")
 
 ### 3. Limpieza y Optimización
+
 - [x] Eliminar campos obsoletos de base de datos
 - [x] Actualizar todos los triggers
 - [x] Corregir errores de bind_param
@@ -33,6 +37,7 @@
 ## 📊 CAMBIOS EN BASE DE DATOS
 
 ### Tabla `categorias` - Modificaciones
+
 ```sql
 ALTER TABLE categorias
   ADD COLUMN concepto ENUM('Registro Diario','Titulaciones','Inscripciones y Reinscripciones') NULL AFTER tipo,
@@ -41,23 +46,30 @@ ALTER TABLE categorias
 ```
 
 **Resultado:**
+
 - **Estructura final:** id_categoria, nombre, tipo, concepto, descripcion, no_borrable, id_user
 - **41 categorías predefinidas:** 30 egresos + 11 ingresos (todas protegidas con no_borrable=1)
 
 ### Tabla `ingresos` - Limpieza
+
 ```sql
 ALTER TABLE ingresos DROP COLUMN concepto;
 ```
+
 **Motivo:** El concepto ahora se determina por la categoría asociada, no como campo independiente
 
 ### Tabla `egresos` - Limpieza
+
 ```sql
 ALTER TABLE egresos DROP COLUMN activo_fijo;
 ```
+
 **Motivo:** Campo reemplazado por el sistema de categorías
 
 ### Triggers Actualizados
+
 **Total:** 12 triggers recreados
+
 - **Ingresos:** 6 triggers (insert_espejo, insert_aud, update, update_espejo, before_delete, before_delete_espejo)
 - **Egresos:** 6 triggers (insert_espejo, insert_aud, update, update_espejo, before_delete, before_delete_espejo)
 - **Cambios:** Eliminadas referencias a `id_presupuesto`, `concepto` y `activo_fijo`
@@ -67,6 +79,7 @@ ALTER TABLE egresos DROP COLUMN activo_fijo;
 ## 📁 ARCHIVOS NUEVOS CREADOS
 
 ### Sistema de Recibos (6 archivos)
+
 1. **`generate_receipt.php`** - Enrutador principal (NO CREADO - se usa directo)
 2. **`generate_receipt_ingreso_diario.php`** (324 líneas)
    - Para categorías con concepto "Registro Diario"
@@ -85,6 +98,7 @@ ALTER TABLE egresos DROP COLUMN activo_fijo;
    - Campos con líneas vacías
 
 ### Migraciones Ejecutadas (7 archivos)
+
 1. **`2025-11-20_refactor_categorias.sql`**
    - ALTER TABLE categorias
    - INSERT 41 categorías predefinidas
@@ -109,34 +123,43 @@ ALTER TABLE egresos DROP COLUMN activo_fijo;
 ## 🔧 ARCHIVOS MODIFICADOS
 
 ### Backend - Controllers
+
 **`controllers/IngresoController.php`** (325 líneas)
+
 - Línea 69: Removido 'concepto' de $requiredFields
 - Línea 88-90: Eliminada validación de concepto
 - **Estado:** FUNCIONAL
 
 **`controllers/CategoriaController.php`**
+
 - Agregada validación para prevenir eliminación de categorías con no_borrable=1
 - **Estado:** FUNCIONAL
 
 ### Backend - Models
+
 **`models/IngresoModel.php`** (330 líneas)
+
 - Línea 113: $types = "ssssdssisisssii" (15 parámetros para INSERT)
 - Línea 116-131: bind_param con 15 variables (sin concepto)
 - Línea 199: $types = "ssssdssisisssii" (15 SET + 1 WHERE para UPDATE)
 - **Estado:** FUNCIONAL - Corrección bind_param completada
 
 **`models/EgresoModel.php`** (223 líneas)
+
 - Línea 75: Eliminada variable $activo_fijo
 - Línea 119: INSERT con 10 campos (sin activo_fijo)
 - Línea 128: bind_param actualizado a 10 variables
 - **Estado:** FUNCIONAL
 
 **`models/CategoriaModel.php`**
+
 - Agregado soporte para campos concepto y no_borrable
 - **Estado:** FUNCIONAL
 
 ### Frontend - Views
+
 **`views/layout.php`** (1192 líneas)
+
 - Línea 613: Label "Activo Fijo" → "Categoría"
 - Modal categorías: Campo concepto condicional para tipo "Ingreso"
 - Modal ingresos: Sin campo concepto
@@ -149,13 +172,26 @@ ALTER TABLE egresos DROP COLUMN activo_fijo;
 ## 🎨 ESPECIFICACIONES DE DISEÑO - RECIBOS
 
 ### Formato General (Todos los Recibos)
+
 ```css
-@page { size: 8.5in 5.5in; margin: 0; }
-body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
-.page { padding: 0.15in 0.2in; display: flex; flex-direction: column; }
+@page {
+  size: 8.5in 5.5in;
+  margin: 0;
+}
+body {
+  font-family: Arial, sans-serif;
+  font-size: 7px;
+  line-height: 1.2;
+}
+.page {
+  padding: 0.15in 0.2in;
+  display: flex;
+  flex-direction: column;
+}
 ```
 
 ### Elementos Clave
+
 - **Logo IUM:** 32px altura, fondo #9e1b32
 - **Título documento:** 13px, negrita
 - **Folio:** 11px, color #9e1b32
@@ -165,23 +201,38 @@ body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
 - **Divider:** 2px, color #9e1b32
 
 ### Layout con Flexbox
+
 ```css
-.page { display: flex; flex-direction: column; }
-.content { flex: 1; display: flex; flex-direction: column; }
-.description-box { flex: 1; } /* Crece para llenar espacio */
-.signature-section { margin-top: auto; } /* Empuja hasta abajo */
+.page {
+  display: flex;
+  flex-direction: column;
+}
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.description-box {
+  flex: 1;
+} /* Crece para llenar espacio */
+.signature-section {
+  margin-top: auto;
+} /* Empuja hasta abajo */
 ```
 
 **Ventajas:**
+
 - Sin huecos blancos entre contenido y firma
 - Firma siempre al final de la página
 - Contenido se ajusta automáticamente al espacio disponible
 
 ### Sistema de Reimpresión
+
 ```css
 .watermark {
   position: absolute;
-  top: 50%; left: 50%;
+  top: 50%;
+  left: 50%;
   transform: translate(-50%, -50%) rotate(-45deg);
   font-size: 70px;
   color: rgba(220, 53, 69, 0.12);
@@ -194,6 +245,7 @@ body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
 ## 📋 CATEGORÍAS PREDEFINIDAS
 
 ### Categorías de EGRESO (30)
+
 - IUM COMISIONES
 - IUM IMPUESTOS
 - IUM INVERSIÓN INMOBILIARIA
@@ -226,6 +278,7 @@ body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
 - VENTANILLA DEVOLUCIONES
 
 ### Categorías de INGRESO (11)
+
 - COLEGIATURA (Concepto: Registro Diario)
 - INSCRIPCIÓN (Concepto: Inscripciones y Reinscripciones)
 - REINSCRIPCIÓN (Concepto: Inscripciones y Reinscripciones)
@@ -245,31 +298,37 @@ body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
 ## 🐛 PROBLEMAS RESUELTOS
 
 ### 1. Foreign Keys Rotas
+
 **Problema:** Usuario eliminó manualmente categorías referenciadas por ingresos/egresos  
 **Solución:** Script `limpieza_total.sql` - eliminó todo excepto 41 categorías protegidas  
 **Estado:** ✅ RESUELTO
 
 ### 2. Error "Concepto inválido"
+
 **Problema:** Controller validaba campo 'concepto' que no existe en formulario  
 **Solución:** Remover 'concepto' de $requiredFields en IngresoController línea 69  
 **Estado:** ✅ RESUELTO
 
 ### 3. Campo concepto en tabla ingresos
+
 **Problema:** Campo obsoleto después de refactorización  
 **Solución:** ALTER TABLE ingresos DROP COLUMN concepto  
 **Estado:** ✅ RESUELTO
 
 ### 4. Campo activo_fijo en tabla egresos
+
 **Problema:** Campo obsoleto después de implementar categorías  
 **Solución:** ALTER TABLE egresos DROP COLUMN activo_fijo  
 **Estado:** ✅ RESUELTO
 
 ### 5. Triggers con campos obsoletos
+
 **Problema:** Triggers referencian concepto/activo_fijo que ya no existen  
 **Solución:** Recrear 12 triggers sin referencias a campos eliminados  
 **Estado:** ✅ RESUELTO
 
 ### 6. Error bind_param - ArgumentCountError
+
 **Problema:** String de tipos tenía 14 caracteres pero bind_param recibía 15 variables  
 **Iteración 1:** "ssssdssisissi" (13) → "ssssdssisisssi" (14) ❌  
 **Iteración 2:** "ssssdssisisssi" (14) ❌  
@@ -277,6 +336,7 @@ body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
 **Estado:** ✅ RESUELDO - Usuario confirmó "ya quedo"
 
 ### 7. Recibos con tamaño incorrecto
+
 **Problema:** Recibos muy largos, formato vertical  
 **Iteración 1:** Reducir fuentes/padding - INSUFICIENTE  
 **Iteración 2:** Cambiar a horizontal (8.5" x 5.5") - MEJOR pero grandes  
@@ -285,6 +345,7 @@ body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
 **Estado:** ✅ RESUELTO - Diseño uniforme en todos los recibos
 
 ### 8. Label "Activo Fijo" obsoleto
+
 **Problema:** Label no actualizado en formulario egresos  
 **Solución:** Cambiar "Activo Fijo" → "Categoría" en views/layout.php línea 613  
 **Estado:** ✅ RESUELTO
@@ -294,6 +355,7 @@ body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
 ## ✅ VALIDACIONES REALIZADAS
 
 ### Base de Datos
+
 ```sql
 -- Verificación categorías
 SELECT COUNT(*) FROM categorias WHERE no_borrable = 1;
@@ -314,6 +376,7 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 ```
 
 ### Funcionalidad
+
 - ✅ Ingresos se guardan correctamente (confirmado por usuario)
 - ✅ Egresos se guardan correctamente (confirmado por usuario)
 - ✅ Recibos se generan correctamente en todos los formatos
@@ -325,6 +388,7 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 ## 🚀 ESTADO FINAL DEL SISTEMA
 
 ### Base de Datos
+
 - ✅ **Estructura limpia** sin campos obsoletos
 - ✅ **41 categorías protegidas** funcionando
 - ✅ **12 triggers actualizados** y sincronizados
@@ -332,17 +396,58 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 - ✅ **Sistema limpio** - 0 registros antiguos
 
 ### Backend
+
 - ✅ **Controllers actualizados** - validaciones correctas
+
+---
+
+## 🔜 Cambios recientes, en progreso y pendientes (actualizado)
+
+**Fecha de actualización:** 2025-11-28
+
+## 🧭 Protocolo `newchat` (instrucción para futuros chats)
+
+Descripción breve:
+
+- Se crea el protocolo `newchat` para estandarizar la creación de nuevos chats relacionados con este proyecto. Antes de que el usuario genere manualmente un nuevo chat, el asistente (o el flujo automatizado asociado al protocolo) **actualizará el `CHANGELOG`** con el estado más reciente del proyecto y **insertará** en el nuevo chat la lista de tareas de las fases 3.3 y 3.4 (Definición/Instalación/BD/GUIs/Módulos/Consultas y Plan de Pruebas/Mantenimiento), para que el nuevo chat disponga de contexto y el checklist inicial.
+
+Instrucción operativa (qué hará el asistente cuando se invoque `newchat`):
+
+1. Leer el `CHANGELOG` actual y añadir una entrada de "start snapshot" con fecha y resumen breve del estado (tareas completadas, en progreso, pendientes).
+2. Copiar la sección de Fase 3.3 y 3.4 (las listas de ítems) y pegarlas en el nuevo chat como plantilla de trabajo inicial.
+3. Informar al usuario en el nuevo chat que todos los items marcados como "Simulado" deben confirmarse y que puede proporcionar credenciales o capturas si desea completar los manuales.
+
+Nota de seguridad: El protocolo `newchat` no intentará conexiones remotas ni usará credenciales sin autorización explícita del usuario. Cualquier dato sensible debe ser suministrado por el usuario de forma segura.
+
+---
+
+### START SNAPSHOT (newchat) — 2025-11-28
+
+- **Resumen corto:** Estado actual del proyecto para iniciar un nuevo chat: estructura limpia de BD; refactorización de categorías y sistema de recibos completados; diccionario de datos generado; manuales borrador y versiones simuladas creadas; limpieza de artefactos ERwin realizada.
+- **Completadas (hasta 2025-11-28):** Refactorización de `categorias`, limpieza de campos obsoletos, triggers actualizados, 41 categorías protegidas, generación de `docs/DICCIONARIO_DATOS.md`, borradores de manuales y eliminación de diagramas ERwin.
+- **En progreso:** Consolidación de la Fase 3.3 (Codificación) y Fase 3.4 (Pruebas y Mantenimiento) — ver sección de pendientes para ítems y fechas propuestas.
+- **Pendientes clave (prioridad alta):** `3.3_Definicion_Instalacion.md`, `3.3_Crear_BD.sql`, `3.3_Estructuras_BD.md`, `3.4_Plan_Pruebas.md`.
+
+El contenido de este snapshot debe insertarse automáticamente en el nuevo chat como contexto inicial para arrancar la fase de codificación/pruebas.
+
+---
+
+Si deseas que ejecute pasos adicionales del protocolo `newchat` (por ejemplo crear un issue o generar los archivos iniciales), responde con la acción específica; por ahora el "start snapshot" quedó añadido al changelog.
+
+\*\*\* Fin de actualización (2025-11-28)
+
 - ✅ **Models corregidos** - bind_param con parámetros exactos
 - ✅ **Sin errores** - sistema funcional completo
 
 ### Frontend
+
 - ✅ **Formularios actualizados** - campos correctos
 - ✅ **Modales con validaciones** - concepto condicional
 - ✅ **Botones de impresión** - en todas las listas
 - ✅ **Labels actualizados** - sin referencias obsoletas
 
 ### Recibos
+
 - ✅ **5 tipos funcionando** - 3 ingresos + 1 egreso + 1 blanco
 - ✅ **Diseño uniforme** - flexbox layout consistente
 - ✅ **Formato compacto** - 8.5" x 5.5" horizontal
@@ -354,17 +459,20 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 ## 📌 NOTAS IMPORTANTES
 
 ### Mantenimiento
+
 1. **NO eliminar manualmente** categorías con `no_borrable = 1`
 2. **Usar sistema de recibos** para todos los movimientos
 3. **Verificar triggers** después de ALTER TABLE futuros
 4. **Mantener sincronizada** BD espejo con principal
 
 ### Archivos de Migración
+
 - Todos los scripts SQL están en: `/migrations/`
 - Ejecutar en orden cronológico si se necesita replicar
 - Hacer backup antes de ejecutar scripts de limpieza
 
 ### Próximos Pasos Recomendados
+
 - [ ] Backup completo del sistema actualizado
 - [ ] Documentación de usuario para el sistema de recibos
 - [ ] Pruebas de impresión física de recibos
@@ -382,3 +490,95 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 ---
 
 **FIN DEL CHANGELOG**
+
+---
+
+# 📋 CHANGELOG ERP-IUM — Última Semana
+
+## ✅ Cambios Realizados
+
+### 2025-11-20
+
+- **Refactorización de tabla `categorias`**
+  - Se agregaron campos `concepto` (enum) y `no_borrable` (protección).
+  - Se eliminaron campos obsoletos (`id_presupuesto`).
+  - Se insertaron 41 categorías predefinidas (30 egresos, 11 ingresos).
+
+### 2025-11-21
+
+- **Limpieza y migraciones**
+  - Eliminado campo `concepto` de `ingresos` y `activo_fijo` de `egresos`.
+  - Actualización de 12 triggers para eliminar referencias a campos eliminados.
+  - Sincronización de la base de datos espejo.
+  - Script de limpieza total: solo quedan categorías protegidas.
+
+### 2025-11-23
+
+- **Actualización de backend y frontend**
+  - Formularios y vistas adaptados a la nueva estructura de categorías.
+  - Implementación de la protección de categorías del sistema (`no_borrable`).
+  - Corrección de errores de validación y de parámetros en modelos (bind_param).
+  - Actualización de recibos: nuevo diseño compacto horizontal, watermark de reimpresión.
+  - Botones de impresión y reimpresión en listas.
+  - Limpieza de referencias a campos y flujos obsoletos.
+
+### 2025-11-24
+
+- **Flujo de subpresupuestos**
+  - Eliminación total del formulario/modal viejo de subpresupuesto.
+  - Integración y distinción visual del formulario nuevo.
+  - Corrección del JS para que el modal de subpresupuesto solo muestre categorías de egreso.
+  - Revisión y depuración del flujo AJAX para categorías.
+  - Validación de la estructura SQL y migraciones.
+
+### 2025-11-25
+
+- **Depuración y mejoras en formularios**
+  - Modificación del JS para mostrar dinámicamente el campo "concepto" solo para ingresos.
+  - Validación en frontend para que el concepto sea obligatorio en categorías de ingreso.
+  - Precarga del valor de concepto al editar.
+  - Detección y diagnóstico del error 404 en la acción `getCategoriasEgreso`.
+
+### 2025-11-26
+
+- **Diagnóstico y solución de bugs críticos**
+  - Identificación de la ausencia del método `getCategoriasEgreso` en el controlador.
+  - Propuesta de implementación para devolver categorías de egreso vía AJAX.
+  - Revisión de la integración entre backend y frontend para el flujo de subpresupuestos.
+
+---
+
+## ⏳ Pendientes y Sugerencias de Mejora
+
+1. ✅ **Implementado: `getCategoriasEgreso` en `CategoriaController.php`**
+
+   - Se implementó y depuró el método para devolver las categorías de tipo 'Egreso' vía AJAX. El frontend ahora recibe correctamente las categorías (ver `logs/debug.log` con entrada `getCategoriasEgreso: returning categories`).
+
+2. ✅ **Completado: Validar y probar el flujo completo de subpresupuestos**
+
+   - Se realizaron pruebas funcionales completas: creación de sub-presupuestos, edición, asignación de categorías y eliminación. Se verificó que los selects se carguen correctamente desde el backend, que no haya selects vacíos y que las validaciones en frontend (campos requeridos) funcionen.
+   - Cambios realizados durante la validación:
+     - Corrección en `CategoriaModel` para eliminar referencia a columna inexistente (`id_presupuesto`) y normalizar la salida JSON.
+     - Añadido logging de depuración en `CategoriaController::getCategoriasEgreso` para validar conteo y muestra de sample.
+     - Correcciones en `public/js/app.js`: arreglos de encadenamiento de promesas (`.then()`), manejo de errores del servidor, y fallback temporal para elementos sin id mientras se confirmaba la integridad de la respuesta.
+     - Eliminación de textos obsoletos en vistas (`Formulario NUEVO...`) y corrección de selectores y targets de modal para evitar abrir el formulario equivocado.
+   - Resultado: flujo de subpresupuestos funcional en pruebas locales (ver `logs/debug.log` y capturas de consola). Se recomienda limpiar los logs/fallbacks temporales antes de despliegue.
+
+3. **Agregar atributos `autocomplete` en campos de contraseña**
+
+   - Eliminar los warnings del navegador y mejorar la experiencia de usuario.
+
+4. **Pruebas de impresión física de recibos**
+
+   - Validar el nuevo diseño compacto y la legibilidad en papel.
+
+5. **Capacitación y entrega de manuales al usuario final**
+
+   - Explicar el nuevo sistema de categorías, recibos y subpresupuestos.
+
+6. **Revisión de seguridad y validaciones adicionales**
+
+   - Fortalecer validaciones en formularios críticos (ingresos, egresos, presupuestos).
+
+7. **Backup completo del sistema actualizado**
+   - Realizar y documentar un respaldo de la base de datos y archivos.

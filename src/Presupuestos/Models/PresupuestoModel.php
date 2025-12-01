@@ -138,6 +138,10 @@ class PresupuestoModel {
         $cat = isset($data['id_categoria']) && is_numeric($data['id_categoria']) && $data['id_categoria'] > 0 ? (int)$data['id_categoria'] : null;
         $nombre = isset($data['nombre']) ? trim($data['nombre']) : null;
 
+        // Refuerzo: si el id viene como string pero es numérico, forzar a int
+        if (!$id && isset($data['id_presupuesto']) && is_numeric($data['id_presupuesto'])) {
+            $id = (int)$data['id_presupuesto'];
+        }
         if ($id) { // Actualizar
             $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_categoria=?, id_user=?, parent_presupuesto=?, nombre=? WHERE id_presupuesto=?";
             $stmt = $this->db->prepare($query);

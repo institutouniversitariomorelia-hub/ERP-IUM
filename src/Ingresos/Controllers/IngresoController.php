@@ -202,8 +202,8 @@ class IngresoController {
                 $success = $this->ingresoModel->deleteIngreso($folio_ingreso_id); // Pasa la PK correcta
                 if ($success) {
                     if (!$this->auditoriaModel->hasTriggerForTable('ingresos')) {
-                        $det = 'Ingreso eliminado (folio: ' . $folio_ingreso_id . ')';
-                        $this->auditoriaModel->addLog('Ingreso', 'Eliminacion', $det, json_encode($oldData), null, null, $folio_ingreso_id, $_SESSION['user_id'] ?? null);
+                        $oldValor = $oldData ? json_encode($oldData) : null;
+                        $this->auditoriaModel->addLog('Ingreso', 'Eliminacion', null, $oldValor, null, null, $folio_ingreso_id, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
                 } else {

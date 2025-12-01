@@ -67,7 +67,6 @@
                         <th class="d-none d-lg-table-cell">Programa</th>
                         <th class="d-none d-xl-table-cell">Grado</th>
                         <th class="d-none d-xl-table-cell">Grupo</th>
-                        <th class="d-none d-md-table-cell">Concepto</th>
                         <th class="text-end">Monto</th>
                         <th class="text-center">Acciones</th>
                     </tr>
