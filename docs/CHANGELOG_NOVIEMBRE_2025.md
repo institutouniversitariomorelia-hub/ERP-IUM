@@ -401,6 +401,43 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 
 ---
 
+## 🗓️ Actualizaciones recientes
+
+**Fecha:** 2025-12-01
+
+### Cambios completados (2025-12-01)
+
+- [x] Restauración de la versión de trabajo con correcciones del Sub‑Presupuesto
+   - **Descripción:** Recuperé los cambios que habíamos hecho antes de un push equivocado (se creó la rama `temp-restore` a partir del stash que contenía los fixes del sub‑presupuesto) y los integré en la rama `development`.
+   - **Resultado:** `development` actualizado con las correcciones del modal de Sub‑Presupuesto y las modificaciones relacionadas en `public/js/app.js`, `shared/Views/layout.php`, `src/Categorias/*` y `src/Presupuestos/*`.
+
+- [x] Resolución de conflicto y fusión segura a `testing`
+   - **Descripción:** Durante la integración se resolvió el conflicto en `public/js/app.js` prefiriendo la versión de `work/integracion` y se ejecutó un chequeo de sintaxis PHP (`php -l`) en todo el repositorio.
+   - **Resultado:** `testing` fue actualizado y no quedan errores de parseo detectados por `php -l`.
+
+- [x] Limpieza de texto en la UI: eliminación de textos "Formulario NUEVO"
+   - **Descripción:** Se eliminaron los textos temporales "Formulario NUEVO" del modal de Sub‑Presupuesto en la vista (`shared/Views/layout.php`) para evitar confusión en el usuario.
+
+- [x] Eliminación del campo opcional `nombre` del modal de Presupuesto General
+   - **Descripción:** Se removió el input `presgen_nombre` del formulario y se eliminaron las referencias JS que lo rellenaban (`public/js/app.js`). El backend/modelo sigue aceptando `nombre` si existe en BD pero su ausencia no rompe nada.
+
+### Tareas completadas (herramientas & procesos)
+
+- [x] Creación de ramas de respaldo antes de merges automáticos (`backup/testing-before-merge-YYYYMMDD_hhmm`)
+- [x] Stash y recuperación segura de trabajo local (consumidos para crear `temp-restore`)
+
+### Pendientes (prioridad alta)
+
+- [ ] Continuar con mejoras en el módulo **Ingresos** y **Presupuestos** según nuevos requerimientos de UI (remoción de campos, validaciones específicas, y ajustes en flujos de creación/edición). **Asignado:** equipo interno.
+- [ ] Pruebas manuales de regresión en UI (Presupuestos, Sub‑Presupuesto, Ingresos) en entorno local/QA: validar endpoints AJAX, respuestas JSON y comportamiento del modal.
+- [ ] (Opcional) Sincronizar `testing` con `development` si se desea que ambas ramas queden idénticas en cuanto a los últimos fixes (actualmente `development` contiene la versión restaurada con sub‑presupuestos).
+
+---
+
+Si deseas, actualizo también la sección de **Estado** o creo un ticket/descripción más formal con los pasos para las tareas pendientes. Indica qué prefieres y lo trabajo a continuación.
+
+---
+
 ## 🔜 Cambios recientes, en progreso y pendientes (actualizado)
 
 **Fecha de actualización:** 2025-11-28
