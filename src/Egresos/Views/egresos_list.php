@@ -7,11 +7,6 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
     <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle ?? 'Egresos'); ?>: Historial Reciente</h3>
     <div class="d-flex gap-2 w-100 w-md-auto">
-        <button class="btn btn-outline-danger btn-sm flex-grow-1 flex-md-grow-0" id="btnVerGraficasEgresos">
-            <ion-icon name="pie-chart-outline" style="vertical-align: middle;"></ion-icon> 
-            <span class="d-none d-sm-inline">Ver Gráficas</span>
-            <span class="d-inline d-sm-none">Gráficas</span>
-        </button>
         <?php if (roleCan('add','egresos')): ?>
             <button class="btn btn-danger btn-sm flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#modalEgreso" id="btnNuevoEgreso">
                 <ion-icon name="add-circle-outline" class="me-1"></ion-icon> 
@@ -19,6 +14,11 @@
                 <span class="d-inline d-sm-none">Agregar</span>
             </button>
         <?php endif; ?>
+            <button class="btn btn-outline-secondary btn-sm flex-grow-1 flex-md-grow-0" onclick="window.open('generate_receipt_blanco.php', '_blank')">
+                <ion-icon name="document-outline" style="vertical-align: middle;"></ion-icon>
+                <span class="d-none d-sm-inline">Recibo en Blanco</span>
+                <span class="d-inline d-sm-none">Blanco</span>
+            </button>
     </div>
 </div>
 

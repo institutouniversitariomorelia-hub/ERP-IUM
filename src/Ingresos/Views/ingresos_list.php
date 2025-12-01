@@ -7,23 +7,18 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-2">
     <h3 class="text-danger mb-0"><?php echo htmlspecialchars($pageTitle ?? 'Ingresos'); ?>: Historial Reciente</h3>
     <div class="d-flex gap-2 w-100 w-md-auto flex-wrap">
-        <button class="btn btn-outline-secondary btn-sm flex-grow-1 flex-md-grow-0" onclick="window.open('generate_receipt_blanco.php', '_blank')">
-            <ion-icon name="document-outline" style="vertical-align: middle;"></ion-icon> 
-            <span class="d-none d-sm-inline">Recibo en Blanco</span>
-            <span class="d-inline d-sm-none">Blanco</span>
-        </button>
-        <button class="btn btn-outline-success btn-sm flex-grow-1 flex-md-grow-0" id="btnVerGraficasIngresos">
-            <ion-icon name="pie-chart-outline" style="vertical-align: middle;"></ion-icon> 
-            <span class="d-none d-sm-inline">Ver Gráficas</span>
-            <span class="d-inline d-sm-none">Gráficas</span>
-        </button>
         <?php if (roleCan('add','ingresos')): ?>
-            <button class="btn btn-danger btn-sm flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#modalIngreso" id="btnNuevoIngreso">
-                <ion-icon name="add-circle-outline" class="me-1"></ion-icon> 
+            <button class="btn btn-danger btn-sm flex-grow-1 flex-md-grow-0 order-1" data-bs-toggle="modal" data-bs-target="#modalIngreso" id="btnNuevoIngreso">
+                <ion-icon name="add-circle-outline" class="me-1"></ion-icon>
                 <span class="d-none d-sm-inline">Agregar Ingreso</span>
                 <span class="d-inline d-sm-none">Agregar</span>
             </button>
         <?php endif; ?>
+        <button class="btn btn-outline-secondary btn-sm flex-grow-1 flex-md-grow-0 order-2" onclick="window.open('generate_receipt_blanco.php', '_blank')">
+            <ion-icon name="document-outline" style="vertical-align: middle;"></ion-icon>
+            <span class="d-none d-sm-inline">Recibo en Blanco</span>
+            <span class="d-inline d-sm-none">Blanco</span>
+        </button>
     </div>
 </div>
 
