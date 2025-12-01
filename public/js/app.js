@@ -1276,7 +1276,11 @@ const PresupuestosModule = (function() {
     function initModalSubPresupuestoExclusivo() {
         $('#modalSubPresupuesto').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
+            // presId: when editing an existing sub-presupuesto this is the sub id
             const presId = button ? $(button).data('id') : null;
+            // presParentId: when opening from a parent card's "Agregar Sub-presupuesto" button
+            // the template sets data-parent-id="..." on that button — check multiple data keys for safety
+            const presParentId = button ? ($(button).data('parentId') || $(button).data('parent-id') || $(button).data('parent') || null) : null;
             const $form = $('#formSubPresupuesto');
             const $selectCat = $('#subpres_categoria');
             const $selectPadre = $('#subpres_parent');
@@ -1549,10 +1553,13 @@ const PresupuestosModule = (function() {
                     }
                     $selectPadre.prop('disabled', false);
 
-                    // Si estamos CREANDO un nuevo sub-presupuesto (presId vacío),
-                    // seleccionar automáticamente el Presupuesto General de Enero 2027
-                    // si existe (fecha iniciando en '2027-01'). Esto facilita pruebas rápidas.
-                    if (!presId) {
+                    // Si la apertura proviene de un botón que indica explícitamente el padre (data-parent-id),
+                    // seleccionar ese presupuesto padre automáticamente.
+                    if (presParentId) {
+                        $selectPadre.val(presParentId);
+                    } else if (!presId) {
+                        // Si estamos CREANDO un nuevo sub-presupuesto y NO se indicó padre explícito,
+                        // seleccionar automáticamente el Presupuesto General de Enero 2027 si existe.
                         try {
                             const targetPrefix = '2027-01';
                             const match = (presupuestos || []).find(p => (p.fecha || '').startsWith(targetPrefix));
