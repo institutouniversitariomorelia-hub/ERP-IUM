@@ -1470,7 +1470,6 @@ const PresupuestosModule = (function() {
                     .done(data => {
                         if (data && !data.error) {
                             $('#presgen_id').val(data.id_presupuesto ?? data.id ?? '');
-                            $('#presgen_nombre').val(data.nombre ?? data.nombre_presupuesto ?? '');
                             // El backend devuelve `monto_limite` (nombre de columna); usarlo si existe, si no usar `monto` como fallback
                             const montoVal = (typeof data.monto_limite !== 'undefined') ? data.monto_limite : (data.monto || '');
                             $('#presgen_monto').val(montoVal);
@@ -1549,6 +1548,25 @@ const PresupuestosModule = (function() {
                         $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
                     }
                     $selectPadre.prop('disabled', false);
+
+                    // Si estamos CREANDO un nuevo sub-presupuesto (presId vacío),
+                    // seleccionar automáticamente el Presupuesto General de Enero 2027
+                    // si existe (fecha iniciando en '2027-01'). Esto facilita pruebas rápidas.
+                    if (!presId) {
+                        try {
+                            const targetPrefix = '2027-01';
+                            const match = (presupuestos || []).find(p => (p.fecha || '').startsWith(targetPrefix));
+                            if (match) {
+                                const matchId = match.id_presupuesto || match.id || '';
+                                if (matchId) {
+                                    $selectPadre.val(matchId);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('Auto-select Enero 2027 falló:', e);
+                        }
+                    }
+
                     return populatePresupuestoCategoria(presId);
                 })
                 .done(() => {
