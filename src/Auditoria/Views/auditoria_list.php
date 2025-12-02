@@ -379,7 +379,27 @@ let datosReporteAuditoria = null;
 
 // Función de notificación simple
 function showNotification(message, type = 'info') {
-    alert(message);
+    try {
+        if (window && typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
+            window.showNotification(message, type);
+            return;
+        }
+        if ((type === 'danger' || type === 'error') && window && typeof window.showError === 'function') {
+            window.showError(message);
+            return;
+        }
+        if (type === 'success' && window && typeof window.showSuccess === 'function') {
+            window.showSuccess(message);
+            return;
+        }
+    } catch (e) {
+        console.warn('No se pudo delegar la notificación:', e);
+    }
+    if (window && typeof window.showError === 'function') {
+        window.showError(message);
+    } else {
+        console.warn('Notificación:', message);
+    }
 }
 
 function generarReporteAuditoria(tipo) {
@@ -705,7 +725,7 @@ function cerrarReporteAuditoria() {
 
 function exportarReporteExcel() {
     if (!datosReporteAuditoria || !datosReporteAuditoria.movimientos) {
-        alert('No hay datos de reporte para exportar');
+        showError('No hay datos de reporte para exportar');
         return;
     }
 
@@ -720,7 +740,7 @@ function exportarReporteExcel() {
 
 function imprimirReporteAuditoria() {
     if (!datosReporteAuditoria || !datosReporteAuditoria.movimientos) {
-        alert('No hay datos de reporte para imprimir');
+        showError('No hay datos de reporte para imprimir');
         return;
     }
     
@@ -982,12 +1002,12 @@ function abrirModalDetalleAuditoria(auditoriaId) {
                 const modal = new bootstrap.Modal(document.getElementById('modalAuditoriaDetalle'));
                 modal.show();
             } else {
-                alert('Error al cargar detalles: ' + (data.message || 'Error desconocido'));
+                showError('Error al cargar detalles: ' + (data.message || 'Error desconocido'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error al cargar los detalles de auditoría');
+            showError('Error al cargar los detalles de auditoría');
         });
 }
 

@@ -54,9 +54,10 @@ const ERPUtils = (function() {
      * @param {object} jqXHR - Objeto de error jQuery
      */
     function mostrarError(action, jqXHR = null) {
+        // Esta función ahora usa el sistema de notificaciones (top-left)
         let errorMsg = `Ocurrió un error al ${action}.`;
         let serverError = 'Error desconocido o sin conexión.';
-        
+
         if (jqXHR) {
             if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
                 serverError = jqXHR.responseJSON.error;
@@ -72,9 +73,10 @@ const ERPUtils = (function() {
                 serverError = `${jqXHR.statusText} (${jqXHR.status})`;
             }
         }
-        
+
         console.error(`[ERROR] ${action}:`, serverError, jqXHR);
-        alert(`${errorMsg}\nDetalle: ${serverError}\n\nRevise la consola (F12) para más información.`);
+        // Mostrar notificación de error amigable
+        showError(`${errorMsg} Detalle: ${serverError}. Revise la consola (F12) para más información.`, { autoClose: 7000 });
     }
 
     /**
@@ -118,18 +120,119 @@ const ERPUtils = (function() {
             .replace(/'/g, '&#39;');
     }
 
+    /* Sistema de notificaciones (toasts) simple, top-left */
+    function showNotification(type, message, options = {}) {
+        try {
+            const container = document.getElementById('app_notifications');
+            if (!container) {
+                console.warn('Contenedor de notificaciones no encontrado');
+                console.warn('Notificación:', message);
+                return;
+            }
+
+            const autoClose = options.autoClose !== undefined ? options.autoClose : 4500;
+            const id = 'notif_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+            const notif = document.createElement('div');
+            notif.className = 'app-notif ' + (type === 'success' ? 'app-notif-success' : 'app-notif-error');
+            notif.id = id;
+
+            const msgSpan = document.createElement('div');
+            msgSpan.className = 'notif-msg';
+            msgSpan.textContent = message;
+
+            const close = document.createElement('div');
+            close.className = 'notif-close';
+            close.innerHTML = '<ion-icon name="close-outline" style="font-size:1.1rem;color:rgba(255,255,255,0.95);"></ion-icon>';
+            close.onclick = function() { if (notif && notif.parentNode) notif.parentNode.removeChild(notif); };
+
+            notif.appendChild(msgSpan);
+            notif.appendChild(close);
+
+            // Insert on top
+            if (container.firstChild) container.insertBefore(notif, container.firstChild);
+            else container.appendChild(notif);
+
+            if (autoClose > 0) {
+                setTimeout(() => { try { if (notif && notif.parentNode) notif.parentNode.removeChild(notif); } catch(e){} }, autoClose);
+            }
+        } catch (e) {
+            console.error('Error mostrando notificación:', e);
+            console.warn('Notificación (fallback):', message);
+        }
+    }
+
+    function showSuccess(message, options) { showNotification('success', message, options); }
+    function showError(message, options) { showNotification('error', message, options); }
+
+    /**
+     * Muestra un modal de confirmación reutilizable. Devuelve una Promise<boolean>.
+     * @param {string} message
+     * @param {object} options
+     * @returns {Promise<boolean>}
+     */
+    function showConfirm(message, options = {}) {
+        return new Promise((resolve) => {
+            try {
+                const modalEl = document.getElementById('modalConfirm');
+                if (!modalEl || typeof bootstrap === 'undefined') {
+                    // Fallback a confirm nativo
+                    const result = confirm(message);
+                    resolve(result);
+                    return;
+                }
+
+                const msgEl = modalEl.querySelector('.confirm-msg');
+                const btnYes = modalEl.querySelector('#modalConfirmYes');
+                const btnNo = modalEl.querySelector('#modalConfirmNo');
+
+                if (msgEl) msgEl.textContent = message;
+
+                const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+
+                function cleanup(result) {
+                    try {
+                        btnYes.removeEventListener('click', onYes);
+                        btnNo.removeEventListener('click', onNo);
+                    } catch (e) {}
+                    try { bsModal.hide(); } catch (e) {}
+                    resolve(result);
+                }
+
+                function onYes() { cleanup(true); }
+                function onNo() { cleanup(false); }
+
+                btnYes.addEventListener('click', onYes);
+                btnNo.addEventListener('click', onNo);
+
+                bsModal.show();
+            } catch (e) {
+                console.error('showConfirm error:', e);
+                const result = confirm(message);
+                resolve(result);
+            }
+        });
+    }
+
     // Exponer métodos públicos
     return {
         ajaxCall,
         mostrarError,
         ensureNumberEditable,
-        escapeHtml
+        escapeHtml,
+        showNotification,
+        showSuccess,
+        showError,
+        showConfirm
     };
 })();
-
-// Exponer ajaxCall globalmente para compatibilidad con código en vistas
+// Exponer ajaxCall y helpers de notificación globalmente para compatibilidad con vistas
 window.ajaxCall = ERPUtils.ajaxCall;
 window.mostrarError = ERPUtils.mostrarError;
+window.showError = ERPUtils.showError;
+window.showSuccess = ERPUtils.showSuccess;
+window.showNotification = ERPUtils.showNotification;
+window.showConfirm = ERPUtils.showConfirm;
 
 // ============================================================================
 // MÓDULO: Gestión de Usuarios y Perfil
@@ -176,14 +279,19 @@ const UsuariosModule = (function() {
             
             $form[0].reset();
             $('#perfil_id').val('');
+            // Asegurar estado por defecto: habilitar selector de rol (se bloqueará si corresponde)
+            $('#perfil_rol').prop('disabled', false);
             
             if (userId && userId != CURRENT_USER.id) {
-                // Editar otro usuario
+                // Editar otro usuario (modal usado desde la lista)
                 $('#modalEditarMiPerfilTitle').text('Editar Usuario');
                 $('#perfil_id').val(userId);
                 $('#perfil_nombre').val($(button).data('nombre'));
                 $('#perfil_username').val($(button).data('username'));
-                $('#perfil_rol').val($(button).data('rol'));
+                // Mostrar el rol pero BLOQUEAR el select para edición desde la lista
+                $('#perfil_rol').val($(button).data('rol')).prop('disabled', true);
+                // En edición de otro usuario no mostrar el botón de cambiar contraseña (usar modal de lista)
+                $('#btnAbrirCambiarPassword').hide();
             } else {
                 // Editar mi perfil
                 $('#modalEditarMiPerfilTitle').text('Editar Mi Perfil');
@@ -191,6 +299,19 @@ const UsuariosModule = (function() {
                 $('#perfil_nombre').val(CURRENT_USER.nombre);
                 $('#perfil_username').val(CURRENT_USER.username);
                 $('#perfil_rol').val(CURRENT_USER.rol);
+                // Mostrar el botón de cambiar contraseña sólo cuando se edita el propio perfil
+                $('#btnAbrirCambiarPassword').show();
+
+                // Habilitar/deshabilitar el select de rol según reglas del usuario actual (SU puede editar)
+                try {
+                    if (CURRENT_USER.rol === 'SU') {
+                        $('#perfil_rol').prop('disabled', false);
+                    } else {
+                        $('#perfil_rol').prop('disabled', true);
+                    }
+                } catch (e) {
+                    console.warn('No se pudo aplicar bloqueo de rol en el modal (propio):', e);
+                }
             }
         });
     }
@@ -206,9 +327,10 @@ const UsuariosModule = (function() {
                 .done(r => {
                     if (r.success) {
                         $('#modalEditarMiPerfil').modal('hide');
-                        window.location.reload();
+                        try { showSuccess('Perfil guardado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.href = BASE_URL + 'index.php?controller=user&action=list'; }, 900);
                     } else {
-                        alert('Error al guardar: ' + (r.error || 'Verifique datos.'));
+                        showError('No se pudo guardar el perfil. ' + (r.error || 'Revise los datos e intente nuevamente.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar perfil', xhr));
@@ -219,41 +341,52 @@ const UsuariosModule = (function() {
      * Inicializa el sistema de cambio de contraseña
      */
     function initCambiarPassword() {
-        // Abrir modal de cambiar contraseña
+        // Abrir modal propio desde el botón en el modal de perfil
         $(document).on('click', '#btnAbrirCambiarPassword', function(e) {
             e.preventDefault();
-            
+
             const modalEditarPerfil = bootstrap.Modal.getInstance(document.getElementById('modalEditarMiPerfil'));
             if (modalEditarPerfil) {
                 modalEditarPerfil.hide();
             } else {
                 $('#modalEditarMiPerfil').modal('hide');
             }
-            
+
             setTimeout(function() {
-                $('#changepass_username').val(CURRENT_USER.user_username || CURRENT_USER.username);
-                $('#modalCambiarPasswordNuevo').modal('show');
-            }, 500);
+                $('#own_username').val(CURRENT_USER.username || CURRENT_USER.user_username);
+                $('#modalCambiarPasswordOwn').modal('show');
+            }, 300);
         });
 
-        // Modal cambiar contraseña abierto
-        $('#modalCambiarPasswordNuevo').on('show.bs.modal', function() {
-            const $form = $('#formCambiarPasswordNuevo');
+        // Preparar modal propio al mostrarse
+        $('#modalCambiarPasswordOwn').on('show.bs.modal', function() {
+            const $form = $('#formCambiarPasswordOwn');
             if (!$form.length) return;
-            
             $form[0].reset();
-            if (!$('#changepass_username').val()) {
-                $('#changepass_username').val(CURRENT_USER.user_username || CURRENT_USER.username);
+            if (!$('#own_username').val()) {
+                $('#own_username').val(CURRENT_USER.username || CURRENT_USER.user_username);
             }
-            $('#passwordMatchMessage').text('').removeClass('text-success text-danger');
-            $('#btnGuardarPasswordNueva').prop('disabled', false);
+            $('#ownPasswordMatchMessage').text('').removeClass('text-success text-danger');
+            $('#btnGuardarPasswordOwn').prop('disabled', false);
         });
 
-        // Toggle mostrar/ocultar contraseñas
-        $(document).on('click', '#togglePasswordActual, #togglePasswordNueva, #togglePasswordConfirmar', function() {
+        // Preparar modal de cambio para otro usuario (se abre desde el listado)
+        $('#modalCambiarPasswordUser').on('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const username = button ? $(button).data('username') : '';
+            const $form = $('#formCambiarPasswordUser');
+            if (!$form.length) return;
+            $form[0].reset();
+            $('#target_username').val(username);
+            $('#target_username_display').text(username || '-');
+            $('#userPasswordMatchMessage').text('').removeClass('text-success text-danger');
+            $('#btnGuardarPasswordUser').prop('disabled', false);
+        });
+
+        // Toggle mostrar/ocultar contraseñas (propio y usuario)
+        $(document).on('click', '#toggleOwnActual, #toggleOwnNueva, #toggleOwnConfirmar, #toggleUserNueva, #toggleUserConfirmar', function() {
             const $input = $(this).closest('.input-group').find('input');
             const $icon = $(this).find('ion-icon');
-            
             if ($input.attr('type') === 'password') {
                 $input.attr('type', 'text');
                 $icon.attr('name', 'eye-off-outline');
@@ -263,23 +396,18 @@ const UsuariosModule = (function() {
             }
         });
 
-        // Validación en tiempo real
-        $(document).on('input', '#password_nueva, #password_confirmar', function() {
-            const nueva = $('#password_nueva').val();
-            const confirmar = $('#password_confirmar').val();
-            const $message = $('#passwordMatchMessage');
-            const $btnSubmit = $('#btnGuardarPasswordNueva');
-            
+        // Validación en tiempo real: propio
+        $(document).on('input', '#own_password_nueva, #own_password_confirmar', function() {
+            const nueva = $('#own_password_nueva').val();
+            const confirmar = $('#own_password_confirmar').val();
+            const $message = $('#ownPasswordMatchMessage');
+            const $btnSubmit = $('#btnGuardarPasswordOwn');
             if (confirmar.length > 0) {
                 if (nueva === confirmar) {
-                    $message.text('✓ Las contraseñas coinciden')
-                           .removeClass('text-danger')
-                           .addClass('text-success');
+                    $message.text('✓ Las contraseñas coinciden').removeClass('text-danger').addClass('text-success');
                     $btnSubmit.prop('disabled', false);
                 } else {
-                    $message.text('✗ Las contraseñas no coinciden')
-                           .removeClass('text-success')
-                           .addClass('text-danger');
+                    $message.text('✗ Las contraseñas no coinciden').removeClass('text-success').addClass('text-danger');
                     $btnSubmit.prop('disabled', true);
                 }
             } else {
@@ -288,35 +416,65 @@ const UsuariosModule = (function() {
             }
         });
 
-        // Submit cambiar contraseña
-        $(document).on('submit', '#formCambiarPasswordNuevo', function(e) {
+        // Validación en tiempo real: usuario objetivo
+        $(document).on('input', '#target_password_new, #target_password_confirm', function() {
+            const nueva = $('#target_password_new').val();
+            const confirmar = $('#target_password_confirm').val();
+            const $message = $('#userPasswordMatchMessage');
+            const $btnSubmit = $('#btnGuardarPasswordUser');
+            if (confirmar.length > 0) {
+                if (nueva === confirmar) {
+                    $message.text('✓ Las contraseñas coinciden').removeClass('text-danger').addClass('text-success');
+                    $btnSubmit.prop('disabled', false);
+                } else {
+                    $message.text('✗ Las contraseñas no coinciden').removeClass('text-success').addClass('text-danger');
+                    $btnSubmit.prop('disabled', true);
+                }
+            } else {
+                $message.text('').removeClass('text-success text-danger');
+                $btnSubmit.prop('disabled', false);
+            }
+        });
+
+        // Submit: propio (valida contraseña actual en backend)
+        $(document).on('submit', '#formCambiarPasswordOwn', function(e) {
             e.preventDefault();
-            
-            const passwordActual = $('#password_actual').val();
-            const passwordNueva = $('#password_nueva').val();
-            const passwordConfirmar = $('#password_confirmar').val();
-            
-            if (passwordNueva !== passwordConfirmar) {
-                alert('Las contraseñas no coinciden.');
-                return;
-            }
-            
-            if (!passwordActual || !passwordNueva) {
-                alert('Todos los campos son requeridos.');
-                return;
-            }
-            
+            const passwordActual = $('#own_password_actual').val();
+            const passwordNueva = $('#own_password_nueva').val();
+            const passwordConfirmar = $('#own_password_confirmar').val();
+            if (passwordNueva !== passwordConfirmar) { showError('Las contraseñas no coinciden.'); return; }
+            if (!passwordActual || !passwordNueva) { showError('Complete todos los campos requeridos.'); return; }
             ajaxCall('auth', 'changePasswordWithValidation', $(this).serialize())
                 .done(r => {
                     if (r.success) {
-                        $('#modalCambiarPasswordNuevo').modal('hide');
-                        alert('Contraseña actualizada correctamente.');
-                        window.location.href = BASE_URL + 'index.php?controller=auth&action=logout';
+                        $('#modalCambiarPasswordOwn').modal('hide');
+                        try { showSuccess('Tu contraseña ha sido actualizada correctamente.'); } catch(e) {}
+                        // Forzar cierre de sesión para que use la nueva contraseña (mostrar toast antes)
+                        setTimeout(() => { window.location.href = BASE_URL + 'index.php?controller=auth&action=logout'; }, 900);
                     } else {
-                        alert('Error: ' + (r.error || 'No se pudo cambiar la contraseña.'));
+                        showError('No se pudo cambiar la contraseña. ' + (r.error || 'Intenta de nuevo.'));
                     }
                 })
                 .fail(xhr => mostrarError('cambiar contraseña', xhr));
+        });
+
+        // Submit: cambiar contraseña de otro usuario (por SU)
+        $(document).on('submit', '#formCambiarPasswordUser', function(e) {
+            e.preventDefault();
+            const passwordNueva = $('#target_password_new').val();
+            const passwordConfirm = $('#target_password_confirm').val();
+            if (passwordNueva !== passwordConfirm) { showError('Las contraseñas no coinciden.'); return; }
+            if (!passwordNueva) { showError('La nueva contraseña es requerida.'); return; }
+            ajaxCall('auth', 'changePassword', $(this).serialize())
+                .done(r => {
+                    if (r.success) {
+                        $('#modalCambiarPasswordUser').modal('hide');
+                        showSuccess('Contraseña del usuario actualizada correctamente.');
+                    } else {
+                        showError('No se pudo cambiar la contraseña del usuario. ' + (r.error || 'Intenta de nuevo.'));
+                    }
+                })
+                .fail(xhr => mostrarError('cambiar contraseña usuario', xhr));
         });
     }
 
@@ -342,29 +500,31 @@ const UsuariosModule = (function() {
                 .done(r => {
                     if (r.success) {
                         $('#modalUsuario').modal('hide');
-                        window.location.reload();
+                        try { showSuccess('Usuario guardado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        alert('Error al guardar: ' + (r.error || 'Verifique datos.'));
+                        showError('No se pudo crear/actualizar el usuario. ' + (r.error || 'Revise los datos e intente nuevamente.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar usuario', xhr));
         });
 
-        // Eliminar usuario
+        // Eliminar usuario (usar confirm modal)
         $(document).on('click', '.btn-delete-user', function() {
             const id = $(this).data('id');
-            
-            if (confirm('¿Eliminar este usuario?')) {
+            showConfirm('¿Eliminar este usuario?').then(confirmed => {
+                if (!confirmed) return;
                 ajaxCall('user', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
-                            window.location.reload();
+                            try { showSuccess('Usuario eliminado correctamente.'); } catch(e) {}
+                            setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            alert('Error al eliminar: ' + (r.error || 'No se pudo eliminar.'));
+                            showError('No se pudo eliminar el usuario. ' + (r.error || 'Intente de nuevo.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar usuario', xhr));
-            }
+            });
         });
     }
 
@@ -607,7 +767,7 @@ const IngresosModule = (function() {
                 actualizarResumenPagos();
                 actualizarBotonesEliminar();
             } else {
-                alert('Debe mantener al menos un método de pago en el cobro dividido.');
+                showError('Debe mantener al menos un método de pago en el cobro dividido.');
             }
         });
 
@@ -616,7 +776,6 @@ const IngresosModule = (function() {
             actualizarResumenPagos();
         });
     }
-
     /**
      * Maneja el envío del formulario de ingreso
      */
@@ -636,7 +795,7 @@ const IngresosModule = (function() {
                 // Pago único
                 const metodoUnico = $('#in_metodo_unico').val();
                 if (!metodoUnico) {
-                    alert('Debe seleccionar un método de pago.');
+                    showError('Selecciona un método de pago.');
                     return;
                 }
                 dataObj.metodo_de_pago = metodoUnico;
@@ -665,13 +824,13 @@ const IngresosModule = (function() {
                 });
                 
                 if (!valido) {
-                    alert('Todos los pagos parciales deben tener un método y un monto válido.');
+                    showError('Cada pago parcial requiere un método y un monto válido.');
                     return;
                 }
                 
                 const diferencia = Math.abs(montoTotal - sumaParciales);
                 if (diferencia >= 0.01) {
-                    alert(`La suma de los pagos parciales ($${sumaParciales.toFixed(2)}) no coincide con el monto total ($${montoTotal.toFixed(2)}).\nDiferencia: $${diferencia.toFixed(2)}`);
+                    showError(`La suma de los pagos parciales ($${sumaParciales.toFixed(2)}) no coincide con el monto total ($${montoTotal.toFixed(2)}). Diferencia: $${diferencia.toFixed(2)}`);
                     return;
                 }
                 
@@ -682,9 +841,10 @@ const IngresosModule = (function() {
             ajaxCall('ingreso', 'save', dataObj)
                 .done(r => {
                     if (r.success) {
-                        window.location.reload();
+                        try { showSuccess('Ingreso guardado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        alert('Error al guardar: ' + (r.error || 'Verifique datos.'));
+                        showError('No se pudo guardar el ingreso. ' + (r.error || 'Revise los datos e intente nuevamente.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar ingreso', xhr));
@@ -697,18 +857,19 @@ const IngresosModule = (function() {
     function initEliminarIngreso() {
         $(document).on('click', '.btn-del-ingreso', function() {
             const id = $(this).data('id');
-            
-            if (confirm('¿Eliminar este ingreso? Se eliminarán también todos los pagos parciales asociados.')) {
+            showConfirm('¿Eliminar este ingreso? Se eliminarán también todos los pagos parciales asociados.').then(confirmed => {
+                if (!confirmed) return;
                 ajaxCall('ingreso', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
-                            window.location.reload();
+                            try { showSuccess('Ingreso eliminado correctamente.'); } catch(e) {}
+                            setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            alert('Error al eliminar: ' + (r.error || 'Error.'));
+                            showError('No se pudo eliminar el ingreso. ' + (r.error || 'Intenta nuevamente.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar ingreso', xhr));
-            }
+            });
         });
     }
 
@@ -940,7 +1101,7 @@ const EgresosModule = (function() {
                                     $('#eg_descripcion').val(data.descripcion);
                                 } else {
                                     $('#modalEgreso').modal('hide');
-                                    alert('Error al cargar: ' + (data.error || ''));
+                                    showError('Error al cargar datos del egreso. ' + (data.error || 'Verifique la consola.'));
                                 }
                             })
                             .fail(xhr => {
@@ -967,9 +1128,10 @@ const EgresosModule = (function() {
                 .done(r => {
                     if (r.success) {
                         $(document).trigger('egresoGuardado');
-                        window.location.reload();
+                        try { showSuccess('Egreso guardado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        alert('Error al guardar: ' + (r.error || 'Verifique datos.'));
+                        showError('No se pudo guardar el egreso. ' + (r.error || 'Revise los datos e intente nuevamente.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar egreso', xhr));
@@ -982,19 +1144,20 @@ const EgresosModule = (function() {
     function initEliminarEgreso() {
         $(document).on('click', '.btn-del-egreso', function() {
             const id = $(this).data('id');
-            
-            if (confirm('¿Eliminar este egreso?')) {
+            showConfirm('¿Eliminar este egreso?').then(confirmed => {
+                if (!confirmed) return;
                 ajaxCall('egreso', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
                             $(document).trigger('egresoEliminado');
-                            window.location.reload();
+                            try { showSuccess('Egreso eliminado correctamente.'); } catch(e) {}
+                            setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            alert('Error al eliminar: ' + (r.error || 'Error.'));
+                            showError('No se pudo eliminar el egreso. ' + (r.error || 'Intenta nuevamente.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar egreso', xhr));
-            }
+            });
         });
     }
 
@@ -1167,7 +1330,7 @@ const CategoriasModule = (function() {
                             }
                         } else {
                             $('#modalCategoria').modal('hide');
-                            alert('Error al cargar: ' + (data.error || ''));
+                                showError('Error al cargar la categoría. ' + (data.error || 'Verifique la consola.'));
                         }
                     })
                     .fail(xhr => {
@@ -1205,7 +1368,7 @@ const CategoriasModule = (function() {
             const tipo = $('#cat_tipo').val();
             const concepto = $('#cat_concepto').val();
             if (tipo === 'Ingreso' && !concepto) {
-                alert('Debes seleccionar un concepto para las categorías de tipo Ingreso.');
+                showError('Selecciona un concepto para las categorías de tipo Ingreso.');
                 $('#cat_concepto').focus();
                 return false;
             }
@@ -1213,9 +1376,10 @@ const CategoriasModule = (function() {
             ajaxCall('categoria', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
-                        window.location.reload();
+                        try { showSuccess('Categoría guardada correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        alert('Error: ' + (r.error || 'Error.'));
+                        showError('No fue posible guardar la categoría. ' + (r.error || 'Intenta de nuevo.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar categoría', xhr));
@@ -1227,17 +1391,20 @@ const CategoriasModule = (function() {
      */
     function initEliminarCategoria() {
         $(document).on('click', '.btn-del-categoria', function() {
-            if (confirm('¿Eliminar esta categoría?')) {
-                ajaxCall('categoria', 'delete', { id: $(this).data('id') })
+            const id = $(this).data('id');
+            showConfirm('¿Eliminar esta categoría?').then(confirmed => {
+                if (!confirmed) return;
+                ajaxCall('categoria', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
-                            window.location.reload();
+                            try { showSuccess('Categoría eliminada correctamente.'); } catch(e) {}
+                            setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            alert('Error: ' + (r.error || 'Error.'));
+                            showError('No se pudo eliminar la categoría. ' + (r.error || 'Intenta de nuevo.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar categoría', xhr));
-            }
+            });
         });
     }
 
@@ -1356,7 +1523,7 @@ const PresupuestosModule = (function() {
                                     $('#subpres_fecha').val(data.fecha);
                                 } else {
                                     $('#modalSubPresupuesto').modal('hide');
-                                    alert('Error: ' + (data.error || ''));
+                                    showError('Error al cargar sub-presupuesto. ' + (data.error || 'Verifique la consola.'));
                                 }
                             })
                             .fail(xhr => {
@@ -1398,7 +1565,8 @@ const PresupuestosModule = (function() {
             ajaxCall('presupuesto', 'save', $form.serialize())
                 .done(r => {
                     if (r.success) {
-                        window.location.reload();
+                        try { showSuccess('Sub-presupuesto guardado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
                         $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
                     }
@@ -1481,7 +1649,7 @@ const PresupuestosModule = (function() {
                             $('#presgen_descripcion').val(data.descripcion ?? '');
                         } else {
                             $('#modalPresupuestoGeneral').modal('hide');
-                            alert('Error: ' + (data.error || ''));
+                            showError('Error al cargar el presupuesto. ' + (data.error || 'Verifique la consola.'));
                         }
                     })
                     .fail(xhr => {
@@ -1503,9 +1671,10 @@ const PresupuestosModule = (function() {
             ajaxCall('presupuesto', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
-                        window.location.reload();
+                        try { showSuccess('Presupuesto guardado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        alert('Error: ' + (r.error || 'Error.'));
+                        showError('No fue posible guardar el presupuesto. ' + (r.error || 'Intenta de nuevo.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar presupuesto general', xhr));
@@ -1598,7 +1767,7 @@ const PresupuestosModule = (function() {
                                     if (data.descripcion) $('#pres_descripcion').val(data.descripcion);
                                 } else {
                                     $('#modalPresupuesto').modal('hide');
-                                    alert('Error: ' + (data.error || ''));
+                                    showError('Error al cargar sub-presupuesto. ' + (data.error || 'Verifique la consola.'));
                                 }
                             })
                             .fail(xhr => {
@@ -1640,7 +1809,8 @@ const PresupuestosModule = (function() {
             ajaxCall('presupuesto', 'save', $form.serialize())
                 .done(r => {
                     if (r.success) {
-                        window.location.reload();
+                        try { showSuccess('Presupuesto guardado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
                         $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
                     }
@@ -1729,7 +1899,7 @@ const PresupuestosModule = (function() {
                                     $('#pres_fecha_categoria').val(data.fecha);
                                 } else {
                                     $('#modalPresupuestoCategoria').modal('hide');
-                                    alert('Error: ' + (data.error || ''));
+                                    showError('Error al cargar presupuesto por categoría. ' + (data.error || 'Verifique la consola.'));
                                 }
                             })
                             .fail(xhr => {
@@ -1757,9 +1927,10 @@ const PresupuestosModule = (function() {
                 .done(r => {
                     if (r.success) {
                         $('#modalPresupuestoCategoria').modal('hide');
-                        window.location.reload();
+                        try { showSuccess('Presupuesto asignado correctamente.'); } catch(e) {}
+                        setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        alert('Error: ' + (r.error || 'Error al guardar.'));
+                        showError('No fue posible guardar el presupuesto. ' + (r.error || 'Intenta de nuevo.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar presupuesto por categoría', xhr));
@@ -1772,33 +1943,39 @@ const PresupuestosModule = (function() {
     function initEliminarPresupuesto() {
         // Eliminar presupuesto general
         $(document).on('click', '.btn-del-presgen', function() {
-            if (confirm('¿Eliminar este presupuesto general? Se eliminarán todos los sub-presupuestos asociados.')) {
-                ajaxCall('presupuesto', 'deletePresupuestoGeneral', { id: $(this).data('id') })
+            const id = $(this).data('id');
+            showConfirm('¿Eliminar este presupuesto general? Se eliminarán todos los sub-presupuestos asociados.').then(confirmed => {
+                if (!confirmed) return;
+                ajaxCall('presupuesto', 'deletePresupuestoGeneral', { id: id })
                     .done(r => {
                         if (r.success) {
-                            window.location.reload();
+                            try { showSuccess('Presupuesto general eliminado correctamente.'); } catch(e) {}
+                            setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            alert('Error: ' + (r.error || 'Error.'));
+                            showError('No se pudo eliminar el presupuesto general. ' + (r.error || 'Intenta nuevamente.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar presupuesto general', xhr));
-            }
+            });
         });
         
         // Eliminar sub-presupuesto
         $(document).on('click', '.btn-del-presupuesto', function() {
-            if (confirm('¿Eliminar este sub-presupuesto?')) {
-                ajaxCall('presupuesto', 'delete', { id: $(this).data('id') })
+            const id = $(this).data('id');
+            showConfirm('¿Eliminar este sub-presupuesto?').then(confirmed => {
+                if (!confirmed) return;
+                ajaxCall('presupuesto', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
                             $(document).trigger('egresoEliminado');
-                            window.location.reload();
+                            try { showSuccess('Sub-presupuesto eliminado correctamente.'); } catch(e) {}
+                            setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            alert('Error: ' + (r.error || 'Error.'));
+                            showError('No se pudo eliminar el sub-presupuesto. ' + (r.error || 'Intenta nuevamente.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar sub-presupuesto', xhr));
-            }
+            });
         });
     }
 
@@ -2034,6 +2211,7 @@ $(document).ready(function() {
         console.log('============================================================================');
     } catch(e) {
         console.error('[✗] ERROR CRÍTICO AL INICIALIZAR:', e);
-        alert('Error al inicializar el sistema. Por favor, recargue la página.\nSi el problema persiste, contacte al administrador.');
+        try { showError('Error crítico al inicializar el sistema. Recarga la página. Si el problema persiste, contacte al administrador.', { autoClose: 0 }); }
+        catch (err) { console.error('Error al inicializar el sistema. Por favor, recargue la página. Si el problema persiste, contacte al administrador del sistema.'); }
     }
 });

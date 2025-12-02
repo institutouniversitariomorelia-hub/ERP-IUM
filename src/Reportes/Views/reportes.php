@@ -279,7 +279,30 @@ let datosReporteConsolidado = null;
 
 // Función de notificación simple
 function showNotification(message, type = 'info') {
-    alert(message);
+    try {
+        if (window && typeof window.showError === 'function' && (type === 'danger' || type === 'error')) {
+            window.showError(message);
+            return;
+        }
+        if (window && typeof window.showSuccess === 'function' && type === 'success') {
+            window.showSuccess(message);
+            return;
+        }
+        // If a global showNotification exists (from app.js) and it's not this function, delegate to it
+        if (window && typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
+            window.showNotification(message, type);
+            return;
+        }
+    } catch (e) {
+        console.warn('No se pudo delegar la notificación globalmente:', e);
+    }
+    if (window && typeof window.showError === 'function') {
+        window.showError(message);
+    } else if (window && typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
+        window.showNotification(message);
+    } else {
+        console.warn('Notificación:', message);
+    }
 }
 
 // ========== FUNCIONES PARA INGRESOS ==========
@@ -292,8 +315,8 @@ function generarReporteIngresos(tipo) {
             if (data.success) {
                 datosReporteIngresos = data;
                 mostrarReporteIngresos(data);
-            } else {
-                showNotification(data.error || 'Error al generar reporte', 'danger');
+                } else {
+                showError(data.error || 'Error al generar reporte');
             }
         })
         .catch(error => {
@@ -320,13 +343,13 @@ function generarReporteIngresosPersonalizado(event) {
             if (data.success) {
                 datosReporteIngresos = data;
                 mostrarReporteIngresos(data);
-            } else {
-                showNotification(data.error || 'Error al generar reporte', 'danger');
+                } else {
+                showError(data.error || 'Error al generar reporte');
             }
         })
-        .catch(error => {
+            .catch(error => {
             console.error('Error:', error);
-            showNotification('Error de conexión', 'danger');
+            showError('Error de conexión');
         });
 }
 
@@ -474,7 +497,7 @@ function renderChartIngresos(porCategoria) {
 
 function exportarIngresosExcel() {
     if (!datosReporteIngresos) {
-        alert('No hay datos de reporte para exportar');
+        showError('No hay datos de reporte para exportar');
         return;
     }
     
@@ -484,7 +507,7 @@ function exportarIngresosExcel() {
 
 function imprimirReporteIngresos() {
     if (!datosReporteIngresos) {
-        alert('No hay datos de reporte para imprimir');
+        showError('No hay datos de reporte para imprimir');
         return;
     }
     
@@ -502,13 +525,13 @@ function generarReporteEgresos(tipo) {
             if (data.success) {
                 datosReporteEgresos = data;
                 mostrarReporteEgresos(data);
-            } else {
-                showNotification(data.error || 'Error al generar reporte', 'danger');
+                } else {
+                showError(data.error || 'Error al generar reporte');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('Error de conexión', 'danger');
+            showError('Error de conexión');
         });
 }
 
@@ -680,7 +703,7 @@ function renderChartEgresos(porCategoria) {
 
 function exportarEgresosExcel() {
     if (!datosReporteEgresos) {
-        alert('No hay datos de reporte para exportar');
+        showError('No hay datos de reporte para exportar');
         return;
     }
     
@@ -690,7 +713,7 @@ function exportarEgresosExcel() {
 
 function imprimirReporteEgresos() {
     if (!datosReporteEgresos) {
-        alert('No hay datos de reporte para imprimir');
+        showError('No hay datos de reporte para imprimir');
         return;
     }
     
@@ -866,7 +889,7 @@ function renderChartConsolidado(data) {
 
 function exportarConsolidadoExcel() {
     if (!datosReporteConsolidado) {
-        alert('No hay datos de reporte para exportar');
+        showError('No hay datos de reporte para exportar');
         return;
     }
     
@@ -876,7 +899,7 @@ function exportarConsolidadoExcel() {
 
 function imprimirReporteConsolidado() {
     if (!datosReporteConsolidado) {
-        alert('No hay datos de reporte para imprimir');
+        showError('No hay datos de reporte para imprimir');
         return;
     }
     

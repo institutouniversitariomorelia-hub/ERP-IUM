@@ -483,7 +483,7 @@ function cargarGraficaPresupuestoVsGastado() {
         })
         .fail(function(xhr) {
             console.error('Error al cargar gráfica presupuesto vs gastado:', xhr);
-            alert('Error al cargar la gráfica. Por favor, intente nuevamente.');
+            showError('Error al cargar la gráfica. Por favor, intente nuevamente.');
         });
 }
 </script>
