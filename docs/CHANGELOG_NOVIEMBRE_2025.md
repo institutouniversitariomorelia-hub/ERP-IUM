@@ -328,56 +328,66 @@ body {
 
 ### 1. Foreign Keys Rotas
 
-**Problema:** Usuario eliminó manualmente categorías referenciadas por ingresos/egresos  
-**Solución:** Script `limpieza_total.sql` - eliminó todo excepto 41 categorías protegidas  
-**Estado:** ✅ RESUELTO
+- **Problema:** Eliminación manual de categorías referenciadas por ingresos/egresos ocasionó claves foráneas rotas y referenciadores inválidos.
+- **Cambio aplicado:** Ejecutado el script `limpieza_total.sql` que limpió registros huérfanos y dejó únicamente las 41 categorías predefinidas marcadas como `no_borrable`.
+- **Resultado:** Se restauró la consistencia referencial de la base de datos y se evitaron errores posteriores al insertar/editar movimientos.
+- **Estado:** ✅ RESUELTO
+
 
 ### 2. Error "Concepto inválido"
 
-**Problema:** Controller validaba campo 'concepto' que no existe en formulario  
-**Solución:** Remover 'concepto' de $requiredFields en IngresoController línea 69  
-**Estado:** ✅ RESUELTO
+- **Problema:** El `IngresoController` validaba un campo `concepto` que fue removido del formulario tras el refactor de categorías, provocando rechazos al guardar ingresos.
+- **Cambio aplicado:** Se eliminó la validación de `concepto` (removido de `$requiredFields`) y se ajustaron mensajes de error en `controllers/IngresoController.php`.
+- **Resultado:** Las operaciones de creación/edición de ingresos ya no son bloqueadas por una validación inexistente.
+- **Estado:** ✅ RESUELTO
+
 
 ### 3. Campo concepto en tabla ingresos
 
-**Problema:** Campo obsoleto después de refactorización  
-**Solución:** ALTER TABLE ingresos DROP COLUMN concepto  
-**Estado:** ✅ RESUELTO
+- **Problema:** La columna `concepto` en `ingresos` quedó obsoleta tras mover la información de concepto a la tabla `categorias`.
+- **Cambio aplicado:** Se ejecutó `ALTER TABLE ingresos DROP COLUMN concepto` en las migraciones (ver `migrations/2025-11-21_remove_concepto_from_ingresos.sql`).
+- **Resultado:** La estructura de la tabla `ingresos` quedó normalizada y coherente con el nuevo modelo de categorías.
+- **Estado:** ✅ RESUELTO
+
 
 ### 4. Campo activo_fijo en tabla egresos
 
-**Problema:** Campo obsoleto después de implementar categorías  
-**Solución:** ALTER TABLE egresos DROP COLUMN activo_fijo  
-**Estado:** ✅ RESUELTO
+- **Problema:** La columna `activo_fijo` en `egresos` ya no aplicaba al nuevo modelo de categorías y generaba inconsistencias en formularios y modelos.
+- **Cambio aplicado:** Se ejecutó `ALTER TABLE egresos DROP COLUMN activo_fijo` (ver `migrations/2025-11-21_remove_activo_fijo_from_egresos.sql`) y se actualizó `models/EgresoModel.php` para eliminar referencias al campo.
+- **Resultado:** CRUD de egresos actualizado y coherente con la nueva estructura; formularios ya no muestran el campo y no se generan errores por referencias a columnas inexistentes.
+- **Estado:** ✅ RESUELTO
+
 
 ### 5. Triggers con campos obsoletos
 
-**Problema:** Triggers referencian concepto/activo_fijo que ya no existen  
-**Solución:** Recrear 12 triggers sin referencias a campos eliminados  
-**Estado:** ✅ RESUELTO
+- **Problema:** Varios triggers (en `ingresos` y `egresos`) referenciaban columnas eliminadas (`concepto`, `activo_fijo`), provocando fallos en operaciones automáticas y replicación hacia BD espejo.
+- **Cambio aplicado:** Se recrearon 12 triggers actualizados sin referencias a los campos obsoletos (scripts en `migrations/2025-11-21_fix_triggers_ingresos_egresos.sql`).
+- **Resultado:** Los triggers funcionan correctamente para auditoría y sincronización; la BD espejo no presenta errores por triggers inválidos.
+- **Estado:** ✅ RESUELTO
+
 
 ### 6. Error bind_param - ArgumentCountError
 
-**Problema:** String de tipos tenía 14 caracteres pero bind_param recibía 15 variables  
-**Iteración 1:** "ssssdssisissi" (13) → "ssssdssisisssi" (14) ❌  
-**Iteración 2:** "ssssdssisisssi" (14) ❌  
-**Solución Final:** "ssssdssisisssii" (15 caracteres exactos) ✅  
-**Estado:** ✅ RESUELDO - Usuario confirmó "ya quedo"
+- **Problema:** `bind_param` en modelos (p. ej. `models/IngresoModel.php`) tenía una cadena de tipos desincronizada con las variables pasadas, provocando `ArgumentCountError`.
+- **Cambio aplicado:** Revisada la lista de campos y actualizada la cadena `$types` a `"ssssdssisisssii"` (15 tipos), además de mapear correctamente cada variable en `bind_param`.
+- **Resultado:** Inserciones/actualizaciones en `ingresos` se ejecutan sin errores; el flujo de guardado quedó estable.
+- **Estado:** ✅ RESUELTO
+
 
 ### 7. Recibos con tamaño incorrecto
 
-**Problema:** Recibos muy largos, formato vertical  
-**Iteración 1:** Reducir fuentes/padding - INSUFICIENTE  
-**Iteración 2:** Cambiar a horizontal (8.5" x 5.5") - MEJOR pero grandes  
-**Iteración 3:** Reducción drástica (fuente 6px, logo 22px) - Muy pequeño con huecos blancos  
-**Solución Final:** Flexbox layout + tamaños intermedios  
-**Estado:** ✅ RESUELTO - Diseño uniforme en todos los recibos
+- **Problema:** Los recibos generados tenían formato vertical y zonas con exceso de espacio, causando impresión ineficiente.
+- **Cambio aplicado:** Diseño iterativo: se adoptó layout horizontal (8.5" x 5.5"), ajuste de tipografías y finalmente un layout con Flexbox que equilibra tamaños y espacios; CSS de recibos actualizado (`generate_receipt_*` templates y estilos asociados).
+- **Resultado:** Recibos legibles y compactos, aptos para impresión en media carta; watermark y formato uniforme aplicados.
+- **Estado:** ✅ RESUELTO
+
 
 ### 8. Label "Activo Fijo" obsoleto
 
-**Problema:** Label no actualizado en formulario egresos  
-**Solución:** Cambiar "Activo Fijo" → "Categoría" en views/layout.php línea 613  
-**Estado:** ✅ RESUELTO
+- **Problema:** El label `Activo Fijo` permanecía en la UI de egresos tras la refactorización, confundiendo a los usuarios y al mapping con el modelo.
+- **Cambio aplicado:** Se actualizó la vista `shared/Views/layout.php` y los partials relacionados para reemplazar el label por `Categoría`, eliminar el input `activo_fijo` y usar un `<select>` de categorías.
+- **Resultado:** Formularios de egresos ahora reflejan la estructura actual de la base de datos y la UX es consistente.
+- **Estado:** ✅ RESUELTO
 
 ---
 
