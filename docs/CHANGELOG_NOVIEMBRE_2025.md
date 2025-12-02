@@ -126,35 +126,46 @@ ALTER TABLE egresos DROP COLUMN activo_fijo;
 
 **`controllers/IngresoController.php`** (325 líneas)
 
-- Línea 69: Removido 'concepto' de $requiredFields
-- Línea 88-90: Eliminada validación de concepto
-- **Estado:** FUNCIONAL
+- Problema: El controlador validaba un campo `concepto` que ya no existe en el formulario tras refactorizar categorías, provocando rechazos en el guardado de ingresos.
+- Cambio aplicado: Se eliminó `'concepto'` de la lista `$requiredFields` y se removieron las validaciones relacionadas (línea ~69 y 88-90). Se ajustaron mensajes de error para reflejar campos actuales.
+- Resultado: Ingresos se pueden crear/editar correctamente desde la UI sin validar `concepto`.
+- Estado: ✅ RESUELTO
 
 **`controllers/CategoriaController.php`**
 
-- Agregada validación para prevenir eliminación de categorías con no_borrable=1
-- **Estado:** FUNCIONAL
+- Problema: Era posible eliminar categorías que deberían mantenerse (p. ej. categorías predefinidas), lo que rompía referencias en ingresos/egresos.
+- Cambio aplicado: Se añadió validación en el controlador para prevenir la eliminación de registros con `no_borrable = 1` y se añadió feedback al usuario cuando intenta borrar una categoría protegida.
+- Resultado: Las categorías marcadas `no_borrable` ya no se eliminan desde la UI y se previenen inconsistencias en la base de datos.
+- Estado: ✅ RESUELTO
 
 ### Backend - Models
 
 **`models/IngresoModel.php`** (330 líneas)
 
-- Línea 113: $types = "ssssdssisisssii" (15 parámetros para INSERT)
-- Línea 116-131: bind_param con 15 variables (sin concepto)
-- Línea 199: $types = "ssssdssisisssii" (15 SET + 1 WHERE para UPDATE)
-- **Estado:** FUNCIONAL - Corrección bind_param completada
+**`models/IngresoModel.php`** (330 líneas)
+
+- Problema: Error de `bind_param` por inconsistencia entre la cadena de tipos y el número de parámetros (causaba ArgumentCountError en inserciones/updates).
+- Cambio aplicado: Se revisó la lista de campos a insertar/actualizar y se ajustó la cadena `$types` a `"ssssdssisisssii"` (15 tipos) y se mapeó cada variable correctamente en `bind_param`. Se eliminó la referencia al campo `concepto` en las operaciones.
+- Resultado: Inserciones y actualizaciones de ingresos funcionan sin errores de tipo/argumentos.
+- Estado: ✅ RESUELTO
 
 **`models/EgresoModel.php`** (223 líneas)
 
-- Línea 75: Eliminada variable $activo_fijo
-- Línea 119: INSERT con 10 campos (sin activo_fijo)
-- Línea 128: bind_param actualizado a 10 variables
-- **Estado:** FUNCIONAL
+**`models/EgresoModel.php`** (223 líneas)
+
+- Problema: El modelo aún esperaba el campo `activo_fijo` que fue removido del esquema; esto provocaba errores en inserciones/actualizaciones.
+- Cambio aplicado: Se eliminó la variable relacionada con `activo_fijo`, se actualizó la lista de columnas para INSERT a 10 campos y se ajustó `bind_param` para utilizar 10 variables coherentes.
+- Resultado: Operaciones CRUD de egresos funcionan con la nueva estructura sin `activo_fijo`.
+- Estado: ✅ RESUELTO
 
 **`models/CategoriaModel.php`**
 
-- Agregado soporte para campos concepto y no_borrable
-- **Estado:** FUNCIONAL
+**`models/CategoriaModel.php`**
+
+- Problema: El modelo original no soportaba los nuevos campos `concepto` y `no_borrable`, lo que impedía administrar correctamente las categorías predefinidas desde la UI.
+- Cambio aplicado: Se añadió soporte para `concepto` (enum) y `no_borrable` (TINYINT) en las operaciones de inserción/actualización, además de adaptar las consultas para omitir `id_presupuesto` eliminado.
+- Resultado: Administración de categorías (crear/editar) ahora incluye campo `concepto` para ingresos y respeta `no_borrable` en operaciones de borrado.
+- Estado: ✅ RESUELTO
 
 ### Frontend - Views
 
@@ -166,6 +177,14 @@ ALTER TABLE egresos DROP COLUMN activo_fijo;
 - Modal egresos: Sin campo activo_fijo, con select de categoría
 - Botones "Imprimir" y "Reimprimir" en listas
 - **Estado:** FUNCIONAL
+ 
+**Detalles y problemas resueltos (Frontend)**
+
+- Problema: El label y campo `Activo Fijo` seguía presente en la UI de egresos causando confusión y pérdida de mapeo con el backend.
+- Cambio aplicado: Se actualizó `views/layout.php` y los partials de modal para renombrar el label a `Categoría`, eliminar el input `activo_fijo` y reemplazar la entrada por un `<select>` de categorías que obtiene datos del backend.
+- Resultado: Formularios de egresos coinciden con la nueva estructura de la base de datos y usan categorías centralizadas.
+- Estado: ✅ RESUELTO
+
 
 ### Frontend - Modales Presupuestos
 
