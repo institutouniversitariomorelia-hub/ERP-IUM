@@ -167,6 +167,16 @@ ALTER TABLE egresos DROP COLUMN activo_fijo;
 - Botones "Imprimir" y "Reimprimir" en listas
 - **Estado:** FUNCIONAL
 
+### Frontend - Modales Presupuestos
+
+- Eliminado campo opcional `presgen_nombre` del modal "Presupuesto General" (UI) — el backend mantiene soporte opcional, pero la UI ya no lo envía.
+- Corregido modal "Sub-Presupuesto": ahora carga correctamente la lista de `Presupuestos Generales (padre)` y las `Categorías (egreso)`. Se implementó:
+   - Formateo de etiqueta: si `nombre` es nulo, se muestra "Mes Año" (p.e. "Diciembre 2025").
+   - Auto-selección del padre cuando el modal se abre desde un botón con `data-parent-id`.
+   - Fallback de auto-selección a un mes objetivo (Enero 2027) para pruebas internas.
+   - Corrección de flujo AJAX y promesas para evitar estados intermedios y errores.
+
+
 ---
 
 ## 🎨 ESPECIFICACIONES DE DISEÑO - RECIBOS
@@ -382,7 +392,60 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 - ✅ Recibos se generan correctamente en todos los formatos
 - ✅ Sistema de reimpresión funciona con watermark
 - ✅ Categorías protegidas no se pueden eliminar
+ - ✅ Categorías protegidas no se pueden eliminar
 
+---
+
+## 🐛 PROBLEMAS RESUELTOS (ADICIONALES - DICIEMBRE 2025)
+
+### 9. Error SyntaxError: Identifier 'presParentId' has already been declared
+
+**Problema:** Al introducir cambios en `public/js/app.js` apareció una declaración duplicada de la variable `presParentId`, provocando un `SyntaxError` y evitando la carga del modal.
+
+**Solución:** Se eliminaron declaraciones duplicadas y se centralizó la extracción de `data-parent-id` en los controladores de apertura de modal. Se limpiaron y unificaron los handlers `initModalSubPresupuesto` / `initModalSubPresupuestoExclusivo` para evitar redeclaraciones.
+
+**Estado:** ✅ RESUELTO
+
+### 10. Sub-Presupuesto no mostraba padres ni categorías
+
+**Problema:** Al abrir el modal, los selects de "Presupuesto General (padre)" y "Categoría" aparecían vacíos aunque la respuesta AJAX devolvía datos.
+
+**Diagnóstico:** Las opciones se añadían correctamente, pero el select quedaba sin selección visible (placeholder mostrado) y existían errores en la lógica de promesas y variables no definidas que impedían el flujo correcto.
+
+**Solución:**
+- Se corrigió el flujo AJAX y la cadena de promesas (.then/.done coherentes).
+- Se añadió la función `formatPresupuestoLabel(p)` que muestra "Mes Año" cuando `nombre` es null.
+- Se implementó selección automática de la primera opción válida cuando no hay selección (mejora de usabilidad).
+- Se añadió soporte para que el botón que abre el modal pase `data-parent-id` y el modal lo auto-selecione.
+- Se añadieron logs temporales de depuración para validar respuestas (luego limpiados según pruebas).
+
+**Estado:** ✅ RESUELTO (ver validaciones de UI abajo)
+
+### 11. Eliminación del campo `presgen_nombre` en la UI
+
+**Problema:** Campo `presgen_nombre` usado para pruebas quedaba visible y producía confusión en la UI.
+
+**Solución:** Se eliminó del modal `Presupuesto General` la entrada `presgen_nombre` y se actualizó el JS para no intentar asignarla. El backend sigue aceptando `nombre` opcionalmente en el modelo.
+
+**Estado:** ✅ RESUELTO
+
+### 12. Fusiones y restauración de ramas (merge/restore)
+
+**Problema:** Merge de `work/integracion` en testing produjo conflictos y algunos errores de parseo en PHP después de resolver automáticamente.
+
+**Solución:**
+- Se creó un backup `backup/testing-before-merge-20251201_1331` antes del merge.
+- Se restauró `development` desde ese backup según indicación del usuario.
+- Se recuperaron cambios valiosos desde `stash@{1}` creando `temp-restore` y se fusionó en `development` tras resolver conflictos prefiriendo los fixes de UI.
+- Se re-ejecutó `php -l` y se corrigieron parse errors remanentes.
+
+**Estado:** ✅ RESUELTO (repositorio validado con `php -l`)
+
+### 13. Depuración y seguimiento
+
+**Acciones:** Se añadieron logs `[DEBUG]` en `public/js/app.js` durante la etapa de diagnóstico para verificar que `getPresupuestosGenerales` y `getCategoriasEgreso` devolvían datos; se registró el conteo de `<option>` insertadas y el estado `disabled` de los selects. Esto permitió confirmar que las respuestas eran correctas y centrar la solución en la selección del select.
+
+**Estado:** ✅ UTILIZADO PARA DIAGNÓSTICO (logs removidos o marcados para remover en commit final)
 ---
 
 ## 🚀 ESTADO FINAL DEL SISTEMA
