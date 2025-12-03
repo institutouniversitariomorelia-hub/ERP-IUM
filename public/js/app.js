@@ -127,6 +127,7 @@ const ERPUtils = (function() {
     };
 })();
 
+
 // Exponer ajaxCall globalmente para compatibilidad con código en vistas
 window.ajaxCall = ERPUtils.ajaxCall;
 window.mostrarError = ERPUtils.mostrarError;
@@ -631,6 +632,7 @@ const IngresosModule = (function() {
             formData.forEach(item => {
                 dataObj[item.name] = item.value;
             });
+
             
             if (!esDividido) {
                 // Pago único
