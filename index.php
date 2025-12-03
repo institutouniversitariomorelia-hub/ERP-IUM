@@ -12,6 +12,10 @@ define('DEFAULT_CONTROLLER', 'user'); // Controlador por defecto si hay sesión
 define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
 
 // Incluir archivos necesarios
+// Cargar configuración de aplicación (APP_DEBUG, rutas de logs)
+//require_once __DIR__ . '/config/app.php';
+
+// Conexión a BD
 require_once __DIR__ . '/config/database.php'; // Conexión BD
 require_once __DIR__ . '/utils/password.php'; // Compatibilidad de hash
 require_once __DIR__ . '/shared/Helpers/helpers.php'; // Permisos y utilidades
@@ -50,6 +54,16 @@ $controllerClassName = ucfirst($controllerName) . 'Controller';
 $controllerFile = $controllerMap[$controllerName] ?? null;
 
 // Verificar si el controlador está mapeado y el archivo existe
+// Log básico de la petición para diagnóstico (si está habilitado)
+if (function_exists('debug_log')) {
+    debug_log('Request routing', [
+        'controller' => $controllerName,
+        'action' => $actionName,
+        'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+        'uri' => $_SERVER['REQUEST_URI'] ?? null,
+        'session_user' => $_SESSION['user_id'] ?? null
+    ]);
+}
 if ($controllerFile && file_exists(__DIR__ . '/' . $controllerFile)) {
     $controllerFile = __DIR__ . '/' . $controllerFile;
     require_once $controllerFile;

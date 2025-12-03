@@ -199,6 +199,7 @@ class IngresoModel {
     $types = "ssssdssisissssii";
         // ==========================================================
 
+        $types = "ssssdssisisssiii";
         $bindResult = $stmt->bind_param(
             $types,
             $fecha,                 // s

@@ -254,7 +254,7 @@ function buscarComparativa() {
     const anio = document.getElementById('anioBusqueda').value;
     
     if (!mes || !anio) {
-        alert('Por favor selecciona mes y año para buscar');
+        showError('Por favor selecciona mes y año para buscar');
         return;
     }
     

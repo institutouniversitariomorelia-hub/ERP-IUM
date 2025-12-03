@@ -52,13 +52,16 @@ class UserController {
         if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
 
         $data = $_POST;
-        $id = $data['id'] ?? null;
+        $id = isset($data['id']) && $data['id'] !== '' ? intval($data['id']) : null;
         $isUpdate = !empty($id);
         $response = ['success' => false];
         
         // Verificar si el usuario está editando su propio perfil o es SU
-        $isOwnProfile = ($id == $_SESSION['user_id']);
+        $isOwnProfile = ($id === intval($_SESSION['user_id']));
         $isSuperUser = ($_SESSION['user_rol'] === 'SU');
+        
+        // Log de depuración
+        error_log("UserController->save: id=$id, session_user_id=" . $_SESSION['user_id'] . ", isOwnProfile=" . ($isOwnProfile ? 'true' : 'false'));
         
         // Solo SU puede crear usuarios o editar otros perfiles
         if (!$isOwnProfile && !$isSuperUser) {
@@ -77,6 +80,13 @@ class UserController {
 
         try {
             $oldData = $isUpdate ? $this->userModel->getUserById($id) : null;
+            // Si se está actualizando y el usuario antiguo es SU, impedir cambiar su rol
+            if ($isUpdate && $oldData && isset($oldData['rol']) && $oldData['rol'] === 'SU') {
+                if (isset($data['rol']) && $data['rol'] !== 'SU') {
+                    echo json_encode(['success' => false, 'error' => 'No se puede cambiar el rol del Super Usuario.']);
+                    exit;
+                }
+            }
             if ($isUpdate) { 
                 if (!empty($data['password'])) {
                     $hash = password_hash($data['password'], PASSWORD_DEFAULT);
@@ -96,11 +106,13 @@ class UserController {
             }
 
             if ($stmt->execute()) {
-                // Si el usuario editó su propio perfil, actualizar la sesión
-                if ($isOwnProfile) {
+                // SOLO actualizar la sesión si el usuario editó su propio perfil
+                if ($isOwnProfile && $isUpdate) {
+                    error_log("UserController->save: Actualizando sesión del usuario propio");
                     $_SESSION['user_nombre'] = $data['nombre'];
                     $_SESSION['user_username'] = $data['username'];
                     $_SESSION['user_rol'] = $data['rol'];
+                    // NO actualizar la contraseña en sesión, eso no tiene sentido
                 }
                 
                 // Fallback en PHP si no hay triggers para usuarios
@@ -142,6 +154,14 @@ class UserController {
         if ($id <= 0) { $response['error'] = 'ID de usuario inválido.'; echo json_encode($response); exit; }
         if ($id == $_SESSION['user_id']) { $response['error'] = 'No puedes eliminar tu propio usuario.'; echo json_encode($response); exit; }
 
+        // Proteger al Super Usuario: no permitir eliminar a un usuario con rol 'SU'
+        $userToDelete = $this->userModel->getUserById($id);
+        if ($userToDelete && isset($userToDelete['rol']) && $userToDelete['rol'] === 'SU') {
+            $response['error'] = 'No está permitido eliminar al Super Usuario.';
+            echo json_encode($response);
+            exit;
+        }
+
         try {
             // $userToDelete = $this->userModel->getUserById($id); // No es necesario, el trigger lo registra
             
@@ -154,7 +174,8 @@ class UserController {
                     // Registrar old data si es posible
                     $userToDelete = $this->userModel->getUserById($id);
                     if (!$this->auditoriaModel->hasTriggerForTable('usuarios')) {
-                        $this->auditoriaModel->addLog('Usuario', 'Eliminacion', 'Usuario eliminado: ' . ($userToDelete['username'] ?? '') . ' (id: ' . $id . ')', json_encode($userToDelete), null, null, null, $_SESSION['user_id'] ?? null);
+                        $oldValor = $userToDelete ? json_encode($userToDelete) : null;
+                        $this->auditoriaModel->addLog('Usuario', 'Eliminacion', null, $oldValor, null, null, null, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
                 } else {

@@ -1,3 +1,4 @@
+
 <?php
 // src/Categorias/Controllers/CategoriaController.php
 
@@ -69,6 +70,9 @@ class CategoriaController {
                 // El trigger 'trg_categorias_after_insert_aud' se encarga de esto.
 
             } else { // Actualizar
+                // Obtener datos antes de actualizar
+                $oldData = $this->categoriaModel->getCategoriaById($id);
+                
                 $success = $this->categoriaModel->updateCategoria($id, $data);
 
                 // <-- ¡CORRECCIÓN 3: BORRAMOS LA LLAMADA A addAudit()!
@@ -78,8 +82,15 @@ class CategoriaController {
             if ($success) {
                 // Añadir log si no hay triggers para categorias
                 if (!$this->auditoriaModel->hasTriggerForTable('categorias')) {
-                    $det = 'Categoría guardada: ' . ($data['nombre'] ?? '');
-                    $this->auditoriaModel->addLog('Categoria', empty($id) ? 'Insercion' : 'Actualizacion', $det, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                    if (empty($id)) {
+                        // Inserción
+                        $this->auditoriaModel->addLog('Categoria', 'Insercion', null, null, json_encode($data), null, null, $_SESSION['user_id'] ?? null);
+                    } else {
+                        // Actualización - guardar old y new
+                        $oldValor = $oldData ? json_encode($oldData) : null;
+                        $newValor = json_encode($data);
+                        $this->auditoriaModel->addLog('Categoria', 'Actualizacion', null, $oldValor, $newValor, null, null, $_SESSION['user_id'] ?? null);
+                    }
                 }
                 $response['success'] = true;
             } else {
@@ -125,6 +136,34 @@ class CategoriaController {
         }
         exit;
      }
+
+    /**
+     * Acción AJAX: Obtiene las categorías de tipo 'Egreso' (ID y Nombre).
+     * Añadido para compatibilidad con llamadas desde frontend (getCategoriasEgreso).
+     */
+    public function getCategoriasEgreso() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+        try {
+            $categorias = $this->categoriaModel->getCategoriasByTipo('Egreso');
+            // Depuración: registrar número de categorías y ejemplo si la función debug_log está disponible
+            if (function_exists('debug_log')) {
+                $count = is_array($categorias) ? count($categorias) : 0;
+                debug_log('getCategoriasEgreso: returning categories', ['count' => $count, 'sample' => $categorias[0] ?? null]);
+            }
+            // Si ocurre un error en el modelo es posible recibir un array con 'error'
+            if (is_array($categorias) && isset($categorias['error'])) {
+                echo json_encode(['error' => $categorias['error']]);
+            } else {
+                echo json_encode($categorias);
+            }
+        } catch (Exception $e) {
+            if (function_exists('debug_log')) debug_log('Error getCategoriasEgreso: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            echo json_encode(['error' => 'Error al obtener categorías.']);
+        }
+        exit;
+    }
 
     /**
      * Acción AJAX: Elimina una categoría.
@@ -174,8 +213,9 @@ class CategoriaController {
                 $success = $this->categoriaModel->deleteCategoria($id);
                 if ($success) {
                     if (!$this->auditoriaModel->hasTriggerForTable('categorias')) {
-                        $det = 'Categoría eliminada (id: ' . $id . ')';
-                        $this->auditoriaModel->addLog('Categoria', 'Eliminacion', $det, null, null, null, null, $_SESSION['user_id'] ?? null);
+                        // Guardar objeto completo en old_valor antes de eliminar
+                        $oldValor = $categoria ? json_encode($categoria) : null;
+                        $this->auditoriaModel->addLog('Categoria', 'Eliminacion', $oldValor, null, null, null, null, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
                 } else {

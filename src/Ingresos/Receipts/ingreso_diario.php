@@ -17,10 +17,10 @@ if ($folio <= 0) {
 }
 
 // Consulta segura con JOIN para obtener nombre de categoría y pagos parciales
-$sql = "SELECT i.*, c.nombre AS nombre_categoria, c.concepto 
-        FROM ingresos i
-        LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
-        WHERE i.folio_ingreso = ? LIMIT 1";
+$sql = "SELECT i.*, c.nombre_categoria
+    FROM ingresos i
+    LEFT JOIN categorias c ON i.id_categoria = c.id_categoria
+    WHERE i.folio_ingreso = ? LIMIT 1";
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
     echo "Error en la consulta: " . htmlspecialchars($conn->error);
@@ -221,13 +221,14 @@ if (!empty($pagosParciales)) {
         </div>
         
         <div class="grid">
+            <?php if (!empty($categoria)): ?>
             <div class="grid-row">
                 <div class="grid-cell full">
-                    <span class="label">Concepto</span>
-                    <div class="value"><?php echo $categoria ?: '-'; ?></div>
+                    <span class="label">Categoría</span>
+                    <div class="value"><?php echo $categoria; ?></div>
                 </div>
             </div>
-        </div>
+            <?php endif; ?>
         
         <!-- Monto y Método de Pago -->
         <div style="display: table; width: 100%; margin: 10px 0;">
