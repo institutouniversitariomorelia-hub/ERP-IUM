@@ -60,6 +60,34 @@ if (class_exists('NumberFormatter')) {
 }
 
 $cantidadConLetra = '';
+function numToWordsEs($num) {
+    $num = (int)$num;
+    $U = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
+    $T = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+    $C = ['', 'cien', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+    $to99 = function($n) use ($U, $T) {
+        if ($n < 20) return $U[$n];
+        if ($n == 20) return 'veinte';
+        $d = intdiv($n, 10); $u = $n % 10;
+        if ($d == 2 && $u > 0) return 'veinti' . $U[$u];
+        return $T[$d] . ($u ? ' y ' . $U[$u] : '');
+    };
+    $to999 = function($n) use ($C, $to99) {
+        if ($n == 0) return '';
+        if ($n == 100) return 'cien';
+        $c = intdiv($n, 100); $r = $n % 100;
+        $pref = $c ? (($c == 1) ? 'ciento' : $C[$c]) : '';
+        return trim($pref . ($r ? ' ' . $to99($r) : ''));
+    };
+    if ($num == 0) return 'cero';
+    $millones = intdiv($num, 1000000); $resto = $num % 1000000;
+    $miles = intdiv($resto, 1000); $unidades = $resto % 1000;
+    $parts = [];
+    if ($millones) $parts[] = ($millones == 1 ? 'un millón' : trim(numToWordsEs($millones) . ' millones'));
+    if ($miles) $parts[] = ($miles == 1 ? 'mil' : trim($to999($miles) . ' mil'));
+    if ($unidades) $parts[] = $to999($unidades);
+    return trim(implode(' ', $parts));
+}
 if (class_exists('NumberFormatter')) {
     try {
         $entero = floor($monto);
@@ -67,7 +95,13 @@ if (class_exists('NumberFormatter')) {
         $fmtSpell = new NumberFormatter('es_MX', NumberFormatter::SPELLOUT);
         $letras = strtoupper($fmtSpell->format($entero));
         $cantidadConLetra = $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.';
-    } catch (Exception $e) {}
+    } catch (Exception $e) { /* fallback abajo */ }
+}
+if ($cantidadConLetra === '') {
+    $entero = floor($monto);
+    $centavos = round(($monto - $entero) * 100);
+    $letras = strtoupper(numToWordsEs($entero));
+    $cantidadConLetra = $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.';
 }
 
 $logoPath = '../../../public/logo ium blanco.png';
@@ -96,10 +130,10 @@ if (!empty($pagosParciales)) {
     <meta charset="utf-8">
     <title>Recibo de Titulación #<?php echo $folioEsc; ?></title>
     <style>
-        @page { size: 8.5in 5.5in; margin: 0; }
+        @page { size: 8.5in 11in; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
-        .page { width: 8.5in; height: 5.5in; padding: 0.15in 0.2in; position: relative; background: white; display: flex; flex-direction: column; }
+        body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; background: #f2f2f2; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 16px; }
+        .page { width: 8.5in; padding: 0.15in 0.2in; position: relative; background: white; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #e5e5e5; border-radius: 6px; }
         
         .header { display: table; width: 100%; margin-bottom: 8px; }
         .header-left { display: table-cell; width: 30%; vertical-align: top; }
@@ -143,10 +177,14 @@ if (!empty($pagosParciales)) {
         .footer { font-size: 7px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 4px; margin-top: 8px; }
         .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 70px; color: rgba(220, 53, 69, 0.12); font-weight: bold; z-index: 0; pointer-events: none; }
         
-        @media print { body { margin: 0; } .no-print { display: none; } .page { box-shadow: none; } }
+        .no-print { position: fixed; top: 16px; right: 16px; z-index: 10; }
+        .print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+        .print-btn:hover { background: #b7213c; }
+        @media print { body { margin: 0; background: none; display: block; } .no-print { display: none; } .page { box-shadow: none; border: none; } }
     </style>
 </head>
 <body>
+    <div class="no-print"><button class="print-btn" onclick="window.print()">Imprimir</button></div>
     <?php if ($reimpresion): ?>
         <div class="watermark">REIMPRESIÓN</div>
     <?php endif; ?>
