@@ -889,8 +889,19 @@ const EgresosModule = (function() {
                 .done(r => {
                     if (r.success) {
                         $(document).trigger('egresoGuardado');
-                        showSuccess('Egreso guardado correctamente.');
-                        setTimeout(() => { window.location.reload(); }, 900);
+
+                        try { showSuccess('Egreso guardado correctamente.'); } catch(e) {}
+
+                        // Si es creación, el backend devuelve r.folio
+                        if (r.folio) {
+                            // Redirigir directamente al recibo para imprimir
+                            const url = `generate_receipt.php?folio=${encodeURIComponent(r.folio)}&tipo=egreso`;
+                            window.location.href = url;
+                        } else {
+                            // Caso de actualización: mantener comportamiento actual
+                            setTimeout(() => { window.location.reload(); }, 900);
+                        }
+
                     } else {
                         showError('Error al guardar: ' + (r.error || ''));
                     }
