@@ -472,7 +472,9 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
+
             <span class="me-auto fw-bold" style="font-size:1.25rem; letter-spacing:1px;">INSTITUTO UNIVERSITARIO MORELIA</span>
+
             <div class="user-info-header">
                 <div class="d-none d-md-block">
                     <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
