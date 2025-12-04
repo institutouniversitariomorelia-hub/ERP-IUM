@@ -1,5 +1,20 @@
 # 📋 CHANGELOG - Sistema ERP-IUM
 
+---
+
+## 🧭 Snapshot `newchat` - 2025-12-04
+
+- **Branch actual:** `development`
+- **Estado frontend (Presupuestos):**
+   - Eliminado el campo opcional "Nombre del Presupuesto" del modal `#modalPresupuestoGeneral` en `shared/Views/layout.php`.
+   - Modal exclusivo de Sub-presupuesto (`#modalSubPresupuesto`) operativo con selección de presupuesto general padre vía `data-parent-id`.
+   - `public/js/app.js` consolidado en versión modular con `PresupuestosModule`, `AlertasPresupuestosModule`, `DashboardModule`, etc.
+- **Estado backend/BD:**
+   - Refactor de categorías, limpieza de campos obsoletos (`concepto` en `ingresos`, `activo_fijo` en `egresos`) y triggers recreados ya integrados.
+   - Migraciones activas en `database/migrations/00_active` aplicadas al menos una vez en entorno de desarrollo.
+- **Pendiente principal para siguiente chat:**
+   - Completar verificación de todos los flujos de Presupuestos (general, subpresupuestos, por categoría) y actualizar manuales según comportamiento final.
+
 ## Refactorización Módulo de Categorías y Sistema de Recibos
 
 **Fecha:** Noviembre 23, 2025  

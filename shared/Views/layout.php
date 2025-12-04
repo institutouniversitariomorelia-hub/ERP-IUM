@@ -59,11 +59,6 @@
                         <div id="presupuestoGeneralAlert" class="alert alert-danger d-none"></div>
                         <input type="hidden" id="presgen_id" name="id">
                         <div class="mb-3">
-                            <label for="presgen_nombre" class="form-label">Nombre del Presupuesto <span class="text-muted">(opcional)</span></label>
-                            <input id="presgen_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Presupuesto General 2025">
-                            <div class="form-text">Nombre descriptivo para identificar fácilmente el presupuesto</div>
-                        </div>
-                        <div class="mb-3">
                             <label for="presgen_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
                             <input id="presgen_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 500000.00" required>
                         </div>
