@@ -35,9 +35,16 @@ if ($mesEspecifico && $anioEspecifico) {
     // Búsqueda específica por mes/año
     $mes = sprintf('%04d-%02d', $anioEspecifico, $mesEspecifico);
     $fecha = DateTime::createFromFormat('Y-m-d', "$anioEspecifico-$mesEspecifico-01");
-    $formatter = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE);
-    $formatter->setPattern('MMMM yyyy');
-    $nombreMes = ucfirst($formatter->format($fecha));
+    function nombreMesEsp($fecha) {
+        $meses = [
+            1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril', 5 => 'mayo', 6 => 'junio',
+            7 => 'julio', 8 => 'agosto', 9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
+        ];
+        $mes = (int)$fecha->format('n');
+        $anio = $fecha->format('Y');
+        return ucfirst($meses[$mes]) . ' ' . $anio;
+    }
+    $nombreMes = nombreMesEsp($fecha);
     $tituloReporte = "Comparativa de $nombreMes";
     
     // Ingresos del mes
@@ -67,13 +74,19 @@ if ($mesEspecifico && $anioEspecifico) {
     // Búsqueda por rango de meses
     $tituloReporte = $meses === 1 ? "Comparativa del Último Mes" : "Comparativa de los Últimos $meses Meses";
     
-    $formatter = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE);
-    $formatter->setPattern('MMMM yyyy');
-    
+    function nombreMesEsp($fecha) {
+        $meses = [
+            1 => 'enero', 2 => 'febrero', 3 => 'marzo', 4 => 'abril', 5 => 'mayo', 6 => 'junio',
+            7 => 'julio', 8 => 'agosto', 9 => 'septiembre', 10 => 'octubre', 11 => 'noviembre', 12 => 'diciembre'
+        ];
+        $mes = (int)$fecha->format('n');
+        $anio = $fecha->format('Y');
+        return ucfirst($meses[$mes]) . ' ' . $anio;
+    }
     for ($i = $meses - 1; $i >= 0; $i--) {
         $mes = date('Y-m', strtotime("-$i months"));
         $fecha = new DateTime("-$i months");
-        $nombreMes = ucfirst($formatter->format($fecha));
+        $nombreMes = nombreMesEsp($fecha);
         
         // Ingresos del mes
         $queryI = "SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
