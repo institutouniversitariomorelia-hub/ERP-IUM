@@ -1,34 +1,109 @@
 <?php
-// ===============================================
-// Archivo: index.php (El Router Principal)
-// FIX: La lógica de $vista_a_cargar debe ser estable.
-// ===============================================
+// index.php (Enrutador Principal)
 
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Iniciar sesión SIEMPRE al principio
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-// 1. Incluir el controlador
-require_once __DIR__ . "/controladores/vistasControlador.php";
+// Configuración básica
+define('BASE_URL', '/erp-ium/'); // Ajusta si tu carpeta tiene otro nombre
+define('DEFAULT_CONTROLLER', 'user'); // Controlador por defecto si hay sesión
+define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
 
-// 2. Crear instancia del controlador
-$controlador = new vistasControlador();
+// Incluir archivos necesarios
+// Cargar configuración de aplicación (APP_DEBUG, rutas de logs)
+//require_once __DIR__ . '/config/app.php';
 
-// 3. Obtener la RUTA del archivo a cargar (ejemplo: "LOGIN/login.html" o "vistas/plantilla.php")
-$ruta_a_cargar = $controlador->obtener_vistas_controlador(); // Esto devuelve la RUTA
+// Conexión a BD
+require_once __DIR__ . '/config/database.php'; // Conexión BD
+require_once __DIR__ . '/utils/password.php'; // Compatibilidad de hash
+require_once __DIR__ . '/shared/Helpers/helpers.php'; // Permisos y utilidades
 
-// 4. Obtener el nombre del MÓDULO (necesario para plantilla.php)
-// Si views está presente, usamos su valor. Si no existe (estamos en el login), usamos 'mi_perfil' por defecto.
-$vista_a_cargar = $_GET['views'] ?? 'mi_perfil'; 
-// NOTA: Si vienes del login, $_GET['views'] SÍ existe y es 'mi_perfil', lo cual es correcto.
+// Archivos PHP directos que no necesitan enrutador (redirectores, generadores)
+// Estos archivos se acceden directamente y NO pasan por index.php
+// Esta lista es solo para documentación - el servidor web los sirve directamente
+$directFiles = [
+    'generate_receipt_ingreso.php',
+    'generate_receipt_egreso.php',
+    'generate_comparativa_dashboard.php',
+    'generate_reporte_consolidado.php',
+    'generate_reporte_ingresos.php',
+    'generate_reporte_egresos.php'
+];
 
-// 5. Decidir qué cargar:
-if ($ruta_a_cargar == "404") {
-    // Manejo de error 404
-    echo "<!DOCTYPE html><html><head><title>404</title><style>body{font-family:sans-serif;text-align:center;padding-top:100px;}h1{color:#E70000;}</style></head><body><h1>404 | PÁGINA NO ENCONTRADA</h1><p>La vista solicitada no existe o no está autorizada.</p></body></html>";
+// Determinar controlador y acción
+$controllerName = $_GET['controller'] ?? (isset($_SESSION['user_id']) ? DEFAULT_CONTROLLER : 'auth');
+$actionName = $_GET['action'] ?? (isset($_SESSION['user_id']) ? DEFAULT_ACTION : 'login');
+
+// Mapeo de controladores a sus rutas modulares
+$controllerMap = [
+    'auth' => 'src/Auth/Controllers/AuthController.php',
+    'user' => 'src/Auth/Controllers/UserController.php',
+    'ingreso' => 'src/Ingresos/Controllers/IngresoController.php',
+    'egreso' => 'src/Egresos/Controllers/EgresoController.php',
+    'categoria' => 'src/Categorias/Controllers/CategoriaController.php',
+    'presupuesto' => 'src/Presupuestos/Controllers/PresupuestoController.php',
+    'auditoria' => 'src/Auditoria/Controllers/AuditoriaController.php',
+    'dashboard' => 'src/Dashboard/Controllers/DashboardController.php',
+    'reporte' => 'src/Reportes/Controllers/ReporteController.php'
+];
+
+// Formatear nombres
+$controllerClassName = ucfirst($controllerName) . 'Controller';
+$controllerFile = $controllerMap[$controllerName] ?? null;
+
+// Verificar si el controlador está mapeado y el archivo existe
+// Log básico de la petición para diagnóstico (si está habilitado)
+if (function_exists('debug_log')) {
+    debug_log('Request routing', [
+        'controller' => $controllerName,
+        'action' => $actionName,
+        'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+        'uri' => $_SERVER['REQUEST_URI'] ?? null,
+        'session_user' => $_SESSION['user_id'] ?? null
+    ]);
+}
+
+if ($controllerFile && file_exists(__DIR__ . '/' . $controllerFile)) {
+    $controllerFile = __DIR__ . '/' . $controllerFile;
+    require_once $controllerFile;
+    // Verificar si la clase existe
+    if (class_exists($controllerClassName)) {
+        // Crear instancia del controlador, pasando la conexión a la BD
+        $controller = new $controllerClassName($conn); // $conn viene de db.php
+        // Verificar si la acción (método) existe
+        if (method_exists($controller, $actionName)) {
+            // Llamar a la acción
+            try {
+                $controller->$actionName();
+            } catch (Exception $e) {
+                // Manejo básico de errores
+                error_log("Error ejecutando acción: " . $e->getMessage()); // Registrar error
+                die("Ocurrió un error inesperado."); // Mensaje genérico al usuario
+            }
+        } else {
+            // Si la acción no existe, mostrar error 404
+             error_log("Acción no encontrada: {$controllerClassName}->{$actionName}");
+             http_response_code(404);
+             die("Error 404: Página no encontrada (acción inválida).");
+        }
+    } else {
+        die("Error: La clase '{$controllerClassName}' no existe en '{$controllerFile}'.");
+    }
 } else {
-    // Si la ruta es la plantilla, la incluimos.
-    $ruta_final = __DIR__ . "/" . $ruta_a_cargar;
-    
-    // Incluir el archivo (login.html o plantilla.php)
-    include $ruta_final; 
+     // Si no se encuentra el controlador y no es el login, redirigir a login si no hay sesión
+    if ($controllerName !== 'auth' && !isset($_SESSION['user_id'])) {
+        header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login');
+        exit;
+    }
+    // Si hay sesión pero el controlador no existe, mostrar error 404
+     error_log("Controlador no encontrado: {$controllerFile}");
+     http_response_code(404);
+     die("Error 404: Página no encontrada (controlador inválido).");
+}
+
+// Cerrar conexión (opcional, PHP suele hacerlo)
+if (isset($conn) && $conn instanceof mysqli) {
+    $conn->close();
 }

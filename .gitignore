@@ -15,3 +15,4 @@ config/config.local.php
 
 # Logs del servidor
 *.log
+logs/
