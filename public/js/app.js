@@ -1,13 +1,11 @@
 /**
  * ============================================================================
  * ERP IUM - Sistema de Gestión Financiera
- * app-optimized.js - Frontend Modular Encapsulado
+ * app.js - Frontend Modular (Versión 3.0 Master Extended)
  * ============================================================================
- * Versión: 2.0 Optimizada
- * Fecha: 20 de Noviembre de 2025
- * 
- * Este archivo contiene toda la lógica del frontend organizada en módulos
- * independientes para facilitar el mantenimiento y escalabilidad.
+ * BASE: Versión 2.2 (1710 líneas) recuperada.
+ * AGREGADO: Módulo de Auditoría extendido (Gráficas y Reportes).
+ * MANTENIDO: Modales legacy, validaciones estrictas, Easter Egg.
  * ============================================================================
  */
 
@@ -19,11 +17,6 @@
 const ERPUtils = (function() {
     /**
      * Realiza llamadas AJAX genéricas al backend
-     * @param {string} controller - Nombre del controlador PHP
-     * @param {string} action - Acción/método a ejecutar
-     * @param {object} data - Datos a enviar
-     * @param {string} method - Método HTTP (GET/POST)
-     * @returns {jqXHR} Promesa jQuery AJAX
      */
     function ajaxCall(controller, action, data = {}, method = 'POST') {
         let url = `${BASE_URL}index.php?controller=${controller}&action=${action}`;
@@ -50,11 +43,8 @@ const ERPUtils = (function() {
 
     /**
      * Muestra mensajes de error amigables
-     * @param {string} action - Descripción de la acción
-     * @param {object} jqXHR - Objeto de error jQuery
      */
     function mostrarError(action, jqXHR = null) {
-        // Esta función ahora usa el sistema de notificaciones (top-left)
         let errorMsg = `Ocurrió un error al ${action}.`;
         let serverError = 'Error desconocido o sin conexión.';
 
@@ -75,13 +65,15 @@ const ERPUtils = (function() {
         }
 
         console.error(`[ERROR] ${action}:`, serverError, jqXHR);
-        // Mostrar notificación de error amigable
-        showError(`${errorMsg} Detalle: ${serverError}. Revise la consola (F12) para más información.`, { autoClose: 7000 });
+        if (typeof showError === 'function') {
+            showError(`${errorMsg} Detalle: ${serverError}.`, { autoClose: 7000 });
+        } else {
+            alert(`${errorMsg}\nDetalle: ${serverError}`);
+        }
     }
 
     /**
      * Asegura que un campo numérico sea editable
-     * @param {string} selector - Selector jQuery del elemento
      */
     function ensureNumberEditable(selector) {
         const $el = $(selector);
@@ -107,8 +99,6 @@ const ERPUtils = (function() {
 
     /**
      * Escapa caracteres HTML para prevenir XSS
-     * @param {string} str - Cadena a escapar
-     * @returns {string} Cadena escapada
      */
     function escapeHtml(str) {
         if (str === null || str === undefined) return '';
@@ -120,13 +110,12 @@ const ERPUtils = (function() {
             .replace(/'/g, '&#39;');
     }
 
-    /* Sistema de notificaciones (toasts) simple, top-left */
+    /* Sistema de notificaciones (toasts) simple, top-right */
     function showNotification(type, message, options = {}) {
         try {
             const container = document.getElementById('app_notifications');
             if (!container) {
-                console.warn('Contenedor de notificaciones no encontrado');
-                console.warn('Notificación:', message);
+                console.warn('Contenedor de notificaciones no encontrado, fallback a alert');
                 return;
             }
 
@@ -149,7 +138,6 @@ const ERPUtils = (function() {
             notif.appendChild(msgSpan);
             notif.appendChild(close);
 
-            // Insert on top
             if (container.firstChild) container.insertBefore(notif, container.firstChild);
             else container.appendChild(notif);
 
@@ -158,7 +146,6 @@ const ERPUtils = (function() {
             }
         } catch (e) {
             console.error('Error mostrando notificación:', e);
-            console.warn('Notificación (fallback):', message);
         }
     }
 
@@ -166,17 +153,13 @@ const ERPUtils = (function() {
     function showError(message, options) { showNotification('error', message, options); }
 
     /**
-     * Muestra un modal de confirmación reutilizable. Devuelve una Promise<boolean>.
-     * @param {string} message
-     * @param {object} options
-     * @returns {Promise<boolean>}
+     * Muestra un modal de confirmación reutilizable.
      */
     function showConfirm(message, options = {}) {
         return new Promise((resolve) => {
             try {
                 const modalEl = document.getElementById('modalConfirm');
                 if (!modalEl || typeof bootstrap === 'undefined') {
-                    // Fallback a confirm nativo
                     const result = confirm(message);
                     resolve(result);
                     return;
@@ -214,7 +197,6 @@ const ERPUtils = (function() {
         });
     }
 
-    // Exponer métodos públicos
     return {
         ajaxCall,
         mostrarError,
@@ -226,7 +208,8 @@ const ERPUtils = (function() {
         showConfirm
     };
 })();
-// Exponer ajaxCall y helpers de notificación globalmente para compatibilidad con vistas
+
+// Exponer helpers globalmente
 window.ajaxCall = ERPUtils.ajaxCall;
 window.mostrarError = ERPUtils.mostrarError;
 window.showError = ERPUtils.showError;
@@ -238,15 +221,11 @@ window.showConfirm = ERPUtils.showConfirm;
 // MÓDULO: Gestión de Usuarios y Perfil
 // ============================================================================
 const UsuariosModule = (function() {
-    const { ajaxCall, mostrarError } = ERPUtils;
+    const { ajaxCall, mostrarError, showSuccess, showError, showConfirm } = ERPUtils;
 
-    /**
-     * Inicializa el toggle de tabla de usuarios
-     */
     function initToggleUsuarios() {
         $(document).on('click', '#btnToggleUsuarios', function(e) {
             e.preventDefault();
-            
             const $seccion = $('#seccionUsuariosRegistrados');
             const $icon = $('#toggleUsuariosIcon');
             const $text = $('#toggleUsuariosText');
@@ -263,94 +242,64 @@ const UsuariosModule = (function() {
         });
     }
 
-    /**
-     * Maneja la apertura del modal de editar perfil
-     */
     function initModalEditarPerfil() {
         $('#modalEditarMiPerfil').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
             const userId = button ? $(button).data('id') : CURRENT_USER.id;
             const $form = $('#formEditarMiPerfil');
             
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formEditarMiPerfil no encontrado');
-                return;
-            }
+            if (!$form.length) return;
             
             $form[0].reset();
             $('#perfil_id').val('');
-            // Asegurar estado por defecto: habilitar selector de rol (se bloqueará si corresponde)
             $('#perfil_rol').prop('disabled', false);
             
             if (userId && userId != CURRENT_USER.id) {
-                // Editar otro usuario (modal usado desde la lista)
                 $('#modalEditarMiPerfilTitle').text('Editar Usuario');
                 $('#perfil_id').val(userId);
                 $('#perfil_nombre').val($(button).data('nombre'));
                 $('#perfil_username').val($(button).data('username'));
-                // Mostrar el rol pero BLOQUEAR el select para edición desde la lista
                 $('#perfil_rol').val($(button).data('rol')).prop('disabled', true);
-                // En edición de otro usuario no mostrar el botón de cambiar contraseña (usar modal de lista)
                 $('#btnAbrirCambiarPassword').hide();
             } else {
-                // Editar mi perfil
                 $('#modalEditarMiPerfilTitle').text('Editar Mi Perfil');
                 $('#perfil_id').val(CURRENT_USER.id);
                 $('#perfil_nombre').val(CURRENT_USER.nombre);
                 $('#perfil_username').val(CURRENT_USER.username);
                 $('#perfil_rol').val(CURRENT_USER.rol);
-                // Mostrar el botón de cambiar contraseña sólo cuando se edita el propio perfil
                 $('#btnAbrirCambiarPassword').show();
 
-                // Habilitar/deshabilitar el select de rol según reglas del usuario actual (SU puede editar)
                 try {
-                    if (CURRENT_USER.rol === 'SU') {
-                        $('#perfil_rol').prop('disabled', false);
-                    } else {
+                    if (CURRENT_USER.rol !== 'SU') {
                         $('#perfil_rol').prop('disabled', true);
                     }
-                } catch (e) {
-                    console.warn('No se pudo aplicar bloqueo de rol en el modal (propio):', e);
-                }
+                } catch (e) {}
             }
         });
     }
 
-    /**
-     * Guarda los cambios del perfil
-     */
     function initSubmitEditarPerfil() {
         $(document).on('submit', '#formEditarMiPerfil', function(e) {
             e.preventDefault();
-            
             ajaxCall('user', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
                         $('#modalEditarMiPerfil').modal('hide');
-                        try { showSuccess('Perfil guardado correctamente.'); } catch(e) {}
+                        showSuccess('Perfil guardado correctamente.');
                         setTimeout(() => { window.location.href = BASE_URL + 'index.php?controller=user&action=list'; }, 900);
                     } else {
-                        showError('No se pudo guardar el perfil. ' + (r.error || 'Revise los datos e intente nuevamente.'));
+                        showError('No se pudo guardar el perfil. ' + (r.error || 'Revise los datos.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar perfil', xhr));
         });
     }
 
-    /**
-     * Inicializa el sistema de cambio de contraseña
-     */
     function initCambiarPassword() {
-        // Abrir modal propio desde el botón en el modal de perfil
         $(document).on('click', '#btnAbrirCambiarPassword', function(e) {
             e.preventDefault();
-
             const modalEditarPerfil = bootstrap.Modal.getInstance(document.getElementById('modalEditarMiPerfil'));
-            if (modalEditarPerfil) {
-                modalEditarPerfil.hide();
-            } else {
-                $('#modalEditarMiPerfil').modal('hide');
-            }
+            if (modalEditarPerfil) { modalEditarPerfil.hide(); } else { $('#modalEditarMiPerfil').modal('hide'); }
 
             setTimeout(function() {
                 $('#own_username').val(CURRENT_USER.username || CURRENT_USER.user_username);
@@ -358,7 +307,6 @@ const UsuariosModule = (function() {
             }, 300);
         });
 
-        // Preparar modal propio al mostrarse
         $('#modalCambiarPasswordOwn').on('show.bs.modal', function() {
             const $form = $('#formCambiarPasswordOwn');
             if (!$form.length) return;
@@ -370,7 +318,6 @@ const UsuariosModule = (function() {
             $('#btnGuardarPasswordOwn').prop('disabled', false);
         });
 
-        // Preparar modal de cambio para otro usuario (se abre desde el listado)
         $('#modalCambiarPasswordUser').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
             const username = button ? $(button).data('username') : '';
@@ -383,7 +330,6 @@ const UsuariosModule = (function() {
             $('#btnGuardarPasswordUser').prop('disabled', false);
         });
 
-        // Toggle mostrar/ocultar contraseñas (propio y usuario)
         $(document).on('click', '#toggleOwnActual, #toggleOwnNueva, #toggleOwnConfirmar, #toggleUserNueva, #toggleUserConfirmar', function() {
             const $input = $(this).closest('.input-group').find('input');
             const $icon = $(this).find('ion-icon');
@@ -396,7 +342,6 @@ const UsuariosModule = (function() {
             }
         });
 
-        // Validación en tiempo real: propio
         $(document).on('input', '#own_password_nueva, #own_password_confirmar', function() {
             const nueva = $('#own_password_nueva').val();
             const confirmar = $('#own_password_confirmar').val();
@@ -416,7 +361,6 @@ const UsuariosModule = (function() {
             }
         });
 
-        // Validación en tiempo real: usuario objetivo
         $(document).on('input', '#target_password_new, #target_password_confirm', function() {
             const nueva = $('#target_password_new').val();
             const confirmar = $('#target_password_confirm').val();
@@ -436,80 +380,62 @@ const UsuariosModule = (function() {
             }
         });
 
-        // Submit: propio (valida contraseña actual en backend)
         $(document).on('submit', '#formCambiarPasswordOwn', function(e) {
             e.preventDefault();
-            const passwordActual = $('#own_password_actual').val();
-            const passwordNueva = $('#own_password_nueva').val();
-            const passwordConfirmar = $('#own_password_confirmar').val();
-            if (passwordNueva !== passwordConfirmar) { showError('Las contraseñas no coinciden.'); return; }
-            if (!passwordActual || !passwordNueva) { showError('Complete todos los campos requeridos.'); return; }
+            if ($('#own_password_nueva').val() !== $('#own_password_confirmar').val()) { showError('Las contraseñas no coinciden.'); return; }
             ajaxCall('auth', 'changePasswordWithValidation', $(this).serialize())
                 .done(r => {
                     if (r.success) {
                         $('#modalCambiarPasswordOwn').modal('hide');
-                        try { showSuccess('Tu contraseña ha sido actualizada correctamente.'); } catch(e) {}
-                        // Forzar cierre de sesión para que use la nueva contraseña (mostrar toast antes)
+                        showSuccess('Contraseña actualizada. Cerrando sesión...');
                         setTimeout(() => { window.location.href = BASE_URL + 'index.php?controller=auth&action=logout'; }, 900);
                     } else {
-                        showError('No se pudo cambiar la contraseña. ' + (r.error || 'Intenta de nuevo.'));
+                        showError('No se pudo cambiar la contraseña. ' + (r.error || ''));
                     }
                 })
                 .fail(xhr => mostrarError('cambiar contraseña', xhr));
         });
 
-        // Submit: cambiar contraseña de otro usuario (por SU)
         $(document).on('submit', '#formCambiarPasswordUser', function(e) {
             e.preventDefault();
-            const passwordNueva = $('#target_password_new').val();
-            const passwordConfirm = $('#target_password_confirm').val();
-            if (passwordNueva !== passwordConfirm) { showError('Las contraseñas no coinciden.'); return; }
-            if (!passwordNueva) { showError('La nueva contraseña es requerida.'); return; }
+            if ($('#target_password_new').val() !== $('#target_password_confirm').val()) { showError('Las contraseñas no coinciden.'); return; }
             ajaxCall('auth', 'changePassword', $(this).serialize())
                 .done(r => {
                     if (r.success) {
                         $('#modalCambiarPasswordUser').modal('hide');
-                        showSuccess('Contraseña del usuario actualizada correctamente.');
+                        showSuccess('Contraseña actualizada correctamente.');
                     } else {
-                        showError('No se pudo cambiar la contraseña del usuario. ' + (r.error || 'Intenta de nuevo.'));
+                        showError('Error: ' + (r.error || ''));
                     }
                 })
                 .fail(xhr => mostrarError('cambiar contraseña usuario', xhr));
         });
     }
 
-    /**
-     * Gestión de usuarios (crear/eliminar)
-     */
     function initGestionUsuarios() {
-        // Modal registrar nuevo usuario
         $('#modalUsuario').on('show.bs.modal', function() {
             const $form = $('#formUsuario');
             if (!$form.length) return;
-            
             $form[0].reset();
             $('#usuario_id').val('');
             $('#usuario_password').prop('required', true);
         });
 
-        // Submit nuevo usuario
         $(document).on('submit', '#formUsuario', function(e) {
             e.preventDefault();
-            
             ajaxCall('user', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
                         $('#modalUsuario').modal('hide');
-                        try { showSuccess('Usuario guardado correctamente.'); } catch(e) {}
+                        showSuccess('Usuario guardado correctamente.');
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        showError('No se pudo crear/actualizar el usuario. ' + (r.error || 'Revise los datos e intente nuevamente.'));
+                        showError('Error al guardar: ' + (r.error || ''));
                     }
                 })
                 .fail(xhr => mostrarError('guardar usuario', xhr));
         });
 
-        // Eliminar usuario (usar confirm modal)
         $(document).on('click', '.btn-delete-user', function() {
             const id = $(this).data('id');
             showConfirm('¿Eliminar este usuario?').then(confirmed => {
@@ -517,10 +443,10 @@ const UsuariosModule = (function() {
                 ajaxCall('user', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
-                            try { showSuccess('Usuario eliminado correctamente.'); } catch(e) {}
+                            showSuccess('Usuario eliminado correctamente.');
                             setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            showError('No se pudo eliminar el usuario. ' + (r.error || 'Intente de nuevo.'));
+                            showError('Error al eliminar: ' + (r.error || ''));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar usuario', xhr));
@@ -528,9 +454,6 @@ const UsuariosModule = (function() {
         });
     }
 
-    /**
-     * Inicializa todos los componentes del módulo
-     */
     function init() {
         initToggleUsuarios();
         initModalEditarPerfil();
@@ -544,15 +467,12 @@ const UsuariosModule = (function() {
 })();
 
 // ============================================================================
-// MÓDULO: Gestión de Ingresos (con Sistema de Pagos Divididos)
+// MÓDULO: Gestión de Ingresos
 // ============================================================================
 const IngresosModule = (function() {
-    const { ajaxCall, mostrarError } = ERPUtils;
+    const { ajaxCall, mostrarError, showSuccess, showError, showConfirm } = ERPUtils;
     let contadorPagos = 0;
 
-    /**
-     * Agrega una fila de pago parcial al formulario
-     */
     function agregarFilaPago(metodo = '', monto = '') {
         contadorPagos++;
         const html = `
@@ -571,55 +491,35 @@ const IngresosModule = (function() {
                 <div class="col-md-6">
                     <label class="form-label">Monto <span class="text-danger">*</span></label>
                     <div class="input-group input-group-sm">
-                        <input type="number" step="0.01" min="0.01" class="form-control pago-monto" 
-                               placeholder="0.00" value="${monto}" required>
-                        <button class="btn btn-outline-danger btn-eliminar-pago ${contadorPagos === 1 ? 'd-none' : ''}" 
-                                type="button" title="Eliminar">
+                        <input type="number" step="0.01" min="0.01" class="form-control pago-monto" placeholder="0.00" value="${monto}" required>
+                        <button class="btn btn-outline-danger btn-eliminar-pago ${contadorPagos === 1 ? 'd-none' : ''}" type="button" title="Eliminar">
                             <ion-icon name="close-circle-outline"></ion-icon>
                         </button>
                     </div>
                 </div>
             </div>
         `;
-        
         $('#contenedor_pagos_parciales').append(html);
         actualizarResumenPagos();
         actualizarBotonesEliminar();
     }
 
-    /**
-     * Actualiza la visibilidad de los botones eliminar
-     */
     function actualizarBotonesEliminar() {
         const totalFilas = $('.pago-parcial-item').length;
-        
-        if (totalFilas === 1) {
-            $('.btn-eliminar-pago').addClass('d-none');
-        } else {
-            $('.btn-eliminar-pago').removeClass('d-none');
-        }
+        if (totalFilas === 1) { $('.btn-eliminar-pago').addClass('d-none'); } else { $('.btn-eliminar-pago').removeClass('d-none'); }
     }
 
-    /**
-     * Actualiza el resumen de pagos parciales
-     */
     function actualizarResumenPagos() {
         const montoTotal = parseFloat($('#in_monto').val()) || 0;
         let sumaParciales = 0;
-        
-        $('.pago-monto').each(function() {
-            sumaParciales += parseFloat($(this).val()) || 0;
-        });
-        
+        $('.pago-monto').each(function() { sumaParciales += parseFloat($(this).val()) || 0; });
         const diferencia = montoTotal - sumaParciales;
-        
         $('#display_monto_total').text('$' + montoTotal.toFixed(2));
         $('#display_suma_parciales').text('$' + sumaParciales.toFixed(2));
         $('#display_diferencia').text('$' + Math.abs(diferencia).toFixed(2));
         
         const $displayDif = $('#display_diferencia');
         const $labelDif = $('#label_diferencia');
-        
         if (Math.abs(diferencia) < 0.01) {
             $displayDif.removeClass('text-danger text-warning').addClass('text-success');
             $labelDif.html('✓ Cuadrado <span class="badge bg-success ms-2">OK</span>');
@@ -632,9 +532,6 @@ const IngresosModule = (function() {
         }
     }
 
-    /**
-     * Maneja la apertura del modal de ingreso
-     */
     function initModalIngreso() {
         $('#modalIngreso').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
@@ -642,60 +539,67 @@ const IngresosModule = (function() {
             const $form = $('#formIngreso');
             const $selectCat = $('#in_id_categoria');
 
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formIngreso no encontrado');
-                return;
-            }
+            if (!$form.length) return;
 
-            // Limpiar solo campos editables, no el DOM ni los métodos de pago aún
             $form.find('input, select, textarea').not(':button, :submit, :reset, :hidden').val('');
             $('#ingreso_id').val('');
             $('#in_monto').prop('readonly', false).prop('disabled', false).css('background-color', '');
-            $('#in_metodo_unico').val('');
-            $('#in_monto_unico').val('');
             $('#seccion_pago_unico').show();
             $('#seccion_cobro_dividido').hide();
             $('#toggleCobroDividido').prop('checked', false);
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
 
-            // Cargar categorías de Ingreso
             ajaxCall('ingreso', 'getCategoriasIngreso', {}, 'GET')
                 .done(categorias => {
                     $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
-                    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+                    if (categorias && Array.isArray(categorias)) {
                         categorias.forEach(cat => {
-                            if (cat && cat.id_categoria !== undefined && cat.nombre !== undefined) {
+                            if (cat && cat.id_categoria) {
                                 $selectCat.append(`<option value="${cat.id_categoria}">${cat.nombre}</option>`);
                             }
                         });
                     }
                     $selectCat.prop('disabled', false);
 
-                    // Si es edición, cargar datos
                     if (ingresoId) {
                         $('#modalIngresoTitle').text('Editar Ingreso');
                         ajaxCall('ingreso', 'getIngresoData', { id: ingresoId }, 'GET')
                             .done(data => {
-                                // Esperamos un objeto con los datos del ingreso
-                                $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
-                                if (!data || data.error) {
-                                    console.error('[ERROR] getIngresoData:', data && data.error ? data.error : 'Respuesta inválida');
-                                    $selectCat.append('<option value="">-- No hay categorías --</option>');
-                                    $selectCat.prop('disabled', false);
-                                    return;
-                                }
+                                if (data && !data.error && data.folio_ingreso) {
+                                    $('#ingreso_id').val(data.folio_ingreso);
+                                    $('#in_fecha').val(data.fecha);
+                                    $('#in_monto').val(data.monto);
+                                    $('#in_alumno').val(data.alumno);
+                                    $('#in_matricula').val(data.matricula);
+                                    $('#in_nivel').val(data.nivel);
+                                    $('#in_programa').val(data.programa);
+                                    $('#in_grado').val(data.grado);
+                                    $('#in_modalidad').val(data.modalidad);
+                                    $('#in_grupo').val(data.grupo);
+                                    $selectCat.val(data.id_categoria);
+                                    $('#in_mes_correspondiente').val(data.mes_correspondiente);
+                                    $('#in_anio').val(data.anio);
+                                    $('#in_observaciones').val(data.observaciones);
 
-                                // Si el servidor devuelve categoría seleccionada, la marcamos
-                                if (data.id_categoria) {
-                                    $selectCat.append(`<option value="${data.id_categoria}">${escapeHtml(data.cat_nombre || data.nombre || 'Seleccionado')}</option>`);
-                                    $selectCat.val(String(data.id_categoria));
+                                    $('#contenedor_pagos_parciales').empty();
+                                    contadorPagos = 0;
+
+                                    if (data.pagos_parciales && data.pagos_parciales.length > 0) {
+                                        $('#toggleCobroDividido').prop('checked', true).trigger('change');
+                                        $('#contenedor_pagos_parciales').empty();
+                                        data.pagos_parciales.forEach(pago => {
+                                            agregarFilaPago(pago.metodo_pago, pago.monto);
+                                        });
+                                    } else if (data.metodo_de_pago && data.metodo_de_pago !== 'Mixto') {
+                                        $('#toggleCobroDividido').prop('checked', false).trigger('change');
+                                        $('#in_metodo_unico').val(data.metodo_de_pago);
+                                    }
+                                } else {
+                                    $('#modalIngreso').modal('hide');
+                                    showError('Error al cargar datos: ' + (data.error || ''));
                                 }
-                                $selectCat.prop('disabled', false);
                             })
-                            .fail(xhr => {
-                                mostrarError('cargar datos ingreso', xhr);
-                                $('#modalIngreso').modal('hide');
-                            });
+                            .fail(xhr => { mostrarError('cargar datos ingreso', xhr); $('#modalIngreso').modal('hide'); });
                     } else {
                         $('#modalIngresoTitle').text('Registrar Nuevo Ingreso');
                         $('#in_anio').val(new Date().getFullYear());
@@ -710,14 +614,10 @@ const IngresosModule = (function() {
         });
     }
 
-    /**
-     * Maneja el toggle entre pago único y cobro dividido
-     */
     function initTogglePagosDivididos() {
         $(document).on('change', '#toggleCobroDividido', function() {
             const esDividido = $(this).is(':checked');
             const monto = parseFloat($('#in_monto').val()) || 0;
-            
             $('#in_monto').prop('readonly', false).prop('disabled', false).css('background-color', '');
             
             if (esDividido) {
@@ -731,35 +631,20 @@ const IngresosModule = (function() {
             } else {
                 $('#seccion_pago_unico').show();
                 $('#seccion_cobro_dividido').hide();
-                
-                if (monto > 0) {
-                    $('#in_monto_unico').val(monto.toFixed(2));
-                }
-                
+                if (monto > 0) { $('#in_monto_unico').val(monto.toFixed(2)); }
                 $('#contenedor_pagos_parciales').empty();
                 contadorPagos = 0;
             }
         });
 
-        // Actualizar monto único cuando cambia el total
         $(document).on('input', '#in_monto', function() {
             const monto = parseFloat($(this).val()) || 0;
-            
-            if (!$('#toggleCobroDividido').is(':checked')) {
-                $('#in_monto_unico').val(monto.toFixed(2));
-            }
-            
-            if ($('#toggleCobroDividido').is(':checked')) {
-                actualizarResumenPagos();
-            }
+            if (!$('#toggleCobroDividido').is(':checked')) { $('#in_monto_unico').val(monto.toFixed(2)); }
+            if ($('#toggleCobroDividido').is(':checked')) { actualizarResumenPagos(); }
         });
 
-        // Agregar nueva fila de pago
-        $(document).on('click', '#btnAgregarPago', function() {
-            agregarFilaPago();
-        });
+        $(document).on('click', '#btnAgregarPago', function() { agregarFilaPago(); });
 
-        // Eliminar fila de pago
         $(document).on('click', '.btn-eliminar-pago', function() {
             if ($('.pago-parcial-item').length > 1) {
                 $(this).closest('.pago-parcial-item').remove();
@@ -771,69 +656,37 @@ const IngresosModule = (function() {
             }
         });
 
-        // Actualizar resumen al cambiar montos
-        $(document).on('input', '.pago-monto', function() {
-            actualizarResumenPagos();
-        });
+        $(document).on('input', '.pago-monto', function() { actualizarResumenPagos(); });
     }
-    /**
-     * Maneja el envío del formulario de ingreso
-     */
+
     function initSubmitIngreso() {
         $(document).on('submit', '#formIngreso', function(e) {
             e.preventDefault();
-            
             const esDividido = $('#toggleCobroDividido').is(':checked');
             let formData = $(this).serializeArray();
             let dataObj = {};
-            
-            formData.forEach(item => {
-                dataObj[item.name] = item.value;
-            });
+            formData.forEach(item => { dataObj[item.name] = item.value; });
             
             if (!esDividido) {
-                // Pago único
                 const metodoUnico = $('#in_metodo_unico').val();
-                if (!metodoUnico) {
-                    showError('Selecciona un método de pago.');
-                    return;
-                }
+                if (!metodoUnico) { showError('Debe seleccionar un método de pago.'); return; }
                 dataObj.metodo_de_pago = metodoUnico;
-                dataObj.pagos = JSON.stringify([{
-                    metodo: metodoUnico,
-                    monto: parseFloat($('#in_monto').val())
-                }]);
+                dataObj.pagos = JSON.stringify([{ metodo: metodoUnico, monto: parseFloat($('#in_monto').val()) }]);
             } else {
-                // Cobro dividido
                 const montoTotal = parseFloat($('#in_monto').val()) || 0;
                 let sumaParciales = 0;
                 const pagos = [];
                 let valido = true;
-                
                 $('.pago-parcial-item').each(function() {
                     const metodo = $(this).find('.pago-metodo').val();
                     const monto = parseFloat($(this).find('.pago-monto').val()) || 0;
-                    
-                    if (!metodo || monto <= 0) {
-                        valido = false;
-                        return false;
-                    }
-                    
+                    if (!metodo || monto <= 0) { valido = false; return false; }
                     sumaParciales += monto;
                     pagos.push({ metodo: metodo, monto: monto });
                 });
-                
-                if (!valido) {
-                    showError('Cada pago parcial requiere un método y un monto válido.');
-                    return;
-                }
-                
+                if (!valido) { showError('Todos los pagos parciales deben tener método y monto válido.'); return; }
                 const diferencia = Math.abs(montoTotal - sumaParciales);
-                if (diferencia >= 0.01) {
-                    showError(`La suma de los pagos parciales ($${sumaParciales.toFixed(2)}) no coincide con el monto total ($${montoTotal.toFixed(2)}). Diferencia: $${diferencia.toFixed(2)}`);
-                    return;
-                }
-                
+                if (diferencia >= 0.01) { showError(`La suma de pagos parciales no coincide con el total.`); return; }
                 dataObj.metodo_de_pago = 'Mixto';
                 dataObj.pagos = JSON.stringify(pagos);
             }
@@ -841,31 +694,28 @@ const IngresosModule = (function() {
             ajaxCall('ingreso', 'save', dataObj)
                 .done(r => {
                     if (r.success) {
-                        try { showSuccess('Ingreso guardado correctamente.'); } catch(e) {}
+                        showSuccess('Ingreso guardado correctamente.');
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        showError('No se pudo guardar el ingreso. ' + (r.error || 'Revise los datos e intente nuevamente.'));
+                        showError('Error al guardar: ' + (r.error || 'Verifique datos.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar ingreso', xhr));
         });
     }
 
-    /**
-     * Maneja la eliminación de ingresos
-     */
     function initEliminarIngreso() {
         $(document).on('click', '.btn-del-ingreso', function() {
             const id = $(this).data('id');
-            showConfirm('¿Eliminar este ingreso? Se eliminarán también todos los pagos parciales asociados.').then(confirmed => {
+            showConfirm('¿Eliminar este ingreso? Se borrarán sus pagos parciales.').then(confirmed => {
                 if (!confirmed) return;
                 ajaxCall('ingreso', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
-                            try { showSuccess('Ingreso eliminado correctamente.'); } catch(e) {}
+                            showSuccess('Ingreso eliminado correctamente.');
                             setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            showError('No se pudo eliminar el ingreso. ' + (r.error || 'Intenta nuevamente.'));
+                            showError('Error al eliminar: ' + (r.error || 'Error.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar ingreso', xhr));
@@ -873,13 +723,9 @@ const IngresosModule = (function() {
         });
     }
 
-    /**
-     * Inicializa el buscador de ingresos
-     */
     function initBuscadorIngresos() {
         const $searchInput = $('#searchIngresos');
         if (!$searchInput.length) return;
-
         const $clearBtn = $('#clearSearchIngresos');
         const $fechaInicio = $('#fechaInicioIngresos');
         const $fechaFin = $('#fechaFinIngresos');
@@ -891,62 +737,36 @@ const IngresosModule = (function() {
             const searchTerm = $searchInput.val().toLowerCase().trim();
             const fechaInicio = $fechaInicio.val();
             const fechaFin = $fechaFin.val();
-            
-            // Mostrar/ocultar botones de limpiar
             $clearBtn.toggle(searchTerm.length > 0);
             $clearDateBtn.toggle(!!(fechaInicio || fechaFin));
-            
             let visibleCount = 0;
             let totalCount = 0;
             
             $tableBody.find('tr').each(function() {
                 const $row = $(this);
-                
                 if ($row.find('td[colspan]').length > 0) return;
-                
                 totalCount++;
-                
-                const $cells = $row.find('td');
-                const alumno = $cells.eq(0).text().toLowerCase();
-                
+                const alumno = $row.find('td').eq(0).text().toLowerCase();
                 let folio = '';
                 const $editBtn = $row.find('.btn-edit-ingreso');
-                if ($editBtn.length) {
-                    folio = $editBtn.data('id').toString().toLowerCase();
-                }
-                
+                if ($editBtn.length) folio = $editBtn.data('id').toString().toLowerCase();
                 const fechaRegistro = $row.attr('data-fecha');
                 const searchableText = folio + ' ' + alumno;
-                
                 let matchText = !searchTerm || searchableText.includes(searchTerm);
                 let matchDate = true;
-                
                 if (fechaRegistro && (fechaInicio || fechaFin)) {
-                    if (fechaInicio && fechaFin) {
-                        matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
-                    } else if (fechaInicio) {
-                        matchDate = fechaRegistro >= fechaInicio;
-                    } else if (fechaFin) {
-                        matchDate = fechaRegistro <= fechaFin;
-                    }
+                    if (fechaInicio && fechaFin) matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
+                    else if (fechaInicio) matchDate = fechaRegistro >= fechaInicio;
+                    else if (fechaFin) matchDate = fechaRegistro <= fechaFin;
                 }
-                
-                if (matchText && matchDate) {
-                    $row.show();
-                    visibleCount++;
-                } else {
-                    $row.hide();
-                }
+                if (matchText && matchDate) { $row.show(); visibleCount++; } else { $row.hide(); }
             });
             
-            // Actualizar contador
             if (searchTerm.length > 0 || fechaInicio || fechaFin) {
                 if (visibleCount === 0) {
-                    $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados')
-                               .addClass('text-danger').removeClass('text-success');
+                    $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados').addClass('text-danger').removeClass('text-success');
                 } else {
-                    $resultCount.html(`<ion-icon name="checkmark-circle-outline" style="vertical-align:middle;"></ion-icon> Mostrando ${visibleCount} de ${totalCount} ingresos`)
-                               .addClass('text-success').removeClass('text-danger');
+                    $resultCount.html(`<ion-icon name="checkmark-circle-outline" style="vertical-align:middle;"></ion-icon> Mostrando ${visibleCount} de ${totalCount} ingresos`).addClass('text-success').removeClass('text-danger');
                 }
             } else {
                 $resultCount.html('').removeClass('text-success text-danger');
@@ -956,30 +776,11 @@ const IngresosModule = (function() {
         $searchInput.on('keyup', filtrarIngresos);
         $fechaInicio.on('change', filtrarIngresos);
         $fechaFin.on('change', filtrarIngresos);
-        
-        $clearBtn.on('click', function() {
-            $searchInput.val('');
-            filtrarIngresos();
-            $searchInput.focus();
-        });
-        
-        $clearDateBtn.on('click', function() {
-            $fechaInicio.val('');
-            $fechaFin.val('');
-            filtrarIngresos();
-        });
-        
-        $searchInput.on('keydown', function(e) {
-            if (e.key === 'Escape') {
-                $(this).val('');
-                filtrarIngresos();
-            }
-        });
+        $clearBtn.on('click', function() { $searchInput.val(''); filtrarIngresos(); $searchInput.focus(); });
+        $clearDateBtn.on('click', function() { $fechaInicio.val(''); $fechaFin.val(''); filtrarIngresos(); });
+        $searchInput.on('keydown', function(e) { if (e.key === 'Escape') { $(this).val(''); filtrarIngresos(); } });
     }
 
-    /**
-     * Inicializa todos los componentes del módulo
-     */
     function init() {
         initModalIngreso();
         initTogglePagosDivididos();
@@ -996,11 +797,8 @@ const IngresosModule = (function() {
 // MÓDULO: Gestión de Egresos
 // ============================================================================
 const EgresosModule = (function() {
-    const { ajaxCall, mostrarError, ensureNumberEditable } = ERPUtils;
+    const { ajaxCall, mostrarError, ensureNumberEditable, showSuccess, showError, showConfirm } = ERPUtils;
 
-    /**
-     * Maneja la apertura del modal de egreso
-     */
     function initModalEgreso() {
         $('#modalEgreso').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
@@ -1009,125 +807,89 @@ const EgresosModule = (function() {
             const $selectCat = $('#eg_id_categoria');
             const $selectPres = $('#eg_id_presupuesto');
 
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formEgreso no encontrado');
-                return;
-            }
+            if (!$form.length) return;
             
             $form[0].reset();
             $('#egreso_id').val('');
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
             $selectPres.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
-
             ensureNumberEditable('#eg_monto');
 
-            // Cargar sub-presupuestos
             ajaxCall('presupuesto', 'getSubPresupuestos', {}, 'GET')
-                .then(presupuestos => {
-                    console.log('[DEBUG] Sub-presupuestos recibidos:', presupuestos);
+                .done(presupuestos => {
                     $selectPres.empty().append('<option value="">Seleccione un presupuesto...</option>');
-                    
-                    if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
+                    if (presupuestos && Array.isArray(presupuestos)) {
                         presupuestos.forEach(p => {
-                            const id = p.id_presupuesto || '';
-                            const nombre = p.nombre || 'Sin nombre';
-                            const fecha = p.fecha || '';
-                            const categoria = p.cat_nombre || 'Sin categoría';
-                            const label = `${nombre} — ${fecha} (${categoria})`;
-                            $selectPres.append(`<option value="${id}" data-categoria="${p.id_categoria || ''}">${label}</option>`);
+                            const label = `${p.nombre} — ${p.fecha} (${p.cat_nombre})`;
+                            $selectPres.append(`<option value="${p.id_presupuesto}" data-categoria="${p.id_categoria}">${label}</option>`);
                         });
                     } else {
                         $selectPres.append('<option value="">-- No hay presupuestos --</option>');
                     }
                     $selectPres.prop('disabled', false);
 
-                    // Auto-sync categoría al seleccionar presupuesto
                     $selectPres.off('change.presupuestoSync').on('change.presupuestoSync', function() {
                         const catId = $(this).find(':selected').data('categoria');
-                        if (catId) {
-                            $selectCat.val(catId.toString());
-                        }
+                        if (catId) $selectCat.val(catId.toString());
                     });
 
                     return ajaxCall('egreso', 'getCategoriasEgreso', {}, 'GET');
                 })
                 .then(categorias => {
-                    console.log('[DEBUG] Categorías egreso recibidas:', categorias);
                     $selectCat.empty().append('<option value="">Seleccione...</option>');
-                    
-                    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+                    if (categorias && Array.isArray(categorias)) {
                         categorias.forEach(cat => {
-                            const catId = cat.id_categoria !== undefined ? cat.id_categoria : (cat.id || '');
-                            const pres = cat.id_presupuesto !== undefined ? cat.id_presupuesto : '';
-                            const nombre = cat.nombre !== undefined ? cat.nombre : (cat.cat_nombre || '');
-                            $selectCat.append(`<option value="${catId}" data-presupuesto="${pres}">${nombre}</option>`);
+                            const cid = cat.id_categoria || cat.id;
+                            const nom = cat.nombre || cat.cat_nombre;
+                            const pid = cat.id_presupuesto || '';
+                            $selectCat.append(`<option value="${cid}" data-presupuesto="${pid}">${nom}</option>`);
                         });
                     } else {
                         $selectCat.append('<option value="">-- No hay categorías --</option>');
                     }
                     $selectCat.prop('disabled', false);
 
-                    // Auto-sync presupuesto al cambiar categoría
                     $selectCat.off('change.egresoPres').on('change.egresoPres', function() {
                         const presId = $(this).find(':selected').data('presupuesto');
-                        if (presId) {
-                            $selectPres.val(presId.toString());
-                        }
+                        if (presId) $selectPres.val(presId.toString());
                     });
 
-                    // Si es edición, cargar datos
                     if (egresoId) {
                         $('#modalEgresoTitle').text('Editar Egreso');
                         ajaxCall('egreso', 'getEgresoData', { id: egresoId }, 'GET')
                             .done(data => {
-                                if (data && !data.error && data.folio_egreso !== undefined) {
+                                if (data && !data.error && data.folio_egreso) {
                                     $('#egreso_id').val(data.folio_egreso);
                                     $('#eg_fecha').val(data.fecha);
                                     $('#eg_monto').val(data.monto);
                                     $selectCat.val(data.id_categoria);
-                                    
-                                    if (data.id_presupuesto) {
-                                        $selectPres.val(data.id_presupuesto);
-                                    } else {
+                                    if (data.id_presupuesto) $selectPres.val(data.id_presupuesto);
+                                    else {
                                         const presFromCat = $selectCat.find(':selected').data('presupuesto');
                                         if (presFromCat) $selectPres.val(presFromCat.toString());
                                     }
-                                    
                                     $('#eg_proveedor').val(data.proveedor);
                                     $('#eg_destinatario').val(data.destinatario);
                                     $('#eg_forma_pago').val(data.forma_pago);
                                     $('#eg_documento_de_amparo').val(data.documento_de_amparo);
-                                    $('#eg_activo_fijo').val(data.activo_fijo);
                                     $('#eg_descripcion').val(data.descripcion);
-                                } else {
-                                    $('#modalEgreso').modal('hide');
-                                    showError('Error al cargar datos del egreso. ' + (data.error || 'Verifique la consola.'));
                                 }
-                            })
-                            .fail(xhr => {
-                                mostrarError('cargar datos egreso', xhr);
-                                $('#modalEgreso').modal('hide');
                             });
                     } else {
                         $('#modalEgresoTitle').text('Registrar Nuevo Egreso');
-                        $('#eg_activo_fijo').val('NO');
                     }
-                })
-                .fail(xhr => mostrarError('cargar datos egreso', xhr));
+                });
         });
     }
 
-    /**
-     * Maneja el envío del formulario de egreso
-     */
     function initSubmitEgreso() {
         $(document).on('submit', '#formEgreso', function(e) {
             e.preventDefault();
-            
             ajaxCall('egreso', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
                         $(document).trigger('egresoGuardado');
+
                         try { showSuccess('Egreso guardado correctamente.'); } catch(e) {}
 
                         // Si es creación, el backend devuelve r.folio
@@ -1139,17 +901,15 @@ const EgresosModule = (function() {
                             // Caso de actualización: mantener comportamiento actual
                             setTimeout(() => { window.location.reload(); }, 900);
                         }
+
                     } else {
-                        showError('No se pudo guardar el egreso. ' + (r.error || 'Revise los datos e intente nuevamente.'));
+                        showError('Error al guardar: ' + (r.error || ''));
                     }
                 })
                 .fail(xhr => mostrarError('guardar egreso', xhr));
         });
     }
 
-    /**
-     * Maneja la eliminación de egresos
-     */
     function initEliminarEgreso() {
         $(document).on('click', '.btn-del-egreso', function() {
             const id = $(this).data('id');
@@ -1159,24 +919,19 @@ const EgresosModule = (function() {
                     .done(r => {
                         if (r.success) {
                             $(document).trigger('egresoEliminado');
-                            try { showSuccess('Egreso eliminado correctamente.'); } catch(e) {}
+                            showSuccess('Egreso eliminado correctamente.');
                             setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            showError('No se pudo eliminar el egreso. ' + (r.error || 'Intenta nuevamente.'));
+                            showError('Error al eliminar: ' + (r.error || ''));
                         }
-                    })
-                    .fail(xhr => mostrarError('eliminar egreso', xhr));
+                    });
             });
         });
     }
 
-    /**
-     * Inicializa el buscador de egresos
-     */
     function initBuscadorEgresos() {
         const $searchInput = $('#searchEgresos');
         if (!$searchInput.length) return;
-
         const $clearBtn = $('#clearSearchEgresos');
         const $fechaInicio = $('#fechaInicioEgresos');
         const $fechaFin = $('#fechaFinEgresos');
@@ -1188,60 +943,36 @@ const EgresosModule = (function() {
             const searchTerm = $searchInput.val().toLowerCase().trim();
             const fechaInicio = $fechaInicio.val();
             const fechaFin = $fechaFin.val();
-            
             $clearBtn.toggle(searchTerm.length > 0);
             $clearDateBtn.toggle(!!(fechaInicio || fechaFin));
-            
             let visibleCount = 0;
             let totalCount = 0;
             
             $tableBody.find('tr').each(function() {
                 const $row = $(this);
-                
                 if ($row.find('td[colspan]').length > 0) return;
-                
                 totalCount++;
-                
-                const $cells = $row.find('td');
-                const destinatario = $cells.eq(2).text().toLowerCase();
-                
+                const destinatario = $row.find('td').eq(2).text().toLowerCase();
                 let folio = '';
                 const $editBtn = $row.find('.btn-edit-egreso');
-                if ($editBtn.length) {
-                    folio = $editBtn.data('id').toString().toLowerCase();
-                }
-                
+                if ($editBtn.length) folio = $editBtn.data('id').toString().toLowerCase();
                 const fechaRegistro = $row.attr('data-fecha');
                 const searchableText = folio + ' ' + destinatario;
-                
                 let matchText = !searchTerm || searchableText.includes(searchTerm);
                 let matchDate = true;
-                
                 if (fechaRegistro && (fechaInicio || fechaFin)) {
-                    if (fechaInicio && fechaFin) {
-                        matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
-                    } else if (fechaInicio) {
-                        matchDate = fechaRegistro >= fechaInicio;
-                    } else if (fechaFin) {
-                        matchDate = fechaRegistro <= fechaFin;
-                    }
+                    if (fechaInicio && fechaFin) matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
+                    else if (fechaInicio) matchDate = fechaRegistro >= fechaInicio;
+                    else if (fechaFin) matchDate = fechaRegistro <= fechaFin;
                 }
-                
-                if (matchText && matchDate) {
-                    $row.show();
-                    visibleCount++;
-                } else {
-                    $row.hide();
-                }
+                if (matchText && matchDate) { $row.show(); visibleCount++; } else { $row.hide(); }
             });
             
             if (searchTerm.length > 0 || fechaInicio || fechaFin) {
                 if (visibleCount === 0) {
-                    $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados')
-                               .addClass('text-danger').removeClass('text-success');
+                    $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados').addClass('text-danger').removeClass('text-success');
                 } else {
-                    $resultCount.html(`<ion-icon name="checkmark-circle-outline" style="vertical-align:middle;"></ion-icon> Mostrando ${visibleCount} de ${totalCount} egresos`)
-                               .addClass('text-success').removeClass('text-danger');
+                    $resultCount.html(`<ion-icon name="checkmark-circle-outline" style="vertical-align:middle;"></ion-icon> Mostrando ${visibleCount} de ${totalCount} egresos`).addClass('text-success').removeClass('text-danger');
                 }
             } else {
                 $resultCount.html('').removeClass('text-success text-danger');
@@ -1251,30 +982,11 @@ const EgresosModule = (function() {
         $searchInput.on('keyup', filtrarEgresos);
         $fechaInicio.on('change', filtrarEgresos);
         $fechaFin.on('change', filtrarEgresos);
-        
-        $clearBtn.on('click', function() {
-            $searchInput.val('');
-            filtrarEgresos();
-            $searchInput.focus();
-        });
-        
-        $clearDateBtn.on('click', function() {
-            $fechaInicio.val('');
-            $fechaFin.val('');
-            filtrarEgresos();
-        });
-        
-        $searchInput.on('keydown', function(e) {
-            if (e.key === 'Escape') {
-                $(this).val('');
-                filtrarEgresos();
-            }
-        });
+        $clearBtn.on('click', function() { $searchInput.val(''); filtrarEgresos(); $searchInput.focus(); });
+        $clearDateBtn.on('click', function() { $fechaInicio.val(''); $fechaFin.val(''); filtrarEgresos(); });
+        $searchInput.on('keydown', function(e) { if (e.key === 'Escape') { $(this).val(''); filtrarEgresos(); } });
     }
 
-    /**
-     * Inicializa todos los componentes del módulo
-     */
     function init() {
         initModalEgreso();
         initSubmitEgreso();
@@ -1290,25 +1002,18 @@ const EgresosModule = (function() {
 // MÓDULO: Gestión de Categorías
 // ============================================================================
 const CategoriasModule = (function() {
-    const { ajaxCall, mostrarError } = ERPUtils;
+    const { ajaxCall, mostrarError, showConfirm, showSuccess, showError } = ERPUtils;
 
-    /**
-     * Maneja la apertura del modal de categoría
-     */
     function initModalCategoria() {
         $('#modalCategoria').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
             const catId = button ? $(button).data('id') : null;
             const $form = $('#formCategoria');
             
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formCategoria no encontrado');
-                return;
-            }
+            if (!$form.length) return;
             
             $form[0].reset();
             $('#categoria_id').val('');
-            // Ocultar campo concepto por defecto
             $('#div_cat_concepto').hide();
             $('#cat_concepto').val('');
             
@@ -1322,7 +1027,7 @@ const CategoriasModule = (function() {
                             $('#cat_tipo').val(data.tipo);
                             $('#cat_descripcion').val(data.descripcion);
                             $('#categoria_no_borrable').val(data.no_borrable || 0);
-                            // Mostrar campo concepto si es ingreso y setear valor
+                            
                             if (data.tipo === 'Ingreso') {
                                 $('#div_cat_concepto').show();
                                 $('#cat_concepto').val(data.concepto || '');
@@ -1331,73 +1036,45 @@ const CategoriasModule = (function() {
                                 $('#cat_concepto').val('');
                             }
                             
-                            // Mostrar alerta si es protegida
-                            if (data.no_borrable == 1) {
-                                $('#alert_categoria_protegida').show();
-                            } else {
-                                $('#alert_categoria_protegida').hide();
-                            }
-                        } else {
-                            $('#modalCategoria').modal('hide');
-                                showError('Error al cargar la categoría. ' + (data.error || 'Verifique la consola.'));
+                            if (data.no_borrable == 1) { $('#alert_categoria_protegida').show(); }
+                            else { $('#alert_categoria_protegida').hide(); }
                         }
-                    })
-                    .fail(xhr => {
-                        mostrarError('cargar datos categoría', xhr);
-                        $('#modalCategoria').modal('hide');
                     });
             } else {
                 $('#modalCategoriaTitle').text('Agregar Nueva Categoría');
-                // Por defecto, si tipo es Ingreso, mostrar campo concepto
-                if ($('#cat_tipo').val() === 'Ingreso') {
-                    $('#div_cat_concepto').show();
-                } else {
-                    $('#div_cat_concepto').hide();
-                }
+                if ($('#cat_tipo').val() === 'Ingreso') { $('#div_cat_concepto').show(); }
             }
-            // Evento al cambiar tipo
+
             $('#cat_tipo').off('change.categoria').on('change.categoria', function() {
-                if ($(this).val() === 'Ingreso') {
-                    $('#div_cat_concepto').show();
-                } else {
-                    $('#div_cat_concepto').hide();
-                    $('#cat_concepto').val('');
-                }
+                if ($(this).val() === 'Ingreso') { $('#div_cat_concepto').show(); }
+                else { $('#div_cat_concepto').hide(); $('#cat_concepto').val(''); }
             });
         });
     }
 
-    /**
-     * Maneja el envío del formulario de categoría
-     */
     function initSubmitCategoria() {
         $(document).on('submit', '#formCategoria', function(e) {
             e.preventDefault();
-            // Validación: si tipo es Ingreso, concepto es obligatorio
             const tipo = $('#cat_tipo').val();
             const concepto = $('#cat_concepto').val();
             if (tipo === 'Ingreso' && !concepto) {
-                showError('Selecciona un concepto para las categorías de tipo Ingreso.');
-                $('#cat_concepto').focus();
+                showError('Debes seleccionar un concepto para las categorías de tipo Ingreso.');
                 return false;
             }
 
             ajaxCall('categoria', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
-                        try { showSuccess('Categoría guardada correctamente.'); } catch(e) {}
+                        showSuccess('Categoría guardada correctamente.');
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        showError('No fue posible guardar la categoría. ' + (r.error || 'Intenta de nuevo.'));
+                        showError('Error: ' + (r.error || 'Intenta de nuevo.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar categoría', xhr));
         });
     }
 
-    /**
-     * Maneja la eliminación de categorías
-     */
     function initEliminarCategoria() {
         $(document).on('click', '.btn-del-categoria', function() {
             const id = $(this).data('id');
@@ -1406,10 +1083,10 @@ const CategoriasModule = (function() {
                 ajaxCall('categoria', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
-                            try { showSuccess('Categoría eliminada correctamente.'); } catch(e) {}
+                            showSuccess('Categoría eliminada correctamente.');
                             setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            showError('No se pudo eliminar la categoría. ' + (r.error || 'Intenta de nuevo.'));
+                            showError('Error: ' + (r.error || 'Intenta de nuevo.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar categoría', xhr));
@@ -1417,21 +1094,10 @@ const CategoriasModule = (function() {
         });
     }
 
-    /**
-     * Botón refrescar categorías
-     */
-    function initRefrescarCategorias() {
-        $(document).on('click', '#btnRefrescarCategorias', () => window.location.reload());
-    }
-
-    /**
-     * Inicializa todos los componentes del módulo
-     */
     function init() {
         initModalCategoria();
         initSubmitCategoria();
         initEliminarCategoria();
-        initRefrescarCategorias();
         console.log('[✓] Módulo Categorías inicializado');
     }
 
@@ -1442,114 +1108,82 @@ const CategoriasModule = (function() {
 // MÓDULO: Gestión de Presupuestos (General + Sub-Presupuestos)
 // ============================================================================
 const PresupuestosModule = (function() {
-    const { ajaxCall, mostrarError, ensureNumberEditable, escapeHtml } = ERPUtils;
+    const { ajaxCall, mostrarError, ensureNumberEditable, escapeHtml, showSuccess, showError, showConfirm } = ERPUtils;
 
-    // --- FUNCIONES NUEVAS INTEGRADAS ---
-
-    /**
-     * Maneja la apertura del modal exclusivo de subpresupuesto
-     */
     function initModalSubPresupuestoExclusivo() {
         $('#modalSubPresupuesto').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-            // presId: when editing an existing sub-presupuesto this is the sub id
             const presId = button ? $(button).data('id') : null;
-            // presParentId: when opening from a parent card's "Agregar Sub-presupuesto" button
-            // the template sets data-parent-id="..." on that button — check multiple data keys for safety
-            const presParentId = button ? ($(button).data('parentId') || $(button).data('parent-id') || $(button).data('parent') || null) : null;
+            const presParentId = button ? ($(button).data('parentId') || $(button).data('parent-id') || $(button).data('parent')) : null;
             const $form = $('#formSubPresupuesto');
             const $selectCat = $('#subpres_categoria');
             const $selectPadre = $('#subpres_parent');
             const $alert = $('#subpresupuestoAlert');
             const $msgNoCat = $('#msgNoCategoriasEgreso');
 
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formSubPresupuesto no encontrado');
-                return;
-            }
+            if (!$form.length) return;
 
             $form[0].reset();
             $alert.addClass('d-none').text('');
             $('#subpresupuesto_id').val('');
-            ensureNumberEditable('#subpres_monto'); // Corregido para usar la referencia local
+            ensureNumberEditable('#subpres_monto');
             $msgNoCat.addClass('d-none');
 
-            // Cargar presupuestos generales como padres
             $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
 
             ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
                 .then(presupuestos => {
                     $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
-                    if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
+                    if (presupuestos && Array.isArray(presupuestos)) {
                         presupuestos.forEach(p => {
-                            const id = p.id_presupuesto || '';
-                            const nombre = p.nombre || 'Sin nombre';
-                            const fecha = p.fecha || '';
-                            const label = `${nombre} — ${fecha}`;
-                            $selectPadre.append(`<option value="${id}">${escapeHtml(label)}</option>`);
+                            $selectPadre.append(`<option value="${p.id_presupuesto}">${escapeHtml(p.nombre || 'Sin nombre')} — ${p.fecha}</option>`);
                         });
-                    } else {
-                        $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
                     }
                     $selectPadre.prop('disabled', false);
-                    // Cargar solo categorías de egreso
+                    if (presParentId) $selectPadre.val(presParentId);
+
                     return ajaxCall('categoria', 'getCategoriasEgreso', {}, 'GET');
                 })
                 .then(categorias => {
                     $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
-
                     let countEgreso = 0;
-                    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+                    const idsAgregados = new Set();
+
+                    if (categorias && Array.isArray(categorias)) {
                         categorias.forEach(cat => {
-                            const catId = (cat && (cat.id_categoria !== undefined && cat.id_categoria !== null)) ? cat.id_categoria : (cat && (cat.id !== undefined && cat.id !== null) ? cat.id : null);
-                            const nombre = (cat && (cat.nombre || cat.cat_nombre)) ? (cat.nombre || cat.cat_nombre) : (typeof cat === 'string' ? cat : 'Sin nombre');
-                            if (catId !== null && catId !== '') {
-                                $selectCat.append(`<option value="${escapeHtml(String(catId))}">${escapeHtml(nombre)}</option>`);
+                            const catId = cat.id_categoria || cat.id;
+                            const nombre = cat.nombre || cat.cat_nombre || 'Sin nombre';
+                            if (cat.tipo === 'Egreso' && catId && !idsAgregados.has(catId)) {
+                                $selectCat.append(`<option value="${catId}">${escapeHtml(nombre)}</option>`);
+                                idsAgregados.add(catId);
                                 countEgreso++;
                             }
                         });
                     }
 
-                    if (countEgreso === 0) {
-                        $msgNoCat.removeClass('d-none');
-                    }
+                    if (countEgreso === 0) $msgNoCat.removeClass('d-none');
                     $selectCat.prop('disabled', false);
 
                     if (presId) {
                         $('#modalSubPresupuestoTitle').text('Editar Sub-Presupuesto');
-                        ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
-                            .done(data => {
-                                if (data && !data.error) {
-                                    $('#subpresupuesto_id').val(data.id_presupuesto || data.id);
-                                    $('#subpres_nombre').val(data.nombre);
-                                    $('#subpres_monto').val(data.monto_limite || data.monto);
-                                    if (data.id_categoria) {
-                                        $selectCat.val(data.id_categoria);
-                                    }
-                                    if (data.parent_presupuesto) {
-                                        $selectPadre.val(data.parent_presupuesto);
-                                    }
-                                    $('#subpres_fecha').val(data.fecha);
-                                } else {
-                                    $('#modalSubPresupuesto').modal('hide');
-                                    showError('Error al cargar sub-presupuesto. ' + (data.error || 'Verifique la consola.'));
-                                }
-                            })
-                            .fail(xhr => {
-                                mostrarError('cargar sub-presupuesto', xhr);
-                                $('#modalSubPresupuesto').modal('hide');
-                            });
+                        ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
+                            if (data && !data.error) {
+                                $('#subpresupuesto_id').val(data.id_presupuesto || data.id);
+                                $('#subpres_nombre').val(data.nombre);
+                                $('#subpres_monto').val(data.monto_limite || data.monto);
+                                if (data.id_categoria) $selectCat.val(data.id_categoria);
+                                if (data.parent_presupuesto) $selectPadre.val(data.parent_presupuesto);
+                                $('#subpres_fecha').val(data.fecha);
+                            }
+                        });
                     } else {
                         $('#modalSubPresupuestoTitle').text('Agregar Sub-Presupuesto');
                     }
                 })
-                .fail(xhr => mostrarError('cargar datos subpresupuesto', xhr));
+                .fail(xhr => mostrarError('cargar datos para modal subpresupuesto', xhr));
         });
     }
 
-    /**
-     * Maneja el envío del formulario exclusivo de subpresupuesto
-     */
     function initSubmitSubPresupuestoExclusivo() {
         $(document).on('submit', '#formSubPresupuesto', function(e) {
             e.preventDefault();
@@ -1557,24 +1191,23 @@ const PresupuestosModule = (function() {
             const $alert = $('#subpresupuestoAlert');
             $alert.addClass('d-none').text('');
 
-            // Validación visual de campos requeridos
             const parent = $('#subpres_parent').val();
             const cat = $('#subpres_categoria').val();
             const monto = $('#subpres_monto').val();
             const fecha = $('#subpres_fecha').val();
+
             if (!parent || !cat || !monto || !fecha) {
                 $alert.removeClass('d-none').text('Todos los campos marcados con * son obligatorios.');
                 return;
             }
 
-            // Deshabilitar botón para evitar doble envío
             const $btn = $('#btnGuardarSubPresupuesto');
             $btn.prop('disabled', true);
 
             ajaxCall('presupuesto', 'save', $form.serialize())
                 .done(r => {
                     if (r.success) {
-                        try { showSuccess('Sub-presupuesto guardado correctamente.'); } catch(e) {}
+                        showSuccess('Sub-presupuesto guardado correctamente.');
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
                         $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
@@ -1584,115 +1217,72 @@ const PresupuestosModule = (function() {
                     mostrarError('guardar sub-presupuesto', xhr);
                     $alert.removeClass('d-none').text('Error inesperado al guardar.');
                 })
-                .always(() => {
-                    $btn.prop('disabled', false);
-                });
+                .always(() => { $btn.prop('disabled', false); });
         });
     }
 
-    // --- FIN FUNCIONES NUEVAS ---
-
-    /**
-     * Popula el selector de categorías en el modal de presupuesto
-     * @param {number} presId - ID del presupuesto (para edición)
-     */
     function populatePresupuestoCategoria(presId = null) {
         const $selectCat = $('#pres_categoria');
         if (!$selectCat.length) return Promise.reject('Selector no encontrado');
-
         $selectCat.empty().append('<option value="">Cargando categorías...</option>').prop('disabled', true);
-
         return ajaxCall('presupuesto', 'getCategoriasPresupuesto', {}, 'GET')
             .then(categorias => {
-                // console.log('[DEBUG] Categorías presupuesto recibidas:', categorias);
                 $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
-                
-                if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+                if (categorias && Array.isArray(categorias)) {
                     categorias.forEach(cat => {
                         const catId = cat.id_categoria || cat.id || '';
                         const presup = cat.id_presupuesto || '';
                         const nombre = cat.nombre || cat.cat_nombre || 'Sin nombre';
                         $selectCat.append(`<option value="${catId}" data-presupuesto="${presup}">${escapeHtml(nombre)}</option>`);
                     });
-                } else {
-                    $selectCat.append('<option value="">-- No hay categorías disponibles --</option>');
-                }
-                
+                } else { $selectCat.append('<option value="">-- No hay categorías --</option>'); }
                 $selectCat.prop('disabled', false);
                 return categorias;
-            })
-            .catch(xhr => {
-                console.error('[ERROR] Cargar categorías presupuesto:', xhr);
-                $selectCat.empty().append('<option value="">Error al cargar</option>').prop('disabled', false);
-                throw xhr;
             });
     }
 
-    /**
-     * Maneja la apertura del modal de presupuesto general
-     */
     function initModalPresupuestoGeneral() {
         $('#modalPresupuestoGeneral').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
             const presId = button ? $(button).data('id') : null;
             const $form = $('#formPresupuestoGeneral');
-            
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formPresupuestoGeneral no encontrado');
-                return;
-            }
-            
+            if (!$form.length) return;
             $form[0].reset();
             $('#presgen_id').val('');
             
             if (presId) {
                 $('#modalPresupuestoGeneralTitle').text('Editar Presupuesto General');
-                ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
-                    .done(data => {
-                        if (data && !data.error) {
-                            $('#presgen_id').val(data.id_presupuesto ?? data.id ?? '');
-                            // El backend devuelve `monto_limite` (nombre de columna); usarlo si existe, si no usar `monto` como fallback
-                            const montoVal = (typeof data.monto_limite !== 'undefined') ? data.monto_limite : (data.monto || '');
-                            $('#presgen_monto').val(montoVal);
-                            $('#presgen_fecha').val(data.fecha ?? '');
-                            $('#presgen_descripcion').val(data.descripcion ?? '');
-                        } else {
-                            $('#modalPresupuestoGeneral').modal('hide');
-                            showError('Error al cargar el presupuesto. ' + (data.error || 'Verifique la consola.'));
-                        }
-                    })
-                    .fail(xhr => {
-                        mostrarError('cargar presupuesto general', xhr);
-                        $('#modalPresupuestoGeneral').modal('hide');
-                    });
+                ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
+                    if (data && !data.error) {
+                        $('#presgen_id').val(data.id_presupuesto ?? data.id ?? '');
+                        const montoVal = (typeof data.monto_limite !== 'undefined') ? data.monto_limite : (data.monto || '');
+                        $('#presgen_monto').val(montoVal);
+                        $('#presgen_fecha').val(data.fecha ?? '');
+                        $('#presgen_descripcion').val(data.descripcion ?? '');
+                    }
+                });
             } else {
                 $('#modalPresupuestoGeneralTitle').text('Agregar Presupuesto General');
             }
         });
     }
 
-    /**
-     * Maneja el envío del formulario de presupuesto general
-     */
     function initSubmitPresupuestoGeneral() {
         $(document).on('submit', '#formPresupuestoGeneral', function(e) {
             e.preventDefault();
             ajaxCall('presupuesto', 'save', $(this).serialize())
                 .done(r => {
                     if (r.success) {
-                        try { showSuccess('Presupuesto guardado correctamente.'); } catch(e) {}
+                        showSuccess('Presupuesto guardado correctamente.');
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
-                        showError('No fue posible guardar el presupuesto. ' + (r.error || 'Intenta de nuevo.'));
+                        showError('Error: ' + (r.error || 'Intenta de nuevo.'));
                     }
                 })
                 .fail(xhr => mostrarError('guardar presupuesto general', xhr));
         });
     }
 
-    /**
-     * Maneja la apertura del modal de sub-presupuesto
-     */
     function initModalSubPresupuesto() {
         $('#modalPresupuesto').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
@@ -1702,123 +1292,62 @@ const PresupuestosModule = (function() {
             const $selectPadre = $('#pres_parent');
             const $alert = $('#presupuestoAlert');
 
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formPresupuesto no encontrado');
-                return;
-            }
-
+            if (!$form.length) return;
             $form[0].reset();
             $alert.addClass('d-none').text('');
             $('#presupuesto_id').val('');
             ensureNumberEditable('#pres_monto');
 
-            // Cargar presupuestos generales como padres
             $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
 
             ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
                 .then(presupuestos => {
                     $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
-                    if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
+                    if (presupuestos && Array.isArray(presupuestos)) {
                         presupuestos.forEach(p => {
-                            const id = p.id_presupuesto || '';
-                            const nombre = p.nombre || 'Sin nombre';
-                            const fecha = p.fecha || '';
-                            const label = `${nombre} — ${fecha}`;
-                            $selectPadre.append(`<option value="${id}">${escapeHtml(label)}</option>`);
+                            const label = `${p.nombre} — ${p.fecha}`;
+                            $selectPadre.append(`<option value="${p.id_presupuesto}">${escapeHtml(label)}</option>`);
                         });
-                    } else {
-                        $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
                     }
                     $selectPadre.prop('disabled', false);
-
-                    // Si la apertura proviene de un botón que indica explícitamente el padre (data-parent-id),
-                    // seleccionar ese presupuesto padre automáticamente.
-                    if (presParentId) {
-                        $selectPadre.val(presParentId);
-                    } else if (!presId) {
-                        // Si estamos CREANDO un nuevo sub-presupuesto y NO se indicó padre explícito,
-                        // seleccionar automáticamente el Presupuesto General de Enero 2027 si existe.
-                        try {
-                            const targetPrefix = '2027-01';
-                            const match = (presupuestos || []).find(p => (p.fecha || '').startsWith(targetPrefix));
-                            if (match) {
-                                const matchId = match.id_presupuesto || match.id || '';
-                                if (matchId) {
-                                    $selectPadre.val(matchId);
-                                }
-                            }
-                        } catch (e) {
-                            console.warn('Auto-select Enero 2027 falló:', e);
-                        }
-                    }
-
                     return populatePresupuestoCategoria(presId);
                 })
                 .done(() => {
-                    $selectPadre.off('change.subpresSync').on('change.subpresSync', function() {
-                        // Si se quiere, aquí se puede auto-filtrar categorías según el padre
-                    });
                     if (presId) {
                         $('#modalPresupuestoTitle').text('Editar Sub-Presupuesto');
-                        ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
-                            .done(data => {
-                                if (data && !data.error) {
-                                    $('#presupuesto_id').val(data.id_presupuesto || data.id);
-                                    $('#pres_nombre').val(data.nombre);
-                                    $('#pres_monto').val(data.monto_limite || data.monto);
-                                    if (data.id_categoria) {
-                                        $selectCat.val(data.id_categoria);
-                                    }
-                                    if (data.parent_presupuesto) {
-                                        $selectPadre.val(data.parent_presupuesto);
-                                    }
-                                    $('#pres_fecha').val(data.fecha);
-                                    if (data.descripcion) $('#pres_descripcion').val(data.descripcion);
-                                } else {
-                                    $('#modalPresupuesto').modal('hide');
-                                    showError('Error al cargar sub-presupuesto. ' + (data.error || 'Verifique la consola.'));
-                                }
-                            })
-                            .fail(xhr => {
-                                mostrarError('cargar sub-presupuesto', xhr);
-                                $('#modalPresupuesto').modal('hide');
-                            });
+                        ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
+                            if (data && !data.error) {
+                                $('#presupuesto_id').val(data.id_presupuesto || data.id);
+                                $('#pres_nombre').val(data.nombre);
+                                $('#pres_monto').val(data.monto_limite || data.monto);
+                                if (data.id_categoria) $selectCat.val(data.id_categoria);
+                                if (data.parent_presupuesto) $selectPadre.val(data.parent_presupuesto);
+                                $('#pres_fecha').val(data.fecha);
+                            }
+                        });
                     } else {
                         $('#modalPresupuestoTitle').text('Agregar Nuevo Sub-Presupuesto');
                     }
-                })
-                .fail(xhr => mostrarError('cargar datos presupuesto', xhr));
+                });
         });
     }
 
-    /**
-     * Maneja el envío del formulario de sub-presupuesto
-     */
     function initSubmitSubPresupuesto() {
         $(document).on('submit', '#formPresupuesto', function(e) {
             e.preventDefault();
             const $form = $(this);
             const $alert = $('#presupuestoAlert');
             $alert.addClass('d-none').text('');
-
-            // Validación visual de campos requeridos
-            const parent = $('#pres_parent').val();
-            const cat = $('#pres_categoria').val();
-            const monto = $('#pres_monto').val();
-            const fecha = $('#pres_fecha').val();
-            if (!parent || !cat || !monto || !fecha) {
-                $alert.removeClass('d-none').text('Todos los campos marcados con * son obligatorios.');
+            
+            if (!$('#pres_parent').val() || !$('#pres_categoria').val() || !$('#pres_monto').val() || !$('#pres_fecha').val()) {
+                $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
                 return;
             }
-
-            // Deshabilitar botón para evitar doble envío
-            const $btn = $('#btnGuardarPresupuesto');
-            $btn.prop('disabled', true);
 
             ajaxCall('presupuesto', 'save', $form.serialize())
                 .done(r => {
                     if (r.success) {
-                        try { showSuccess('Presupuesto guardado correctamente.'); } catch(e) {}
+                        showSuccess('Guardado correctamente.');
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
                         $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
@@ -1826,131 +1355,77 @@ const PresupuestosModule = (function() {
                 })
                 .fail(xhr => {
                     mostrarError('guardar sub-presupuesto', xhr);
-                    $alert.removeClass('d-none').text('Error inesperado al guardar.');
-                })
-                .always(() => {
-                    $btn.prop('disabled', false);
+                    $alert.removeClass('d-none').text('Error inesperado.');
                 });
         });
     }
-
-    /**
-     * Maneja la apertura del modal de presupuesto por categoría (modal separado)
-     */
+    
     function initModalPresupuestoCategoria() {
         $('#modalPresupuestoCategoria').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
             const presId = button ? $(button).data('id') : null;
-            const $form = $('#formPresupuestoCategoria');
             const $selectCat = $('#pres_categoria_categoria');
             const $selectPadre = $('#pres_parent_categoria');
             
-            if (!$form.length) {
-                console.error('[ERROR] Formulario #formPresupuestoCategoria no encontrado');
-                return;
-            }
-            
-            $form[0].reset();
+            $('#formPresupuestoCategoria')[0].reset();
             $('#presupuesto_categoria_id').val('');
-            
-            // Cargar presupuestos generales como padres
             $selectPadre.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
             
             ajaxCall('presupuesto', 'getPresupuestosGenerales', {}, 'GET')
                 .then(presupuestos => {
-                    $selectPadre.empty().append('<option value="">Seleccione un presupuesto general...</option>');
-                    
-                    if (presupuestos && Array.isArray(presupuestos) && presupuestos.length > 0) {
+                    $selectPadre.empty().append('<option value="">Seleccione...</option>');
+                    if (presupuestos && Array.isArray(presupuestos)) {
                         presupuestos.forEach(p => {
-                            const id = p.id_presupuesto || '';
-                            const nombre = p.nombre || 'Sin nombre';
-                            const fecha = p.fecha || '';
-                            const label = `${nombre} — ${fecha}`;
-                            $selectPadre.append(`<option value="${id}">${escapeHtml(label)}</option>`);
+                            $selectPadre.append(`<option value="${p.id_presupuesto}">${p.nombre} — ${p.fecha}</option>`);
                         });
-                    } else {
-                        $selectPadre.append('<option value="">-- No hay presupuestos generales --</option>');
                     }
                     $selectPadre.prop('disabled', false);
-                    
-                    // Cargar categorías
                     return ajaxCall('presupuesto', 'getCategoriasPresupuesto', {}, 'GET');
                 })
                 .then(categorias => {
-                    $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
-                    
-                    if (categorias && Array.isArray(categorias) && categorias.length > 0) {
+                    $selectCat.empty().append('<option value="">Seleccione...</option>');
+                    if (categorias && Array.isArray(categorias)) {
                         categorias.forEach(cat => {
-                            const catId = cat.id_categoria || cat.id || '';
-                            const nombre = cat.nombre || cat.cat_nombre || 'Sin nombre';
-                            $selectCat.append(`<option value="${catId}">${escapeHtml(nombre)}</option>`);
+                            $selectCat.append(`<option value="${cat.id_categoria}">${escapeHtml(cat.nombre)}</option>`);
                         });
-                    } else {
-                        $selectCat.append('<option value="">-- No hay categorías disponibles --</option>');
                     }
                     $selectCat.prop('disabled', false);
                     
-                    // Si es edición, cargar datos
                     if (presId) {
-                        $('#modalPresupuestoCategoriaTitle').text('Editar Presupuesto por Categoría');
-                        ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET')
-                            .done(data => {
-                                if (data && !data.error) {
-                                    $('#presupuesto_categoria_id').val(data.id_presupuesto || data.id);
-                                    $('#pres_nombre_categoria').val(data.nombre);
-                                    $('#pres_monto_categoria').val(data.monto_limite || data.monto);
-                                    if (data.id_categoria) {
-                                        $selectCat.val(data.id_categoria);
-                                    }
-                                    if (data.parent_presupuesto) {
-                                        $selectPadre.val(data.parent_presupuesto);
-                                    }
-                                    $('#pres_fecha_categoria').val(data.fecha);
-                                } else {
-                                    $('#modalPresupuestoCategoria').modal('hide');
-                                    showError('Error al cargar presupuesto por categoría. ' + (data.error || 'Verifique la consola.'));
-                                }
-                            })
-                            .fail(xhr => {
-                                mostrarError('cargar presupuesto por categoría', xhr);
-                                $('#modalPresupuestoCategoria').modal('hide');
-                            });
+                        $('#modalPresupuestoCategoriaTitle').text('Editar Presupuesto');
+                        ajaxCall('presupuesto', 'getPresupuestoData', { id: presId }, 'GET').done(data => {
+                            if (data && !data.error) {
+                                $('#presupuesto_categoria_id').val(data.id_presupuesto || data.id);
+                                $('#pres_nombre_categoria').val(data.nombre);
+                                $('#pres_monto_categoria').val(data.monto_limite || data.monto);
+                                if(data.id_categoria) $selectCat.val(data.id_categoria);
+                                if(data.parent_presupuesto) $selectPadre.val(data.parent_presupuesto);
+                                $('#pres_fecha_categoria').val(data.fecha);
+                            }
+                        });
                     } else {
-                        $('#modalPresupuestoCategoriaTitle').text('Asignar Presupuesto por Categoría');
+                         $('#modalPresupuestoCategoriaTitle').text('Asignar Presupuesto');
                     }
-                })
-                .fail(xhr => mostrarError('cargar datos presupuesto por categoría', xhr));
+                });
         });
     }
 
-    /**
-     * Maneja el envío del formulario de presupuesto por categoría
-     */
     function initSubmitPresupuestoCategoria() {
         $(document).on('click', '#btnGuardarPresCategoria', function(e) {
             e.preventDefault();
-            
             const formData = $('#formPresupuestoCategoria').serialize();
-            
-            ajaxCall('presupuesto', 'save', formData)
-                .done(r => {
-                    if (r.success) {
-                        $('#modalPresupuestoCategoria').modal('hide');
-                        try { showSuccess('Presupuesto asignado correctamente.'); } catch(e) {}
-                        setTimeout(() => { window.location.reload(); }, 900);
-                    } else {
-                        showError('No fue posible guardar el presupuesto. ' + (r.error || 'Intenta de nuevo.'));
-                    }
-                })
-                .fail(xhr => mostrarError('guardar presupuesto por categoría', xhr));
+            ajaxCall('presupuesto', 'save', formData).done(r => {
+                if (r.success) {
+                    showSuccess('Presupuesto guardado.');
+                    setTimeout(() => { window.location.reload(); }, 900);
+                } else {
+                    showError('Error: ' + (r.error || 'Intenta de nuevo.'));
+                }
+            }).fail(xhr => mostrarError('guardar presupuesto', xhr));
         });
     }
 
-    /**
-     * Maneja la eliminación de presupuestos (general o sub)
-     */
     function initEliminarPresupuesto() {
-        // Eliminar presupuesto general
         $(document).on('click', '.btn-del-presgen', function() {
             const id = $(this).data('id');
             showConfirm('¿Eliminar este presupuesto general? Se eliminarán todos los sub-presupuestos asociados.').then(confirmed => {
@@ -1958,17 +1433,16 @@ const PresupuestosModule = (function() {
                 ajaxCall('presupuesto', 'deletePresupuestoGeneral', { id: id })
                     .done(r => {
                         if (r.success) {
-                            try { showSuccess('Presupuesto general eliminado correctamente.'); } catch(e) {}
+                            showSuccess('Eliminado correctamente.');
                             setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            showError('No se pudo eliminar el presupuesto general. ' + (r.error || 'Intenta nuevamente.'));
+                            showError('Error: ' + (r.error || 'Error.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar presupuesto general', xhr));
             });
         });
         
-        // Eliminar sub-presupuesto
         $(document).on('click', '.btn-del-presupuesto', function() {
             const id = $(this).data('id');
             showConfirm('¿Eliminar este sub-presupuesto?').then(confirmed => {
@@ -1976,11 +1450,10 @@ const PresupuestosModule = (function() {
                 ajaxCall('presupuesto', 'delete', { id: id })
                     .done(r => {
                         if (r.success) {
-                            $(document).trigger('egresoEliminado');
-                            try { showSuccess('Sub-presupuesto eliminado correctamente.'); } catch(e) {}
+                            showSuccess('Eliminado correctamente.');
                             setTimeout(() => { window.location.reload(); }, 900);
                         } else {
-                            showError('No se pudo eliminar el sub-presupuesto. ' + (r.error || 'Intenta nuevamente.'));
+                            showError('Error: ' + (r.error || 'Error.'));
                         }
                     })
                     .fail(xhr => mostrarError('eliminar sub-presupuesto', xhr));
@@ -1988,16 +1461,9 @@ const PresupuestosModule = (function() {
         });
     }
 
-    /**
-     * Botón refrescar presupuestos
-     */
     function initRefrescarPresupuestos() {
         $(document).on('click', '#btnRefrescarPresupuestos', () => window.location.reload());
     }
-
-    /**
-     * Inicializa todos los componentes del módulo
-     */
 
     function init() {
         initModalPresupuestoGeneral();
@@ -2008,7 +1474,7 @@ const PresupuestosModule = (function() {
         initSubmitPresupuestoCategoria();
         initEliminarPresupuesto();
         initRefrescarPresupuestos();
-        // AHORA SÍ: Inicializar el flujo exclusivo de subpresupuestos porque las funciones YA EXISTEN dentro del módulo
+        // NUEVO: Inicializar el flujo exclusivo de subpresupuestos
         initModalSubPresupuestoExclusivo();
         initSubmitSubPresupuestoExclusivo();
         console.log('[✓] Módulo Presupuestos inicializado');
@@ -2023,9 +1489,6 @@ const PresupuestosModule = (function() {
 const AlertasPresupuestosModule = (function() {
     const { ajaxCall } = ERPUtils;
 
-    /**
-     * Actualiza el badge de alertas en el sidebar
-     */
     function actualizarBadgeAlertas() {
         const $badge = $('#badgeAlertasPresupuestos');
         if (!$badge.length) return;
@@ -2043,15 +1506,10 @@ const AlertasPresupuestosModule = (function() {
             .fail(xhr => console.error('[ERROR] Alertas presupuestos:', xhr));
     }
 
-    /**
-     * Inicializa el sistema de alertas
-     */
     function init() {
         actualizarBadgeAlertas();
         setInterval(actualizarBadgeAlertas, 30000);
-        
         $(document).on('egresoGuardado egresoEliminado', actualizarBadgeAlertas);
-        
         console.log('[✓] Sistema de Alertas de Presupuestos inicializado');
     }
 
@@ -2059,49 +1517,40 @@ const AlertasPresupuestosModule = (function() {
 })();
 
 // ============================================================================
-// MÓDULO: Dashboard (Gráficas y Estadísticas)
+// MÓDULO: Dashboard
 // ============================================================================
 const DashboardModule = (function() {
-    const { ajaxCall } = ERPUtils;
-
-    /**
-     * Inicializa el dashboard si estamos en esa página
-     */
     function init() {
-        // Solo inicializar si estamos en la página del dashboard
         if (typeof cargarResumenMensual === 'undefined' && $('#chartIngresosEgresos').length > 0) {
-            console.log('[INFO] Dashboard detectado, pero el código ya está en la vista');
+            console.log('[INFO] Dashboard detectado.');
         }
         console.log('[✓] Módulo Dashboard inicializado');
     }
-
     return { init };
 })();
 
 // ============================================================================
-// MÓDULO: Auditoría (Visor de Detalles)
+// MÓDULO: Auditoría (Visor de Detalles, Gráficas y Reportes)
 // ============================================================================
 const AuditoriaModule = (function() {
-    const { ajaxCall, mostrarError, escapeHtml } = ERPUtils;
+    const { ajaxCall, escapeHtml, showNotification, showError } = ERPUtils;
+    let datosReporteAuditoria = null;
+    let chartAuditoriaPorSeccion = null;
+    let chartAuditoriaPorAccion = null;
+    let chartAuditoriaPorUsuario = null;
 
-    /**
-     * Maneja la apertura del modal de detalle de auditoría
-     */
+    // --- FUNCIONES DE MODAL DE DETALLES (Lo que ya tenías en v2.2) ---
     function initModalDetalleAuditoria() {
         $('#modalDetalleAuditoria').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
             const auditoriaId = button ? $(button).data('id') : null;
             const $body = $('#detalleAuditoriaBody');
             
-            if (!$body.length) {
-                console.error('[ERROR] #detalleAuditoriaBody no encontrado');
-                return;
-            }
-            
+            if (!$body.length) return;
             $body.html('<p class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Cargando...</p>');
             
             if (!auditoriaId) {
-                $body.html('<p class="text-danger">Error: ID de auditoría no especificado.</p>');
+                $body.html('<p class="text-danger">Error: ID no especificado.</p>');
                 return;
             }
             
@@ -2109,67 +1558,184 @@ const AuditoriaModule = (function() {
                 .done(data => {
                     if (data && !data.error && data.id_auditoria) {
                         let html = '<div class="audit-detail-content">';
-                        html += `<div class="row mb-3">`;
-                        html += `<div class="col-md-6"><strong>ID Auditoría:</strong> ${escapeHtml(data.id_auditoria)}</div>`;
-                        html += `<div class="col-md-6"><strong>Fecha/Hora:</strong> ${escapeHtml(data.fecha_hora)}</div>`;
-                        html += `</div>`;
-                        html += `<div class="row mb-3">`;
-                        html += `<div class="col-md-6"><strong>Usuario:</strong> ${escapeHtml(data.usuario_nombre || 'N/A')}</div>`;
-                        html += `<div class="col-md-6"><strong>Tabla:</strong> ${escapeHtml(data.tabla_afectada)}</div>`;
-                        html += `</div>`;
-                        html += `<div class="row mb-3">`;
-                        html += `<div class="col-12"><strong>Acción:</strong> <span class="badge bg-info">${escapeHtml(data.accion)}</span></div>`;
-                        html += `</div>`;
+                        html += `<div class="row mb-3"><div class="col-md-6"><strong>ID Auditoría:</strong> ${escapeHtml(data.id_auditoria)}</div><div class="col-md-6"><strong>Fecha/Hora:</strong> ${escapeHtml(data.fecha_hora)}</div></div>`;
+                        html += `<div class="row mb-3"><div class="col-md-6"><strong>Usuario:</strong> ${escapeHtml(data.usuario_nombre || 'N/A')}</div><div class="col-md-6"><strong>Tabla:</strong> ${escapeHtml(data.tabla_afectada)}</div></div>`;
+                        html += `<div class="row mb-3"><div class="col-12"><strong>Acción:</strong> <span class="badge bg-info">${escapeHtml(data.accion)}</span></div></div>`;
                         
-                        if (data.datos_anteriores && data.datos_anteriores.trim() !== '' && data.datos_anteriores !== '{}') {
-                            html += `<div class="row mb-3">`;
-                            html += `<div class="col-12"><strong>Datos Anteriores:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_anteriores)}</pre></div>`;
-                            html += `</div>`;
+                        if (data.datos_anteriores && data.datos_anteriores !== '{}') {
+                            html += `<div class="row mb-3"><div class="col-12"><strong>Datos Anteriores:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_anteriores)}</pre></div></div>`;
                         }
                         
-                        if (data.datos_nuevos && data.datos_nuevos.trim() !== '' && data.datos_nuevos !== '{}') {
-                            html += `<div class="row mb-3">`;
-                            html += `<div class="col-12"><strong>Datos Nuevos:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_nuevos)}</pre></div>`;
-                            html += `</div>`;
+                        if (data.datos_nuevos && data.datos_nuevos !== '{}') {
+                            html += `<div class="row mb-3"><div class="col-12"><strong>Datos Nuevos:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_nuevos)}</pre></div></div>`;
                         }
-                        
-                        if (data.ip_address && data.ip_address.trim() !== '') {
-                            html += `<div class="row mb-3">`;
-                            html += `<div class="col-12"><strong>IP:</strong> ${escapeHtml(data.ip_address)}</div>`;
-                            html += `</div>`;
-                        }
-                        
                         html += '</div>';
                         $body.html(html);
                     } else {
-                        $body.html('<p class="text-danger">Error: ' + (data.error || 'No se pudo obtener el detalle.') + '</p>');
+                        $body.html('<p class="text-danger">Error: No se pudo obtener el detalle.</p>');
                     }
                 })
-                .fail(xhr => {
-                    console.error('[ERROR] Cargar detalle auditoría:', xhr);
-                    $body.html('<p class="text-danger">Error al cargar detalle. Verifique la consola (F12).</p>');
-                });
+                .fail(() => { $body.html('<p class="text-danger">Error al cargar detalle.</p>'); });
         });
     }
 
-    /**
-     * Inicializa todos los componentes del módulo
-     */
+    // --- FUNCIONES DE REPORTES Y GRÁFICAS (Lo que quitamos de la vista y agregamos aquí) ---
+    
+    function formatDateAud(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr + 'T00:00:00');
+        return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+
+    function formatDateTimeAud(dateTimeStr) {
+        if (!dateTimeStr) return '-';
+        const date = new Date(dateTimeStr);
+        return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderChartPorSeccion(data) {
+        const ctx = document.getElementById('chartAuditoriaPorSeccion');
+        if (!ctx) return;
+        if (chartAuditoriaPorSeccion) chartAuditoriaPorSeccion.destroy();
+        chartAuditoriaPorSeccion = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(data),
+                datasets: [{ data: Object.values(data), backgroundColor: ['#007bff','#28a745','#ffc107','#dc3545','#17a2b8'] }]
+            },
+            options: { responsive: true, plugins: { title: { display: true, text: 'Por Sección' }, legend: { position: 'bottom' } } }
+        });
+    }
+
+    function renderChartPorAccion(data) {
+        const ctx = document.getElementById('chartAuditoriaPorAccion');
+        if (!ctx) return;
+        if (chartAuditoriaPorAccion) chartAuditoriaPorAccion.destroy();
+        chartAuditoriaPorAccion = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: Object.keys(data),
+                datasets: [{ data: Object.values(data), backgroundColor: ['#28a745','#ffc107','#dc3545'] }]
+            },
+            options: { responsive: true, plugins: { title: { display: true, text: 'Por Acción' }, legend: { position: 'bottom' } } }
+        });
+    }
+
+    function renderChartPorUsuario(data) {
+        const ctx = document.getElementById('chartAuditoriaPorUsuario');
+        if (!ctx) return;
+        if (chartAuditoriaPorUsuario) chartAuditoriaPorUsuario.destroy();
+        chartAuditoriaPorUsuario = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(data),
+                datasets: [{ label: 'Movimientos', data: Object.values(data), backgroundColor: '#17a2b8' }]
+            },
+            options: { responsive: true, plugins: { title: { display: true, text: 'Por Usuario' }, legend: { display: false } } }
+        });
+    }
+
+    function mostrarReporte(data) {
+        $('#resultadoReporteAuditoriaContainer').slideDown();
+        document.getElementById('resultadoReporteAuditoriaContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        const tipoTexto = data.tipo === 'semanal' ? 'Semanal (últimos 7 días)' : 'Personalizado';
+        $('#headerReporteAuditoria').html(`<div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-1">Tipo: <span class="badge bg-info">${tipoTexto}</span></h6><p class="mb-0 text-muted">Período: ${formatDateAud(data.fechaInicio)} - ${formatDateAud(data.fechaFin)}</p></div></div>`);
+        $('#resumenReporteAuditoria').html(`<div class="row text-center"><div class="col-md-4"><div class="card bg-light"><div class="card-body"><h6 class="text-muted mb-2">Total</h6><h3 class="text-primary mb-0">${data.totalLogs}</h3></div></div></div><div class="col-md-4"><div class="card bg-light"><div class="card-body"><h6 class="text-muted mb-2">Secciones</h6><h3 class="text-info mb-0">${Object.keys(data.porSeccion).length}</h3></div></div></div><div class="col-md-4"><div class="card bg-light"><div class="card-body"><h6 class="text-muted mb-2">Usuarios</h6><h3 class="text-success mb-0">${Object.keys(data.porUsuario).length}</h3></div></div></div></div>`);
+
+        renderChartPorSeccion(data.porSeccion);
+        renderChartPorAccion(data.porAccion);
+        renderChartPorUsuario(data.porUsuario);
+
+        let tablaHTML = `<h6 class="mb-3">Detalle de Movimientos</h6><div class="table-responsive"><table class="table table-hover table-sm"><thead class="table-info"><tr><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th><th>Detalles</th></tr></thead><tbody>`;
+        if (data.movimientos && data.movimientos.length > 0) {
+            data.movimientos.forEach(log => {
+                const accLower = (log.accion || '').toLowerCase();
+                let badge = 'bg-secondary';
+                if (accLower.includes('inser') || accLower.includes('registro')) badge = 'bg-success';
+                else if (accLower.includes('actual') || accLower.includes('update')) badge = 'bg-warning text-dark';
+                else if (accLower.includes('elim') || accLower.includes('delete')) badge = 'bg-danger';
+                tablaHTML += `<tr><td><small>${formatDateTimeAud(log.fecha_hora)}</small></td><td>${log.usuario_nombre || 'Sistema'}</td><td>${log.seccion || '-'}</td><td><span class="badge ${badge}">${log.accion}</span></td><td><small>${(log.detalles || '-').substring(0,50)}...</small></td></tr>`;
+            });
+        } else {
+            tablaHTML += '<tr><td colspan="5" class="text-center">No hay movimientos</td></tr>';
+        }
+        tablaHTML += '</tbody></table></div>';
+        $('#tablaReporteAuditoria').html(tablaHTML);
+    }
+
+    // Funciones públicas expuestas al ámbito global para que funcionen los 'onclick' del HTML
+    function exponerFuncionesGlobales() {
+        window.generarReporteAuditoria = function(tipo) {
+            const url = `${BASE_URL}index.php?controller=auditoria&action=generarReporte&tipo=${tipo}`;
+            fetch(url).then(r => r.json()).then(data => {
+                if (data.success) {
+                    data.tipo = tipo;
+                    datosReporteAuditoria = data;
+                    mostrarReporte(data);
+                } else {
+                    showNotification(data.error || 'Error al generar reporte', 'error');
+                }
+            }).catch(e => { console.error(e); showNotification('Error de conexión', 'error'); });
+        };
+
+        window.generarReporteAuditoriaPersonalizado = function(event) {
+            event.preventDefault();
+            const ini = $('#auditoria_reporte_fecha_inicio').val();
+            const fin = $('#auditoria_reporte_fecha_fin').val();
+            if (new Date(ini) > new Date(fin)) { showNotification('La fecha inicio no puede ser mayor a la fecha fin', 'error'); return; }
+            const url = `${BASE_URL}index.php?controller=auditoria&action=generarReporte&tipo=personalizado&fecha_inicio=${ini}&fecha_fin=${fin}`;
+            fetch(url).then(r => r.json()).then(data => {
+                if (data.success) {
+                    data.tipo = 'personalizado';
+                    data.fechaInicio = ini;
+                    data.fechaFin = fin;
+                    datosReporteAuditoria = data;
+                    mostrarReporte(data);
+                    $('#collapseReportePersonalizado').collapse('hide');
+                } else {
+                    showNotification(data.error || 'Error al generar reporte', 'error');
+                }
+            }).catch(e => { console.error(e); showNotification('Error de conexión', 'error'); });
+        };
+
+        window.cerrarReporteAuditoria = function() {
+            $('#resultadoReporteAuditoriaContainer').slideUp();
+        };
+
+        window.exportarReporteExcel = function() {
+            if(!datosReporteAuditoria) return;
+            const url = `${BASE_URL}generate_reporte_auditoria.php?tipo=${datosReporteAuditoria.tipo}&fecha_inicio=${datosReporteAuditoria.fechaInicio||''}&fecha_fin=${datosReporteAuditoria.fechaFin||''}&formato=excel`;
+            window.location.href = url;
+        };
+
+        window.imprimirReporteAuditoria = function() {
+            if(!datosReporteAuditoria) return;
+            const url = `${BASE_URL}generate_reporte_auditoria.php?tipo=${datosReporteAuditoria.tipo}&fecha_inicio=${datosReporteAuditoria.fechaInicio||''}&fecha_fin=${datosReporteAuditoria.fechaFin||''}&formato=html`;
+            window.open(url, '_blank');
+        };
+    }
+
     function init() {
         initModalDetalleAuditoria();
-        console.log('[✓] Módulo Auditoría inicializado');
+        exponerFuncionesGlobales();
+        // Event listener para abrir modal desde filas (delegación)
+        $(document).on('click', '.aud-row', function() {
+            const id = $(this).data('id');
+            if (id) abrirModalDetalleAuditoria(id); // Reutiliza la lógica AJAX de arriba o llama al modal
+            // Nota: initModalDetalleAuditoria ya bindebaa el show.bs.modal, pero el clic directo ayuda si el data-toggle falla
+            $('#modalAuditoriaDetalle').data('id', id).modal('show');
+        });
+        console.log('[✓] Módulo Auditoría inicializado (con reportes)');
     }
 
     return { init };
 })();
 
 // ============================================================================
-// MÓDULO: Gestión del Sidebar (Responsive)
+// MÓDULO: Sidebar
 // ============================================================================
 const SidebarModule = (function() {
-    /**
-     * Inicializa el comportamiento del sidebar en móviles
-     */
     function init() {
         $('body').on('click', '#sidebar .nav-link', function() {
             try {
@@ -2178,14 +1744,33 @@ const SidebarModule = (function() {
                     $('#sidebarOverlay').hide();
                     document.body.style.overflow = '';
                 }
-            } catch(e) {
-                console.error('[ERROR] Sidebar:', e);
-            }
+            } catch(e) { console.error('Sidebar error', e); }
         });
-        
+
+        // Easter Egg: 5 clics en el logo
+        let clickCount = 0;
+        let resetTimer = null;
+        const logo = document.getElementById('logoContainer');
+        if (logo) {
+            logo.addEventListener('click', function() {
+                clickCount++;
+                this.style.transform = 'scale(0.95)';
+                setTimeout(() => { this.style.transform = 'scale(1)'; }, 100);
+                clearTimeout(resetTimer);
+                resetTimer = setTimeout(() => { clickCount = 0; }, 2000);
+                if (clickCount === 5) {
+                    clickCount = 0;
+                    // Cerrar sidebar si está abierto
+                    $('#sidebar').removeClass('open').addClass('closed');
+                    $('#sidebarOverlay').hide();
+                    const modal = new bootstrap.Modal(document.getElementById('modalDesarrolladores'));
+                    modal.show();
+                    try { new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLaiTcIGWi77eefTRAMUKfj8LZjHAY4ktfyynksheB').play(); } catch(e){}
+                }
+            });
+        }
         console.log('[✓] Módulo Sidebar inicializado');
     }
-
     return { init };
 })();
 
@@ -2194,17 +1779,11 @@ const SidebarModule = (function() {
 // ============================================================================
 $(document).ready(function() {
     console.log('============================================================================');
-    console.log('ERP IUM - Sistema de Gestión Financiera v2.0');
+    console.log('ERP IUM - Sistema de Gestión Financiera v3.1 (Master Extended)');
     console.log('============================================================================');
-    console.log('[INFO] jQuery:', $.fn.jquery);
-    console.log('[INFO] Bootstrap:', typeof bootstrap !== 'undefined' ? 'Disponible' : 'NO disponible');
-    console.log('[INFO] Usuario:', CURRENT_USER);
-    console.log('[INFO] BASE_URL:', BASE_URL);
-    console.log('----------------------------------------------------------------------------');
     
-    // Inicializar todos los módulos
     try {
-        ERPUtils; // Verificar que existe
+        ERPUtils; 
         UsuariosModule.init();
         IngresosModule.init();
         EgresosModule.init();
@@ -2212,15 +1791,12 @@ $(document).ready(function() {
         PresupuestosModule.init();
         AlertasPresupuestosModule.init();
         DashboardModule.init();
-        AuditoriaModule.init();
-        SidebarModule.init();
+        AuditoriaModule.init(); // Ahora incluye reportes y gráficas
+        SidebarModule.init();   // Ahora incluye Easter Egg
         
-        console.log('============================================================================');
         console.log('[✓] SISTEMA COMPLETAMENTE INICIALIZADO');
-        console.log('============================================================================');
     } catch(e) {
         console.error('[✗] ERROR CRÍTICO AL INICIALIZAR:', e);
-        try { showError('Error crítico al inicializar el sistema. Recarga la página. Si el problema persiste, contacte al administrador.', { autoClose: 0 }); }
-        catch (err) { console.error('Error al inicializar el sistema. Por favor, recargue la página. Si el problema persiste, contacte al administrador del sistema.'); }
+        alert('Error al inicializar el sistema. Por favor, recargue la página.');
     }
 });

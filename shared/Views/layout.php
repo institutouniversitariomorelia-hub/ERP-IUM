@@ -1,91 +1,7 @@
-        <!-- Modal: Subpresupuesto (exclusivo para crear/editar subpresupuestos) -->
-        <div class="modal fade" id="modalSubPresupuesto" tabindex="-1" aria-labelledby="modalSubPresupuestoLabel" aria-hidden="true">
-            <div class="modal-dialog modal-fullscreen-sm-down">
-                <div class="modal-content">
-                    <form id="formSubPresupuesto">
-                        <div class="modal-header modal-header-danger">
-                            <h5 class="modal-title" id="modalSubPresupuestoTitle">Agregar Sub-Presupuesto</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div id="subpresupuestoAlert" class="alert alert-danger d-none"></div>
-                            <input type="hidden" id="subpresupuesto_id" name="id">
-                            <div class="mb-3">
-                                <label for="subpres_parent" class="form-label">Presupuesto General (padre) <span class="text-danger">*</span></label>
-                                <select id="subpres_parent" name="parent_presupuesto" class="form-select" required>
-                                    <option value="">Seleccione un presupuesto general...</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="subpres_categoria" class="form-label">Categoría <span class="text-danger">*</span></label>
-                                <select id="subpres_categoria" name="id_categoria" class="form-select" required>
-                                    <option value="">Seleccione una categoría...</option>
-                                </select>
-                                <div id="msgNoCategoriasEgreso" class="form-text text-danger d-none">No hay categorías de egreso disponibles.</div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="subpres_nombre" class="form-label">Nombre del Sub-Presupuesto <span class="text-muted">(opcional)</span></label>
-                                <input id="subpres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Subpresupuesto Nómina Q1">
-                                <div class="form-text">Nombre descriptivo para identificar fácilmente el subpresupuesto</div>
-                                
-                            </div>
-                            <div class="mb-3">
-                                <label for="subpres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
-                                <input id="subpres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="subpres_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
-                                <input id="subpres_fecha" name="fecha" type="date" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-danger" id="btnGuardarSubPresupuesto">Guardar/Actualizar Sub-Presupuesto</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    <!-- Modal: Presupuesto General (para crear/editar presupuestos generales) -->
-    <div class="modal fade" id="modalPresupuestoGeneral" tabindex="-1" aria-labelledby="modalPresupuestoGeneralLabel" aria-hidden="true">
-        <div class="modal-dialog modal-fullscreen-sm-down">
-            <div class="modal-content">
-                <form id="formPresupuestoGeneral">
-                    <div class="modal-header modal-header-danger">
-                        <h5 class="modal-title" id="modalPresupuestoGeneralTitle">Agregar Presupuesto General</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="presupuestoGeneralAlert" class="alert alert-danger d-none"></div>
-                        <input type="hidden" id="presgen_id" name="id">
-                        <div class="mb-3">
-                            <label for="presgen_nombre" class="form-label">Nombre del Presupuesto <span class="text-muted">(opcional)</span></label>
-                            <input id="presgen_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Presupuesto General 2025">
-                            <div class="form-text">Nombre descriptivo para identificar fácilmente el presupuesto</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="presgen_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
-                            <input id="presgen_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 500000.00" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="presgen_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
-                            <input id="presgen_fecha" name="fecha" type="date" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="presgen_descripcion" class="form-label">Descripción <span class="text-muted">(opcional)</span></label>
-                            <textarea id="presgen_descripcion" name="descripcion" class="form-control" maxlength="255" rows="2" placeholder="Descripción breve del presupuesto general"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-danger" id="btnGuardarPresupuestoGeneral">Guardar/Actualizar Presupuesto General</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 <?php
-// views/layout.php (CORREGIDO 'anio' EN MODAL INGRESO)
+// views/layout.php - Versión Maestra Consolidada (Definitiva y Limpia)
+// - Se eliminó el campo 'presgen_nombre' del modal Presupuesto General.
+// - Incluye los 4 modales de presupuesto (General, Sub, Categoría, Genérico).
 
 // 1. VERIFICAR SESIÓN Y DEFINIR $currentUser DE FORMA SEGURA AL INICIO
 if (!isset($_SESSION['user_id'])) {
@@ -472,7 +388,9 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto fw-bold"></span>
+
+            <span class="me-auto fw-bold" style="font-size:1.25rem; letter-spacing:1px;">INSTITUTO UNIVERSITARIO MORELIA</span>
+
             <div class="user-info-header">
                 <div class="d-none d-md-block">
                     <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
@@ -589,6 +507,24 @@ $currentUser = [
                         <h5 class="modal-title" id="modalUsuarioTitle">Registrar Nuevo Usuario</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    <script>
+                    // Cambia el título del modal según si es edición o registro
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var modalUsuario = document.getElementById('modalUsuario');
+                        if (modalUsuario) {
+                            modalUsuario.addEventListener('show.bs.modal', function (event) {
+                                var title = document.getElementById('modalUsuarioTitle');
+                                var form = document.getElementById('formUsuario');
+                                var idInput = document.getElementById('usuario_id');
+                                if (idInput && idInput.value) {
+                                    title.textContent = 'Editar Usuario';
+                                } else {
+                                    title.textContent = 'Registrar Nuevo Usuario';
+                                }
+                            });
+                        }
+                    });
+                    </script>
                     <div class="modal-body">
                         <input type="hidden" id="usuario_id" name="id">
                         <div class="mb-3">
@@ -622,6 +558,7 @@ $currentUser = [
             </div>
         </div>
     </div>
+
 
     <!-- Modal: Cambiar Contraseña - Propia (perfil) -->
     <div class="modal fade" id="modalCambiarPasswordOwn" tabindex="-1" aria-labelledby="modalCambiarPasswordOwnLabel" aria-hidden="true">
@@ -674,6 +611,7 @@ $currentUser = [
 
     <!-- Modal: Cambiar Contraseña - Usuario (admin cambia a otro usuario) -->
     <div class="modal fade" id="modalCambiarPasswordUser" tabindex="-1" aria-labelledby="modalCambiarPasswordUserLabel" aria-hidden="true">
+
         <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content">
                 <form id="formCambiarPasswordUser">
@@ -709,6 +647,31 @@ $currentUser = [
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="submit" class="btn btn-danger" id="btnGuardarPasswordUser">Guardar Contraseña</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Cambiar Contraseña (Versión Antigua para Admin) -->
+    <div class="modal fade" id="modalCambiarPassword" tabindex="-1" aria-labelledby="modalCambiarPasswordLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <form id="formCambiarPassword">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalCambiarPasswordLabel">Cambiar Contraseña</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="change_pass_username" name="username">
+                        <div class="mb-3">
+                            <label class="form-label">Nueva Contraseña para <strong id="username_display"></strong></label>
+                            <input id="change_pass_password" name="password" type="password" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger">Guardar Contraseña</button>
                     </div>
                 </form>
             </div>
@@ -935,51 +898,92 @@ $currentUser = [
         </div>
     </div>
 
-    <div class="modal fade" id="modalPresupuesto" tabindex="-1" aria-labelledby="modalPresupuestoLabel" aria-hidden="true">
+    <!-- Modal: Presupuesto General (Nuevo - Nivel Padre) -->
+    <div class="modal fade" id="modalPresupuestoGeneral" tabindex="-1" aria-labelledby="modalPresupuestoGeneralLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content">
-                <form id="formPresupuesto">
+                <form id="formPresupuestoGeneral">
                     <div class="modal-header modal-header-danger">
-                        <h5 class="modal-title" id="modalPresupuestoTitle">Asignar/Actualizar Sub-Presupuesto</h5>
+                        <h5 class="modal-title" id="modalPresupuestoGeneralTitle">Agregar Presupuesto General</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <div id="presupuestoAlert" class="alert alert-danger d-none"></div>
-                        <input type="hidden" id="presupuesto_id" name="id">
+                        <div id="presupuestoGeneralAlert" class="alert alert-danger d-none"></div>
+                        <input type="hidden" id="presgen_id" name="id">
+                        
+                        <!-- ELIMINADO CAMPO 'NOMBRE' SEGÚN CHANGELOG PARA EVITAR CONFUSIÓN -->
+                        
                         <div class="mb-3">
-                            <label for="pres_parent" class="form-label">Presupuesto General (padre) <span class="text-danger">*</span></label>
-                            <select id="pres_parent" name="parent_presupuesto" class="form-select" required>
-                                <option value="">Seleccione un presupuesto general...</option>
-                            </select>
+                            <label for="presgen_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
+                            <input id="presgen_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 500000.00" required>
                         </div>
                         <div class="mb-3">
-                            <label for="pres_categoria" class="form-label">Categoría <span class="text-danger">*</span></label>
-                            <select id="pres_categoria" name="id_categoria" class="form-select" required></select>
+                            <label for="presgen_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
+                            <input id="presgen_fecha" name="fecha" type="date" class="form-control" required>
                         </div>
                         <div class="mb-3">
-                            <label for="pres_nombre" class="form-label">Nombre del Presupuesto <span class="text-muted">(opcional)</span></label>
-                            <input id="pres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Presupuesto Q1 2025">
-                            <div class="form-text">Nombre descriptivo para identificar fácilmente el presupuesto</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="pres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
-                            <input id="pres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="pres_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
-                            <input id="pres_fecha" name="fecha" type="date" class="form-control" required>
+                            <label for="presgen_descripcion" class="form-label">Descripción <span class="text-muted">(opcional)</span></label>
+                            <textarea id="presgen_descripcion" name="descripcion" class="form-control" maxlength="255" rows="2" placeholder="Descripción breve del presupuesto general"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-danger" id="btnGuardarPresupuesto">Guardar/Actualizar Sub-Presupuesto</button>
+                        <button type="submit" class="btn btn-danger" id="btnGuardarPresupuestoGeneral">Guardar Presupuesto General</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Presupuesto por Categoría (separado para evitar problemas de populación) -->
+    <!-- Modal: Subpresupuesto (Nuevo - Exclusivo para subpresupuestos) -->
+    <div class="modal fade" id="modalSubPresupuesto" tabindex="-1" aria-labelledby="modalSubPresupuestoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <form id="formSubPresupuesto">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalSubPresupuestoTitle">Agregar Sub-Presupuesto</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="subpresupuestoAlert" class="alert alert-danger d-none"></div>
+                        <input type="hidden" id="subpresupuesto_id" name="id">
+                        <div class="mb-3">
+                            <label for="subpres_parent" class="form-label">Presupuesto General (padre) <span class="text-danger">*</span></label>
+                            <select id="subpres_parent" name="parent_presupuesto" class="form-select" required>
+                                <option value="">Seleccione un presupuesto general...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subpres_categoria" class="form-label">Categoría <span class="text-danger">*</span></label>
+                            <select id="subpres_categoria" name="id_categoria" class="form-select" required>
+                                <option value="">Seleccione una categoría...</option>
+                            </select>
+                            <div id="msgNoCategoriasEgreso" class="form-text text-danger d-none">No hay categorías de egreso disponibles.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subpres_nombre" class="form-label">Nombre del Sub-Presupuesto <span class="text-muted">(opcional)</span></label>
+                            <input id="subpres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Subpresupuesto Nómina Q1">
+                            <div class="form-text">Nombre descriptivo para identificar fácilmente el subpresupuesto</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subpres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
+                            <input id="subpres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subpres_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
+                            <input id="subpres_fecha" name="fecha" type="date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger" id="btnGuardarSubPresupuesto">Guardar Sub-Presupuesto</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Presupuesto por Categoría (Legacy/Compatible) -->
     <div class="modal fade" id="modalPresupuestoCategoria" tabindex="-1" aria-labelledby="modalPresupuestoCategoriaLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content">
@@ -1022,7 +1026,51 @@ $currentUser = [
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <!-- Cambiado a type=button para evitar envío nativo si JS falla -->
                         <button type="button" id="btnGuardarPresCategoria" class="btn btn-danger">Guardar Presupuesto por Categoría</button>
-                        <button type="button" id="btnVerRawPresCat" class="btn btn-outline-secondary ms-2">Ver respuesta cruda</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Presupuesto Genérico (Legacy/Compatible - Mantenido para evitar errores en JS antiguo) -->
+    <div class="modal fade" id="modalPresupuesto" tabindex="-1" aria-labelledby="modalPresupuestoLabel" aria-hidden="true">
+        <div class="modal-dialog modal-fullscreen-sm-down">
+            <div class="modal-content">
+                <form id="formPresupuesto">
+                    <div class="modal-header modal-header-danger">
+                        <h5 class="modal-title" id="modalPresupuestoTitle">Asignar/Actualizar Sub-Presupuesto</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="presupuestoAlert" class="alert alert-danger d-none"></div>
+                        <input type="hidden" id="presupuesto_id" name="id">
+                        <div class="mb-3">
+                            <label for="pres_parent" class="form-label">Presupuesto General (padre) <span class="text-danger">*</span></label>
+                            <select id="pres_parent" name="parent_presupuesto" class="form-select" required>
+                                <option value="">Seleccione un presupuesto general...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pres_categoria" class="form-label">Categoría <span class="text-danger">*</span></label>
+                            <select id="pres_categoria" name="id_categoria" class="form-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pres_nombre" class="form-label">Nombre del Presupuesto <span class="text-muted">(opcional)</span></label>
+                            <input id="pres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Presupuesto Q1 2025">
+                            <div class="form-text">Nombre descriptivo para identificar fácilmente el presupuesto</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
+                            <input id="pres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pres_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
+                            <input id="pres_fecha" name="fecha" type="date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger" id="btnGuardarPresupuesto">Guardar/Actualizar Sub-Presupuesto</button>
                     </div>
                 </form>
             </div>
