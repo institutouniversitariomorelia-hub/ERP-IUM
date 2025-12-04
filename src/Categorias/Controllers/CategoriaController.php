@@ -147,7 +147,17 @@ class CategoriaController {
 
         try {
             $categorias = $this->categoriaModel->getCategoriasByTipo('Egreso');
-            echo json_encode($categorias);
+            // Depuración: registrar número de categorías y ejemplo si la función debug_log está disponible
+            if (function_exists('debug_log')) {
+                $count = is_array($categorias) ? count($categorias) : 0;
+                debug_log('getCategoriasEgreso: returning categories', ['count' => $count, 'sample' => $categorias[0] ?? null]);
+            }
+            // Si ocurre un error en el modelo es posible recibir un array con 'error'
+            if (is_array($categorias) && isset($categorias['error'])) {
+                echo json_encode(['error' => $categorias['error']]);
+            } else {
+                echo json_encode($categorias);
+            }
         } catch (Exception $e) {
             if (function_exists('debug_log')) debug_log('Error getCategoriasEgreso: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             echo json_encode(['error' => 'Error al obtener categorías.']);

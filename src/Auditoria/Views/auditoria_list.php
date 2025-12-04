@@ -75,8 +75,7 @@
                         if (!empty($filtrosActuales['usuario'])) $baseParams['usuario'] = $filtrosActuales['usuario'];
                         if (!empty($filtrosActuales['fecha_inicio'])) $baseParams['fecha_inicio'] = $filtrosActuales['fecha_inicio'];
                         if (!empty($filtrosActuales['fecha_fin'])) $baseParams['fecha_fin'] = $filtrosActuales['fecha_fin'];
-                        if (!empty($filtrosActuales['accion'])) $baseParams['accion'] = $filtrosActuales['accion'];
-                        if (!empty($filtrosActuales['q'])) $baseParams['q'] = $filtrosActuales['q'];
+                        if (!empty($filtrosActuales['accion_tipo'])) $baseParams['accion_tipo'] = $filtrosActuales['accion_tipo'];
                         // Helper para construir url
                         function aud_query($params) {
                             return htmlspecialchars(BASE_URL . 'index.php?' . http_build_query($params));
@@ -109,18 +108,7 @@
                     </button>
                 </div>
             </div>
-            <!-- Segunda fila de filtros: acción y búsqueda libre -->
-            <div class="row g-3 mt-2 align-items-end">
-                <div class="col-md-4">
-                    <label for="filtro_accion" class="form-label">Acción (texto)</label>
-                    <input id="filtro_accion" name="accion" class="form-control form-control-sm" value="<?php echo htmlspecialchars($filtrosActuales['accion'] ?? ''); ?>" placeholder="p.ej. Insercion, Eliminacion, Actualizacion">
-                </div>
-                <div class="col-md-6">
-                    <label for="filtro_q" class="form-label">Buscar (detalles / old / new)</label>
-                    <input id="filtro_q" name="q" class="form-control form-control-sm" value="<?php echo htmlspecialchars($filtrosActuales['q'] ?? ''); ?>" placeholder="Texto libre para buscar en detalles">
-                </div>
-                <div class="col-md-2"></div>
-            </div>
+            <!-- Segunda fila de filtros: (Acción y búsqueda libre) eliminadas por requerimiento -->
             <!-- Paginación y tamaño de página (oculto, se puede ajustar) -->
             <input type="hidden" name="page" value="<?php echo (int)($filtrosActuales['page'] ?? 1); ?>">
             <input type="hidden" name="pageSize" value="<?php echo (int)($filtrosActuales['pageSize'] ?? 10); ?>">
@@ -391,7 +379,27 @@ let datosReporteAuditoria = null;
 
 // Función de notificación simple
 function showNotification(message, type = 'info') {
-    alert(message);
+    try {
+        if (window && typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
+            window.showNotification(message, type);
+            return;
+        }
+        if ((type === 'danger' || type === 'error') && window && typeof window.showError === 'function') {
+            window.showError(message);
+            return;
+        }
+        if (type === 'success' && window && typeof window.showSuccess === 'function') {
+            window.showSuccess(message);
+            return;
+        }
+    } catch (e) {
+        console.warn('No se pudo delegar la notificación:', e);
+    }
+    if (window && typeof window.showError === 'function') {
+        window.showError(message);
+    } else {
+        console.warn('Notificación:', message);
+    }
 }
 
 function generarReporteAuditoria(tipo) {
@@ -717,7 +725,7 @@ function cerrarReporteAuditoria() {
 
 function exportarReporteExcel() {
     if (!datosReporteAuditoria || !datosReporteAuditoria.movimientos) {
-        alert('No hay datos de reporte para exportar');
+        showError('No hay datos de reporte para exportar');
         return;
     }
 
@@ -732,7 +740,7 @@ function exportarReporteExcel() {
 
 function imprimirReporteAuditoria() {
     if (!datosReporteAuditoria || !datosReporteAuditoria.movimientos) {
-        alert('No hay datos de reporte para imprimir');
+        showError('No hay datos de reporte para imprimir');
         return;
     }
     
@@ -994,12 +1002,12 @@ function abrirModalDetalleAuditoria(auditoriaId) {
                 const modal = new bootstrap.Modal(document.getElementById('modalAuditoriaDetalle'));
                 modal.show();
             } else {
-                alert('Error al cargar detalles: ' + (data.message || 'Error desconocido'));
+                showError('Error al cargar detalles: ' + (data.message || 'Error desconocido'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error al cargar los detalles de auditoría');
+            showError('Error al cargar los detalles de auditoría');
         });
 }
 

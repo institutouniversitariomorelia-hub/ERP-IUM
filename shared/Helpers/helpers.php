@@ -14,9 +14,9 @@ if (!function_exists('currentUserRole')) {
 // REC: Rectoría.
 $ROLE_MODULES = [
     'SU'  => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria','reportes'],
-    'ADM' => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria','reportes'],
+    'ADM' => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','reportes'],
     'COB' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos','reportes'],
-    'REC' => ['dashboard','profile','ingresos','egresos','categorias','presupuestos','reportes']
+    'REC' => ['dashboard','profile','egresos','ingresos','categorias','presupuestos','auditoria','reportes']
 ];
 
 // Permisos de acciones CRUD por (rol -> módulo -> acciones permitidas)
@@ -27,26 +27,28 @@ $ROLE_ACTIONS = [
         'egresos' => ['view','add','edit','delete'],
         'categorias' => ['view','add','edit','delete'],
         'presupuestos' => ['view','add','edit','delete'],
-        'auditoria' => ['view'],
         'dashboard' => ['view'],
         'reportes' => ['view'],
-        'profile' => ['view','change_pass']
+        'profile' => ['view']
         // 'user' removido - ADM no gestiona usuarios
     ],
     'COB' => [
-        'ingresos' => ['view','add','edit'],
-        'egresos'  => ['view','add','edit'],
-        'categorias' => ['view'],
-        'presupuestos' => ['view'],
+        'ingresos' => ['view','add','edit','delete'],
+        'egresos' => ['view','add','edit','delete'],
+        'categorias' => ['view','add','edit','delete'],
+        'presupuestos' => ['view','add','edit','delete'],
+        'dashboard' => ['view'],
         'reportes' => ['view'],
         'profile' => ['view']
         // 'user' removido - COB no gestiona usuarios
     ],
     'REC' => [
-        'ingresos' => ['view','add','edit'],
-        'egresos'  => ['view','add','edit'],
-        'categorias' => ['view'],
-        'presupuestos' => ['view'],
+        'ingresos' => ['view','add','edit','delete'],
+        'egresos' => ['view','add','edit','delete'],
+        'categorias' => ['view','add','edit','delete'],
+        'presupuestos' => ['view','add','edit','delete'],
+        'auditoria' => ['view'],
+        'dashboard' => ['view'],
         'reportes' => ['view'],
         'profile' => ['view']
         // 'user' removido - Rectoría no gestiona usuarios

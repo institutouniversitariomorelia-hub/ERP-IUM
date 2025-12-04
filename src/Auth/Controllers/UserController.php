@@ -80,6 +80,13 @@ class UserController {
 
         try {
             $oldData = $isUpdate ? $this->userModel->getUserById($id) : null;
+            // Si se está actualizando y el usuario antiguo es SU, impedir cambiar su rol
+            if ($isUpdate && $oldData && isset($oldData['rol']) && $oldData['rol'] === 'SU') {
+                if (isset($data['rol']) && $data['rol'] !== 'SU') {
+                    echo json_encode(['success' => false, 'error' => 'No se puede cambiar el rol del Super Usuario.']);
+                    exit;
+                }
+            }
             if ($isUpdate) { 
                 if (!empty($data['password'])) {
                     $hash = password_hash($data['password'], PASSWORD_DEFAULT);
@@ -146,6 +153,14 @@ class UserController {
 
         if ($id <= 0) { $response['error'] = 'ID de usuario inválido.'; echo json_encode($response); exit; }
         if ($id == $_SESSION['user_id']) { $response['error'] = 'No puedes eliminar tu propio usuario.'; echo json_encode($response); exit; }
+
+        // Proteger al Super Usuario: no permitir eliminar a un usuario con rol 'SU'
+        $userToDelete = $this->userModel->getUserById($id);
+        if ($userToDelete && isset($userToDelete['rol']) && $userToDelete['rol'] === 'SU') {
+            $response['error'] = 'No está permitido eliminar al Super Usuario.';
+            echo json_encode($response);
+            exit;
+        }
 
         try {
             // $userToDelete = $this->userModel->getUserById($id); // No es necesario, el trigger lo registra

@@ -27,10 +27,9 @@ class AuditoriaController {
             'usuario' => $_GET['usuario'] ?? null,
             'fecha_inicio' => $_GET['fecha_inicio'] ?? null,
             'fecha_fin' => $_GET['fecha_fin'] ?? null,
-            'accion' => $_GET['accion'] ?? null,
-            // soporte para filtro por tipo (accion_tipo) desde la UI: Registro/Actualizacion/Eliminacion
+            // soporte para filtro por tipo (accion_tipo) desde la UI: Insercion/Actualizacion/Eliminacion
             'accion_tipo' => $_GET['accion_tipo'] ?? null,
-            'q' => $_GET['q'] ?? null,
+            // Nota: filtros 'accion' y 'q' eliminados para simplificar la interfaz y evitar búsquedas difusas.
         ];
 
         // Mapear nombres legibles de la UI a los valores reales en la BD (evita mismatch por mayúsculas/plurales)
@@ -45,14 +44,7 @@ class AuditoriaController {
             $filtros['seccion'] = $seccionMap[$filtros['seccion']];
         }
 
-        // Si se indicó accion_tipo y NO está vacío, priorizarlo (sobreescribe campo 'accion')
-        if (isset($filtros['accion_tipo']) && $filtros['accion_tipo'] !== '') {
-            // Valores esperados: Insercion, Actualizacion, Eliminacion
-            $filtros['accion'] = $filtros['accion_tipo'];
-        } elseif (isset($filtros['accion_tipo']) && $filtros['accion_tipo'] === '') {
-            // Si es cadena vacía (Todas), limpiar también el campo 'accion' para no filtrar
-            $filtros['accion'] = null;
-        }
+        // Mantener 'accion_tipo' tal cual; el filtrado específico se realiza en el modelo.
 
     // Pedir datos a los Modelos
     // Soporte de paginación: leer página y tamaño desde GET

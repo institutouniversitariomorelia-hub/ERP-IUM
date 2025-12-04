@@ -13,8 +13,8 @@ class UserModel {
      * @return array Lista de usuarios o array vacío si no hay.
      */
     public function getAllUsers() {
-        // <-- ¡CORRECCIÓN DE BD! Usamos 'id_user' y le damos un alias 'id'
-        $query = "SELECT id_user as id, nombre, username, rol FROM usuarios ORDER BY nombre ASC";
+        // Excluir el Super Usuario (rol 'SU') de la lista general
+        $query = "SELECT id_user as id, nombre, username, rol FROM usuarios WHERE rol <> 'SU' ORDER BY nombre ASC";
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);

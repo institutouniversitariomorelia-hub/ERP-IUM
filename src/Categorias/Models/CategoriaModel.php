@@ -14,35 +14,25 @@ class CategoriaModel {
      * @return array Lista de categorías.
      */
     public function getCategoriasByTipo($tipo = null) {
-        // Intentar incluir 'id_presupuesto' si la columna existe (compatibilidad con versiones antiguas)
-        $baseWithPres = "SELECT *, id_categoria as id, id_presupuesto FROM categorias";
-        $baseNoPres = "SELECT *, id_categoria as id FROM categorias";
+        // Use an explicit, safe column list to avoid compatibility issues
+        $query = "SELECT id_categoria AS id, nombre, tipo, concepto, descripcion, id_user, no_borrable FROM categorias";
 
         $params = [];
         $types = '';
-
-        // Construir cláusula WHERE/ORDER para ambas variantes
         $where = '';
         if ($tipo !== null) {
             $where = " WHERE tipo = ?";
             $params[] = $tipo;
             $types .= 's';
         }
+
         $order = " ORDER BY id_categoria DESC";
+        $query = $query . $where . $order;
 
-        // Primero intentar la versión que incluye id_presupuesto
-        $query = $baseWithPres . $where . $order;
         $stmt = $this->db->prepare($query);
-
-        // Si falla (columna inexistente), caer a la versión sin id_presupuesto
         if (!$stmt) {
-            error_log("getCategoriasByTipo: id_presupuesto no disponible o error, probando sin esa columna. DB err: " . $this->db->error);
-            $query = $baseNoPres . $where . $order;
-            $stmt = $this->db->prepare($query);
-            if (!$stmt) {
-                error_log("Error al preparar getCategoriasByTipo (sin id_presupuesto): " . $this->db->error);
-                return [];
-            }
+            error_log("Error al preparar getCategoriasByTipo: " . $this->db->error);
+            return [];
         }
 
         if (!empty($params)) {

@@ -117,7 +117,7 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                                     </button>
                                     <ul class="dropdown-menu">
                                         <?php if (roleCan('edit','presupuestos')): ?>
-                                        <li><button class="dropdown-item btn-edit-presupuesto" data-id="<?php echo $presId; ?>" data-bs-toggle="modal" data-bs-target="#modalPresupuesto">
+                                        <li><button class="dropdown-item btn-edit-presupuesto" data-id="<?php echo $presId; ?>" data-bs-toggle="modal" data-bs-target="#modalPresupuestoGeneral">
                                             <ion-icon name="create-outline" class="me-2"></ion-icon>Editar
                                         </button></li>
                                         <?php endif; ?>
@@ -483,7 +483,7 @@ function cargarGraficaPresupuestoVsGastado() {
         })
         .fail(function(xhr) {
             console.error('Error al cargar gráfica presupuesto vs gastado:', xhr);
-            alert('Error al cargar la gráfica. Por favor, intente nuevamente.');
+            showError('Error al cargar la gráfica. Por favor, intente nuevamente.');
         });
 }
 </script>

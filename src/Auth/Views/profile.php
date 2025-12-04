@@ -25,11 +25,13 @@
                 <p class="text-danger fw-bold"><?php echo htmlspecialchars($currentUser['rol']); ?></p>
             </div>
         </div>
+        <?php if ($currentUser['rol'] === 'SU'): ?>
         <div class="btn-responsive-sm mt-3">
             <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#modalEditarMiPerfil" id="btnEditarMiPerfil">
                 <ion-icon name="create-outline" style="vertical-align: middle;"></ion-icon> Editar Mi Perfil
             </button>
         </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -86,9 +88,9 @@
                                                     </button>
                                                 <?php endif; ?>
                                                 <?php if (roleCan('change_pass','user')): ?>
-                                                    <button class="btn btn-sm btn-secondary btn-change-pass" 
+                                                        <button class="btn btn-sm btn-secondary btn-change-pass" 
                                                             data-username="<?php echo htmlspecialchars($user['username']); ?>" 
-                                                            data-bs-toggle="modal" data-bs-target="#modalCambiarPassword"
+                                                            data-bs-toggle="modal" data-bs-target="#modalCambiarPasswordUser"
                                                             title="Cambiar Contraseña">
                                                         <ion-icon name="lock-closed-outline"></ion-icon>
                                                     </button>

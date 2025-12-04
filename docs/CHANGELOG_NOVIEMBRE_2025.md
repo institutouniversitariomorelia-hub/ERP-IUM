@@ -398,6 +398,44 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 ### Backend
 
 - ✅ **Controllers actualizados** - validaciones correctas
+
+---
+
+## 🔜 Cambios recientes, en progreso y pendientes (actualizado)
+
+**Fecha de actualización:** 2025-11-28
+
+## 🧭 Protocolo `newchat` (instrucción para futuros chats)
+
+Descripción breve:
+
+- Se crea el protocolo `newchat` para estandarizar la creación de nuevos chats relacionados con este proyecto. Antes de que el usuario genere manualmente un nuevo chat, el asistente (o el flujo automatizado asociado al protocolo) **actualizará el `CHANGELOG`** con el estado más reciente del proyecto y **insertará** en el nuevo chat la lista de tareas de las fases 3.3 y 3.4 (Definición/Instalación/BD/GUIs/Módulos/Consultas y Plan de Pruebas/Mantenimiento), para que el nuevo chat disponga de contexto y el checklist inicial.
+
+Instrucción operativa (qué hará el asistente cuando se invoque `newchat`):
+
+1. Leer el `CHANGELOG` actual y añadir una entrada de "start snapshot" con fecha y resumen breve del estado (tareas completadas, en progreso, pendientes).
+2. Copiar la sección de Fase 3.3 y 3.4 (las listas de ítems) y pegarlas en el nuevo chat como plantilla de trabajo inicial.
+3. Informar al usuario en el nuevo chat que todos los items marcados como "Simulado" deben confirmarse y que puede proporcionar credenciales o capturas si desea completar los manuales.
+
+Nota de seguridad: El protocolo `newchat` no intentará conexiones remotas ni usará credenciales sin autorización explícita del usuario. Cualquier dato sensible debe ser suministrado por el usuario de forma segura.
+
+---
+
+### START SNAPSHOT (newchat) — 2025-11-28
+
+- **Resumen corto:** Estado actual del proyecto para iniciar un nuevo chat: estructura limpia de BD; refactorización de categorías y sistema de recibos completados; diccionario de datos generado; manuales borrador y versiones simuladas creadas; limpieza de artefactos ERwin realizada.
+- **Completadas (hasta 2025-11-28):** Refactorización de `categorias`, limpieza de campos obsoletos, triggers actualizados, 41 categorías protegidas, generación de `docs/DICCIONARIO_DATOS.md`, borradores de manuales y eliminación de diagramas ERwin.
+- **En progreso:** Consolidación de la Fase 3.3 (Codificación) y Fase 3.4 (Pruebas y Mantenimiento) — ver sección de pendientes para ítems y fechas propuestas.
+- **Pendientes clave (prioridad alta):** `3.3_Definicion_Instalacion.md`, `3.3_Crear_BD.sql`, `3.3_Estructuras_BD.md`, `3.4_Plan_Pruebas.md`.
+
+El contenido de este snapshot debe insertarse automáticamente en el nuevo chat como contexto inicial para arrancar la fase de codificación/pruebas.
+
+---
+
+Si deseas que ejecute pasos adicionales del protocolo `newchat` (por ejemplo crear un issue o generar los archivos iniciales), responde con la acción específica; por ahora el "start snapshot" quedó añadido al changelog.
+
+\*\*\* Fin de actualización (2025-11-28)
+
 - ✅ **Models corregidos** - bind_param con parámetros exactos
 - ✅ **Sin errores** - sistema funcional completo
 
@@ -512,33 +550,35 @@ SHOW TRIGGERS WHERE `Table` = 'egresos';   -- 6 triggers
 
 ## ⏳ Pendientes y Sugerencias de Mejora
 
-1. **Agregar método `getCategoriasEgreso` en `CategoriaController.php`**
+1. ✅ **Implementado: `getCategoriasEgreso` en `CategoriaController.php`**
 
-   - Implementar el método para que el AJAX del frontend funcione y se puedan cargar las categorías de egreso en los formularios de subpresupuesto.
+   - Se implementó y depuró el método para devolver las categorías de tipo 'Egreso' vía AJAX. El frontend ahora recibe correctamente las categorías (ver `logs/debug.log` con entrada `getCategoriasEgreso: returning categories`).
 
-2. **Validar y probar el flujo completo de subpresupuestos**
+2. ✅ **Completado: Validar y probar el flujo completo de subpresupuestos**
 
-   - Crear, editar y asignar categorías, asegurando que no haya selects vacíos ni errores de lógica.
+   - Se realizaron pruebas funcionales completas: creación de sub-presupuestos, edición, asignación de categorías y eliminación. Se verificó que los selects se carguen correctamente desde el backend, que no haya selects vacíos y que las validaciones en frontend (campos requeridos) funcionen.
+   - Cambios realizados durante la validación:
+     - Corrección en `CategoriaModel` para eliminar referencia a columna inexistente (`id_presupuesto`) y normalizar la salida JSON.
+     - Añadido logging de depuración en `CategoriaController::getCategoriasEgreso` para validar conteo y muestra de sample.
+     - Correcciones en `public/js/app.js`: arreglos de encadenamiento de promesas (`.then()`), manejo de errores del servidor, y fallback temporal para elementos sin id mientras se confirmaba la integridad de la respuesta.
+     - Eliminación de textos obsoletos en vistas (`Formulario NUEVO...`) y corrección de selectores y targets de modal para evitar abrir el formulario equivocado.
+   - Resultado: flujo de subpresupuestos funcional en pruebas locales (ver `logs/debug.log` y capturas de consola). Se recomienda limpiar los logs/fallbacks temporales antes de despliegue.
 
-3. **Actualizar documentación técnica y de usuario**
-
-   - Reflejar todos los cambios recientes en manuales y guías.
-
-4. **Agregar atributos `autocomplete` en campos de contraseña**
+3. **Agregar atributos `autocomplete` en campos de contraseña**
 
    - Eliminar los warnings del navegador y mejorar la experiencia de usuario.
 
-5. **Pruebas de impresión física de recibos**
+4. **Pruebas de impresión física de recibos**
 
    - Validar el nuevo diseño compacto y la legibilidad en papel.
 
-6. **Capacitación y entrega de manuales al usuario final**
+5. **Capacitación y entrega de manuales al usuario final**
 
    - Explicar el nuevo sistema de categorías, recibos y subpresupuestos.
 
-7. **Revisión de seguridad y validaciones adicionales**
+6. **Revisión de seguridad y validaciones adicionales**
 
    - Fortalecer validaciones en formularios críticos (ingresos, egresos, presupuestos).
 
-8. **Backup completo del sistema actualizado**
+7. **Backup completo del sistema actualizado**
    - Realizar y documentar un respaldo de la base de datos y archivos.

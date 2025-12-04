@@ -21,13 +21,13 @@
                                 <select id="subpres_categoria" name="id_categoria" class="form-select" required>
                                     <option value="">Seleccione una categoría...</option>
                                 </select>
-                                <div id="msgNoCategoriasEgreso" class="form-text text-danger d-none">No hay categorías de egreso disponibles. <b>Este es el formulario NUEVO de subpresupuesto.</b></div>
+                                <div id="msgNoCategoriasEgreso" class="form-text text-danger d-none">No hay categorías de egreso disponibles.</div>
                             </div>
                             <div class="mb-3">
                                 <label for="subpres_nombre" class="form-label">Nombre del Sub-Presupuesto <span class="text-muted">(opcional)</span></label>
                                 <input id="subpres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Subpresupuesto Nómina Q1">
                                 <div class="form-text">Nombre descriptivo para identificar fácilmente el subpresupuesto</div>
-                                <div class="form-text text-primary"><b>Formulario NUEVO de subpresupuesto activo</b></div>
+                                
                             </div>
                             <div class="mb-3">
                                 <label for="subpres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
@@ -327,9 +327,36 @@ $currentUser = [
             padding: 0.5em 0.75em;
             animation: pulse 2s infinite;
         }
+        /* Contenedor de notificaciones globales (top-right) */
+        #app_notifications { position: fixed; top: 18px; right: 18px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+        .app-notif { min-width: 280px; max-width: 420px; padding: 12px 14px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); color: white; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .app-notif .notif-msg { flex: 1; font-size: 0.95rem; }
+        .app-notif.app-notif-success { background: linear-gradient(135deg, #2ecc71 0%, #28a745 100%); border-left: 4px solid #1e7e34; }
+        .app-notif.app-notif-error { background: linear-gradient(135deg, #e74c3c 0%, #c82333 100%); border-left: 4px solid #8b1d1d; }
+        .app-notif .notif-close { cursor: pointer; opacity: 0.9; }
     </style>
 </head>
 <body>
+    <!-- Contenedor global de notificaciones (inyectado por JS) -->
+    <div id="app_notifications" aria-live="polite" aria-atomic="true"></div>
+    <!-- Global Confirm Modal -->
+    <div class="modal fade" id="modalConfirm" tabindex="-1" aria-labelledby="modalConfirmLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header modal-header-danger">
+                    <h5 class="modal-title" id="modalConfirmLabel">Confirmar acción</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="confirm-msg mb-0">¿Está seguro que desea continuar?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="modalConfirmNo" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="modalConfirmYes">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="sidebar">
         <!-- Header del Sidebar -->
         <div class="logo-container" id="logoContainer" style="cursor: pointer;">
@@ -445,7 +472,9 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto fw-bold"></span>
+
+            <span class="me-auto fw-bold" style="font-size:1.25rem; letter-spacing:1px;">INSTITUTO UNIVERSITARIO MORELIA</span>
+
             <div class="user-info-header">
                 <div class="d-none d-md-block">
                     <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
@@ -538,11 +567,7 @@ $currentUser = [
                             </div>
                         <?php endif; ?>
                         <hr>
-                        <div class="d-grid">
-                            <button type="button" class="btn btn-outline-secondary" id="btnAbrirCambiarPassword">
-                                <ion-icon name="key-outline" style="vertical-align: middle;"></ion-icon> Cambiar Contraseña
-                            </button>
-                        </div>
+                        
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -562,6 +587,24 @@ $currentUser = [
                         <h5 class="modal-title" id="modalUsuarioTitle">Registrar Nuevo Usuario</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    <script>
+                    // Cambia el título del modal según si es edición o registro
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var modalUsuario = document.getElementById('modalUsuario');
+                        if (modalUsuario) {
+                            modalUsuario.addEventListener('show.bs.modal', function (event) {
+                                var title = document.getElementById('modalUsuarioTitle');
+                                var form = document.getElementById('formUsuario');
+                                var idInput = document.getElementById('usuario_id');
+                                if (idInput && idInput.value) {
+                                    title.textContent = 'Editar Usuario';
+                                } else {
+                                    title.textContent = 'Registrar Nuevo Usuario';
+                                }
+                            });
+                        }
+                    });
+                    </script>
                     <div class="modal-body">
                         <input type="hidden" id="usuario_id" name="id">
                         <div class="mb-3">
@@ -596,74 +639,94 @@ $currentUser = [
         </div>
     </div>
 
-    <!-- Modal: Cambiar Contraseña (Nueva Versión) -->
-    <div class="modal fade" id="modalCambiarPasswordNuevo" tabindex="-1" aria-labelledby="modalCambiarPasswordNuevoLabel" aria-hidden="true">
+
+    <!-- Modal: Cambiar Contraseña - Propia (perfil) -->
+    <div class="modal fade" id="modalCambiarPasswordOwn" tabindex="-1" aria-labelledby="modalCambiarPasswordOwnLabel" aria-hidden="true">
         <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content">
-                <form id="formCambiarPasswordNuevo">
+                <form id="formCambiarPasswordOwn">
                     <div class="modal-header modal-header-danger">
-                        <h5 class="modal-title" id="modalCambiarPasswordNuevoLabel">Cambiar Contraseña</h5>
+                        <h5 class="modal-title" id="modalCambiarPasswordOwnLabel">Cambiar mi Contraseña</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <input type="hidden" id="changepass_username" name="username">
+                        <input type="hidden" id="own_username" name="username">
                         <div class="mb-3">
-                            <label for="password_actual" class="form-label">Contraseña Actual</label>
+                            <label for="own_password_actual" class="form-label">Contraseña Actual</label>
                             <div class="input-group">
-                                <input id="password_actual" name="password_actual" type="password" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordActual">
+                                <input id="own_password_actual" name="password_actual" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleOwnActual">
                                     <ion-icon name="eye-outline"></ion-icon>
                                 </button>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="password_nueva" class="form-label">Contraseña Nueva</label>
+                            <label for="own_password_nueva" class="form-label">Contraseña Nueva</label>
                             <div class="input-group">
-                                <input id="password_nueva" name="password_nueva" type="password" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordNueva">
+                                <input id="own_password_nueva" name="password_nueva" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleOwnNueva">
                                     <ion-icon name="eye-outline"></ion-icon>
                                 </button>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="password_confirmar" class="form-label">Confirmar Contraseña Nueva</label>
+                            <label for="own_password_confirmar" class="form-label">Confirmar Contraseña Nueva</label>
                             <div class="input-group">
-                                <input id="password_confirmar" name="password_confirmar" type="password" class="form-control" required>
-                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirmar">
+                                <input id="own_password_confirmar" name="password_confirmar" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleOwnConfirmar">
                                     <ion-icon name="eye-outline"></ion-icon>
                                 </button>
                             </div>
-                            <div class="form-text" id="passwordMatchMessage"></div>
+                            <div class="form-text" id="ownPasswordMatchMessage"></div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-danger" id="btnGuardarPasswordNueva">Cambiar Contraseña</button>
+                        <button type="submit" class="btn btn-danger" id="btnGuardarPasswordOwn">Cambiar Contraseña</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal: Cambiar Contraseña (Versión Antigua para Admin) -->
-    <div class="modal fade" id="modalCambiarPassword" tabindex="-1" aria-labelledby="modalCambiarPasswordLabel" aria-hidden="true">
+    <!-- Modal: Cambiar Contraseña - Usuario (admin cambia a otro usuario) -->
+    <div class="modal fade" id="modalCambiarPasswordUser" tabindex="-1" aria-labelledby="modalCambiarPasswordUserLabel" aria-hidden="true">
+
         <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content">
-                <form id="formCambiarPassword">
+                <form id="formCambiarPasswordUser">
                     <div class="modal-header modal-header-danger">
-                        <h5 class="modal-title" id="modalCambiarPasswordLabel">Cambiar Contraseña</h5>
+                        <h5 class="modal-title" id="modalCambiarPasswordUserLabel">Cambiar contraseña de usuario</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <input type="hidden" id="change_pass_username" name="username">
+                        <input type="hidden" id="target_username" name="username">
                         <div class="mb-3">
-                            <label class="form-label">Nueva Contraseña para <strong id="username_display"></strong></label>
-                            <input id="change_pass_password" name="password" type="password" class="form-control" required>
+                            <label class="form-label">Usuario: <strong id="target_username_display">-</strong></label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="target_password_new" class="form-label">Contraseña Nueva</label>
+                            <div class="input-group">
+                                <input id="target_password_new" name="password" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleUserNueva">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="target_password_confirm" class="form-label">Confirmar Contraseña</label>
+                            <div class="input-group">
+                                <input id="target_password_confirm" name="password_confirm" type="password" class="form-control" required>
+                                <button class="btn btn-outline-secondary" type="button" id="toggleUserConfirmar">
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </button>
+                            </div>
+                            <div class="form-text" id="userPasswordMatchMessage"></div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-danger">Guardar Contraseña</button>
+                        <button type="submit" class="btn btn-danger" id="btnGuardarPasswordUser">Guardar Contraseña</button>
                     </div>
                 </form>
             </div>
