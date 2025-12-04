@@ -1129,7 +1129,16 @@ const EgresosModule = (function() {
                     if (r.success) {
                         $(document).trigger('egresoGuardado');
                         try { showSuccess('Egreso guardado correctamente.'); } catch(e) {}
-                        setTimeout(() => { window.location.reload(); }, 900);
+
+                        // Si es creación, el backend devuelve r.folio
+                        if (r.folio) {
+                            // Redirigir directamente al recibo para imprimir
+                            const url = `generate_receipt.php?folio=${encodeURIComponent(r.folio)}&tipo=egreso`;
+                            window.location.href = url;
+                        } else {
+                            // Caso de actualización: mantener comportamiento actual
+                            setTimeout(() => { window.location.reload(); }, 900);
+                        }
                     } else {
                         showError('No se pudo guardar el egreso. ' + (r.error || 'Revise los datos e intente nuevamente.'));
                     }

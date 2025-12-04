@@ -121,6 +121,7 @@ class EgresoController {
                         $this->auditoriaModel->addLog('Egreso', 'Insercion', $det, null, json_encode($data), $newId, null, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
+                    $response['folio'] = $newId; // Para redirigir al recibo inmediatamente
                 } else { $response['error'] = 'No se pudo crear el egreso.'; }
             } else { // Actualizar
                 // intentar obtener datos antiguos para comparar
