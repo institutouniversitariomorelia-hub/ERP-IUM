@@ -64,6 +64,7 @@ if (function_exists('debug_log')) {
         'session_user' => $_SESSION['user_id'] ?? null
     ]);
 }
+
 if ($controllerFile && file_exists(__DIR__ . '/' . $controllerFile)) {
     $controllerFile = __DIR__ . '/' . $controllerFile;
     require_once $controllerFile;
@@ -106,4 +107,3 @@ if ($controllerFile && file_exists(__DIR__ . '/' . $controllerFile)) {
 if (isset($conn) && $conn instanceof mysqli) {
     $conn->close();
 }
-?>

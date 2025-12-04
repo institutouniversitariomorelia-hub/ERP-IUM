@@ -1,5 +1,5 @@
 <?php
-// src/Categorias/Models/CategoriaModel.php (CORREGIDO)
+// src/Categorias/Models/CategoriaModel.php (VERSIÓN DEFINITIVA)
 
 class CategoriaModel {
     private $db;
@@ -14,12 +14,14 @@ class CategoriaModel {
      * @return array Lista de categorías.
      */
     public function getCategoriasByTipo($tipo = null) {
-        // Use an explicit, safe column list to avoid compatibility issues
+        // Selección explícita de columnas para evitar errores y mejorar rendimiento
+        // Se asume que la BD ya fue migrada y tiene las columnas concepto, id_user, no_borrable
         $query = "SELECT id_categoria AS id, nombre, tipo, concepto, descripcion, id_user, no_borrable FROM categorias";
 
         $params = [];
         $types = '';
         $where = '';
+        
         if ($tipo !== null) {
             $where = " WHERE tipo = ?";
             $params[] = $tipo;
@@ -50,14 +52,13 @@ class CategoriaModel {
         }
     }
 
-    // --- Funciones CRUD para Categorías (añadidas para el módulo Categorías) ---
+    // --- Funciones CRUD para Categorías ---
 
     public function getAllCategorias() {
         return $this->getCategoriasByTipo(null); // Reutiliza la función anterior
     }
 
     public function getCategoriaById($id) {
-        // CORREGIDO: La columna PK es 'id_categoria'
         $stmt = $this->db->prepare("SELECT *, id_categoria as id FROM categorias WHERE id_categoria = ?");
         if ($stmt) {
             $stmt->bind_param("i", $id);
@@ -103,7 +104,6 @@ class CategoriaModel {
     }
 
     public function deleteCategoria($id) {
-        // CORREGIDO: La columna PK es 'id_categoria'
         $stmt = $this->db->prepare("DELETE FROM categorias WHERE id_categoria = ?");
         if ($stmt) {
             $stmt->bind_param("i", $id);
