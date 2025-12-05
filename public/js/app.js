@@ -11,70 +11,52 @@
  * ============================================================================
  */
 
-'use strict';
+"use strict";
 
 // ============================================================================
-// MÓDULO: Utilidades Globales
+// MÓDULO: Utilidades Globales (ERPUtils)
 // ============================================================================
 const ERPUtils = (function() {
     /**
-     * Realiza llamadas AJAX genéricas al backend
-     * @param {string} controller - Nombre del controlador PHP
-     * @param {string} action - Acción/método a ejecutar
-     * @param {object} data - Datos a enviar
-     * @param {string} method - Método HTTP (GET/POST)
-     * @returns {jqXHR} Promesa jQuery AJAX
+     * Wrapper genérico para llamadas AJAX
+     * @param {string} controller
+     * @param {string} action
+     * @param {object} data
+     * @param {string} method
+     * @returns {jqXHR}
      */
     function ajaxCall(controller, action, data = {}, method = 'POST') {
-        let url = `${BASE_URL}index.php?controller=${controller}&action=${action}`;
-        
-        if (method.toUpperCase() === 'GET' && Object.keys(data).length > 0) {
-            url += '&' + $.param(data);
-            data = {};
-        }
-
-        const ajaxOptions = {
-            url: url,
-            type: 'POST',
+        return $.ajax({
+            url: BASE_URL + 'index.php',
+            method: method,
             dataType: 'json',
-            data: data
-        };
-
-        if (method.toUpperCase() !== 'GET' && method.toUpperCase() !== 'POST') {
-            ajaxOptions.data._method = method.toUpperCase();
-        }
-
-        console.log(`[AJAX] ${method} ${controller}/${action}`, ajaxOptions.data);
-        return $.ajax(ajaxOptions);
+            data: Object.assign({}, data, {
+                controller: controller,
+                action: action
+            })
+        });
     }
 
     /**
-     * Muestra mensajes de error amigables
-     * @param {string} action - Descripción de la acción
-     * @param {object} jqXHR - Objeto de error jQuery
+     * Manejo estándar de errores AJAX
+     * @param {string} contexto
+     * @param {jqXHR} xhr
      */
-    function mostrarError(action, jqXHR = null) {
-        // Esta función ahora usa el sistema de notificaciones (top-left)
-        let errorMsg = `Ocurrió un error al ${action}.`;
-        let serverError = 'Error desconocido o sin conexión.';
+    function mostrarError(contexto, xhr) {
+        console.error(`[ERROR] Falló la operación (${contexto})`, xhr);
+        let errorMsg = 'Ocurrió un error al comunicarse con el servidor.';
+        let serverError = '';
 
-        if (jqXHR) {
-            if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
-                serverError = jqXHR.responseJSON.error;
-            } else if (jqXHR.responseText) {
-                console.error(`[ERROR] ${action}:`, jqXHR.responseText);
-                const match = jqXHR.responseText.match(/<b>(?:Fatal error|Warning|Exception)<\/b>:(.*?)<br \/>/i);
-                if (match && match[1]) {
-                    serverError = `Error PHP: ${match[1].trim()}`;
-                } else {
-                    serverError = 'Respuesta del servidor no válida (ver consola).';
-                }
-            } else if (jqXHR.statusText) {
-                serverError = `${jqXHR.statusText} (${jqXHR.status})`;
+        try {
+            if (xhr && xhr.responseJSON && xhr.responseJSON.error) {
+                serverError = xhr.responseJSON.error;
+            } else if (xhr && typeof xhr.responseText === 'string' && xhr.responseText.trim() !== '') {
+                serverError = xhr.responseText.substring(0, 400);
             }
+        } catch (e) {
+            console.warn('No se pudo procesar el mensaje de error del servidor:', e);
         }
 
-        console.error(`[ERROR] ${action}:`, serverError, jqXHR);
         // Mostrar notificación de error amigable
         showError(`${errorMsg} Detalle: ${serverError}. Revise la consola (F12) para más información.`, { autoClose: 7000 });
     }
@@ -1280,31 +1262,37 @@ const EgresosModule = (function() {
 // ============================================================================
 // MÓDULO: Gestión de Categorías
 // ============================================================================
-const CategoriasModule = (function() {
+const CategoriasModule = (function () {
     const { ajaxCall, mostrarError } = ERPUtils;
 
     /**
      * Maneja la apertura del modal de categoría
      */
     function initModalCategoria() {
-        $('#modalCategoria').on('show.bs.modal', function(event) {
+        $('#modalCategoria').on('show.bs.modal', function (event) {
             const button = event.relatedTarget;
             const catId = button ? $(button).data('id') : null;
             const $form = $('#formCategoria');
-            
+
             if (!$form.length) {
                 console.error('[ERROR] Formulario #formCategoria no encontrado');
                 return;
             }
-            
+
             $form[0].reset();
             $('#categoria_id').val('');
             // Ocultar campo concepto por defecto
             $('#div_cat_concepto').hide();
             $('#cat_concepto').val('');
-            
+            $('#alert_categoria_protegida').hide();
+
+            const $submitBtn = $form.find('button[type="submit"], .btn-submit-categoria');
+
             if (catId) {
                 $('#modalCategoriaTitle').text('Editar Categoría');
+                if ($submitBtn.length) {
+                    $submitBtn.text('Actualizar Categoría');
+                }
                 ajaxCall('categoria', 'getCategoriaData', { id: catId }, 'GET')
                     .done(data => {
                         if (data && !data.error) {
@@ -1313,6 +1301,7 @@ const CategoriasModule = (function() {
                             $('#cat_tipo').val(data.tipo);
                             $('#cat_descripcion').val(data.descripcion);
                             $('#categoria_no_borrable').val(data.no_borrable || 0);
+
                             // Mostrar campo concepto si es ingreso y setear valor
                             if (data.tipo === 'Ingreso') {
                                 $('#div_cat_concepto').show();
@@ -1321,7 +1310,7 @@ const CategoriasModule = (function() {
                                 $('#div_cat_concepto').hide();
                                 $('#cat_concepto').val('');
                             }
-                            
+
                             // Mostrar alerta si es protegida
                             if (data.no_borrable == 1) {
                                 $('#alert_categoria_protegida').show();
@@ -1330,7 +1319,7 @@ const CategoriasModule = (function() {
                             }
                         } else {
                             $('#modalCategoria').modal('hide');
-                                showError('Error al cargar la categoría. ' + (data.error || 'Verifique la consola.'));
+                            showError('Error al cargar la categoría. ' + (data.error || 'Verifique la consola.'));
                         }
                     })
                     .fail(xhr => {
@@ -1339,6 +1328,9 @@ const CategoriasModule = (function() {
                     });
             } else {
                 $('#modalCategoriaTitle').text('Agregar Nueva Categoría');
+                if ($submitBtn.length) {
+                    $submitBtn.text('Guardar Categoría');
+                }
                 // Por defecto, si tipo es Ingreso, mostrar campo concepto
                 if ($('#cat_tipo').val() === 'Ingreso') {
                     $('#div_cat_concepto').show();
@@ -1346,8 +1338,9 @@ const CategoriasModule = (function() {
                     $('#div_cat_concepto').hide();
                 }
             }
+
             // Evento al cambiar tipo
-            $('#cat_tipo').off('change.categoria').on('change.categoria', function() {
+            $('#cat_tipo').off('change.categoria').on('change.categoria', function () {
                 if ($(this).val() === 'Ingreso') {
                     $('#div_cat_concepto').show();
                 } else {
@@ -1362,8 +1355,14 @@ const CategoriasModule = (function() {
      * Maneja el envío del formulario de categoría
      */
     function initSubmitCategoria() {
-        $(document).on('submit', '#formCategoria', function(e) {
+        // Evitar cualquier envío nativo del formulario
+        $(document).off('submit', '#formCategoria');
+
+        $(document).on('submit', '#formCategoria', function (e) {
             e.preventDefault();
+
+            const $form = $(this);
+
             // Validación: si tipo es Ingreso, concepto es obligatorio
             const tipo = $('#cat_tipo').val();
             const concepto = $('#cat_concepto').val();
@@ -1373,16 +1372,26 @@ const CategoriasModule = (function() {
                 return false;
             }
 
-            ajaxCall('categoria', 'save', $(this).serialize())
-                .done(r => {
-                    if (r.success) {
-                        try { showSuccess('Categoría guardada correctamente.'); } catch(e) {}
-                        setTimeout(() => { window.location.reload(); }, 900);
-                    } else {
-                        showError('No fue posible guardar la categoría. ' + (r.error || 'Intenta de nuevo.'));
-                    }
-                })
-                .fail(xhr => mostrarError('guardar categoría', xhr));
+            // Llamada AJAX directa al endpoint save
+            $.ajax({
+                url: BASE_URL + 'index.php?controller=categoria&action=save',
+                method: 'POST',
+                dataType: 'json',
+                data: $form.serialize()
+            })
+            .done(function (r) {
+                if (r && r.success) {
+                    try { showSuccess('Categoría guardada correctamente.'); } catch (e) {}
+                    setTimeout(function () { window.location.reload(); }, 900);
+                } else {
+                    showError('No fue posible guardar la categoría. ' + (r && r.error ? r.error : 'Intenta de nuevo.'));
+                }
+            })
+            .fail(function (xhr) {
+                mostrarError('guardar categoría', xhr);
+            });
+
+            return false;
         });
     }
 
@@ -1390,20 +1399,40 @@ const CategoriasModule = (function() {
      * Maneja la eliminación de categorías
      */
     function initEliminarCategoria() {
-        $(document).on('click', '.btn-del-categoria', function() {
+        // Evitar handlers duplicados
+        $(document).off('click', '.btn-del-categoria');
+
+        $(document).on('click', '.btn-del-categoria', function () {
             const id = $(this).data('id');
+            const $row = $(this).closest('tr');
+            if (!id) {
+                showError('ID de categoría inválido.');
+                return;
+            }
+
             showConfirm('¿Eliminar esta categoría?').then(confirmed => {
                 if (!confirmed) return;
-                ajaxCall('categoria', 'delete', { id: id })
-                    .done(r => {
-                        if (r.success) {
-                            try { showSuccess('Categoría eliminada correctamente.'); } catch(e) {}
-                            setTimeout(() => { window.location.reload(); }, 900);
-                        } else {
-                            showError('No se pudo eliminar la categoría. ' + (r.error || 'Intenta de nuevo.'));
+
+                // Llamada AJAX directa al endpoint delete
+                $.ajax({
+                    url: BASE_URL + 'index.php?controller=categoria&action=delete',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: { id: id }
+                })
+                .done(function (r) {
+                    if (r && r.success) {
+                        try { showSuccess('Categoría eliminada correctamente.'); } catch (e) {}
+                        if ($row && $row.length) {
+                            $row.fadeOut(300, function () { $(this).remove(); });
                         }
-                    })
-                    .fail(xhr => mostrarError('eliminar categoría', xhr));
+                    } else {
+                        showError('No se pudo eliminar la categoría. ' + (r && r.error ? r.error : 'Intenta de nuevo.'));
+                    }
+                })
+                .fail(function (xhr) {
+                    mostrarError('eliminar categoría', xhr);
+                });
             });
         });
     }
@@ -1678,8 +1707,7 @@ const PresupuestosModule = (function() {
                     }
                 })
                 .fail(xhr => mostrarError('guardar presupuesto general', xhr));
-        });
-    }
+        });}
 
     /**
      * Maneja la apertura del modal de sub-presupuesto
@@ -1879,6 +1907,7 @@ const PresupuestosModule = (function() {
                     } else {
                         $selectCat.append('<option value="">-- No hay categorías disponibles --</option>');
                     }
+
                     $selectCat.prop('disabled', false);
                     
                     // Si es edición, cargar datos
@@ -1998,7 +2027,6 @@ const PresupuestosModule = (function() {
         initModalPresupuestoCategoria();
         initSubmitPresupuestoCategoria();
         initEliminarPresupuesto();
-        initRefrescarPresupuestos();
         // AHORA SÍ: Inicializar el flujo exclusivo de subpresupuestos porque las funciones YA EXISTEN dentro del módulo
         initModalSubPresupuestoExclusivo();
         initSubmitSubPresupuestoExclusivo();
@@ -2068,150 +2096,19 @@ const DashboardModule = (function() {
 
     return { init };
 })();
-
 // ============================================================================
-// MÓDULO: Auditoría (Visor de Detalles)
+// INICIALIZACIÓN GLOBAL DE MÓDULOS
 // ============================================================================
-const AuditoriaModule = (function() {
-    const { ajaxCall, mostrarError, escapeHtml } = ERPUtils;
-
-    /**
-     * Maneja la apertura del modal de detalle de auditoría
-     */
-    function initModalDetalleAuditoria() {
-        $('#modalDetalleAuditoria').on('show.bs.modal', function(event) {
-            const button = event.relatedTarget;
-            const auditoriaId = button ? $(button).data('id') : null;
-            const $body = $('#detalleAuditoriaBody');
-            
-            if (!$body.length) {
-                console.error('[ERROR] #detalleAuditoriaBody no encontrado');
-                return;
-            }
-            
-            $body.html('<p class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Cargando...</p>');
-            
-            if (!auditoriaId) {
-                $body.html('<p class="text-danger">Error: ID de auditoría no especificado.</p>');
-                return;
-            }
-            
-            ajaxCall('auditoria', 'getDetalle', { id: auditoriaId }, 'GET')
-                .done(data => {
-                    if (data && !data.error && data.id_auditoria) {
-                        let html = '<div class="audit-detail-content">';
-                        html += `<div class="row mb-3">`;
-                        html += `<div class="col-md-6"><strong>ID Auditoría:</strong> ${escapeHtml(data.id_auditoria)}</div>`;
-                        html += `<div class="col-md-6"><strong>Fecha/Hora:</strong> ${escapeHtml(data.fecha_hora)}</div>`;
-                        html += `</div>`;
-                        html += `<div class="row mb-3">`;
-                        html += `<div class="col-md-6"><strong>Usuario:</strong> ${escapeHtml(data.usuario_nombre || 'N/A')}</div>`;
-                        html += `<div class="col-md-6"><strong>Tabla:</strong> ${escapeHtml(data.tabla_afectada)}</div>`;
-                        html += `</div>`;
-                        html += `<div class="row mb-3">`;
-                        html += `<div class="col-12"><strong>Acción:</strong> <span class="badge bg-info">${escapeHtml(data.accion)}</span></div>`;
-                        html += `</div>`;
-                        
-                        if (data.datos_anteriores && data.datos_anteriores.trim() !== '' && data.datos_anteriores !== '{}') {
-                            html += `<div class="row mb-3">`;
-                            html += `<div class="col-12"><strong>Datos Anteriores:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_anteriores)}</pre></div>`;
-                            html += `</div>`;
-                        }
-                        
-                        if (data.datos_nuevos && data.datos_nuevos.trim() !== '' && data.datos_nuevos !== '{}') {
-                            html += `<div class="row mb-3">`;
-                            html += `<div class="col-12"><strong>Datos Nuevos:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_nuevos)}</pre></div>`;
-                            html += `</div>`;
-                        }
-                        
-                        if (data.ip_address && data.ip_address.trim() !== '') {
-                            html += `<div class="row mb-3">`;
-                            html += `<div class="col-12"><strong>IP:</strong> ${escapeHtml(data.ip_address)}</div>`;
-                            html += `</div>`;
-                        }
-                        
-                        html += '</div>';
-                        $body.html(html);
-                    } else {
-                        $body.html('<p class="text-danger">Error: ' + (data.error || 'No se pudo obtener el detalle.') + '</p>');
-                    }
-                })
-                .fail(xhr => {
-                    console.error('[ERROR] Cargar detalle auditoría:', xhr);
-                    $body.html('<p class="text-danger">Error al cargar detalle. Verifique la consola (F12).</p>');
-                });
-        });
-    }
-
-    /**
-     * Inicializa todos los componentes del módulo
-     */
-    function init() {
-        initModalDetalleAuditoria();
-        console.log('[✓] Módulo Auditoría inicializado');
-    }
-
-    return { init };
-})();
-
-// ============================================================================
-// MÓDULO: Gestión del Sidebar (Responsive)
-// ============================================================================
-const SidebarModule = (function() {
-    /**
-     * Inicializa el comportamiento del sidebar en móviles
-     */
-    function init() {
-        $('body').on('click', '#sidebar .nav-link', function() {
-            try {
-                if (window.innerWidth < 992) {
-                    $('#sidebar').removeClass('open').addClass('closed');
-                    $('#sidebarOverlay').hide();
-                    document.body.style.overflow = '';
-                }
-            } catch(e) {
-                console.error('[ERROR] Sidebar:', e);
-            }
-        });
-        
-        console.log('[✓] Módulo Sidebar inicializado');
-    }
-
-    return { init };
-})();
-
-// ============================================================================
-// INICIALIZACIÓN GLOBAL
-// ============================================================================
-$(document).ready(function() {
-    console.log('============================================================================');
-    console.log('ERP IUM - Sistema de Gestión Financiera v2.0');
-    console.log('============================================================================');
-    console.log('[INFO] jQuery:', $.fn.jquery);
-    console.log('[INFO] Bootstrap:', typeof bootstrap !== 'undefined' ? 'Disponible' : 'NO disponible');
-    console.log('[INFO] Usuario:', CURRENT_USER);
-    console.log('[INFO] BASE_URL:', BASE_URL);
-    console.log('----------------------------------------------------------------------------');
-    
-    // Inicializar todos los módulos
-    try {
-        ERPUtils; // Verificar que existe
-        UsuariosModule.init();
-        IngresosModule.init();
-        EgresosModule.init();
-        CategoriasModule.init();
-        PresupuestosModule.init();
-        AlertasPresupuestosModule.init();
-        DashboardModule.init();
-        AuditoriaModule.init();
-        SidebarModule.init();
-        
-        console.log('============================================================================');
-        console.log('[✓] SISTEMA COMPLETAMENTE INICIALIZADO');
-        console.log('============================================================================');
-    } catch(e) {
-        console.error('[✗] ERROR CRÍTICO AL INICIALIZAR:', e);
-        try { showError('Error crítico al inicializar el sistema. Recarga la página. Si el problema persiste, contacte al administrador.', { autoClose: 0 }); }
-        catch (err) { console.error('Error al inicializar el sistema. Por favor, recargue la página. Si el problema persiste, contacte al administrador del sistema.'); }
-    }
+$(function () {
+    try { UsuariosModule.init(); } catch (e) { console.warn('UsuariosModule.init error', e); }
+    try { IngresosModule.init(); } catch (e) { console.warn('IngresosModule.init error', e); }
+    try { EgresosModule.init(); } catch (e) { console.warn('EgresosModule.init error', e); }
+    try { CategoriasModule.init(); } catch (e) { console.warn('CategoriasModule.init error', e); }
+    try { PresupuestosModule.init(); } catch (e) { console.warn('PresupuestosModule.init error', e); }
+    try { AlertasPresupuestosModule.init(); } catch (e) { console.warn('AlertasPresupuestosModule.init error', e); }
+    try { DashboardModule.init(); } catch (e) { console.warn('DashboardModule.init error', e); }
 });
+
+// (Nota: definición duplicada/corrupta de AuditoriaModule eliminada.
+// La definición correcta del módulo de Auditoría ya existe más arriba
+// en este archivo con `initModalDetalleAuditoria` e `init()`.)

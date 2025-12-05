@@ -56,9 +56,15 @@
                     <label for="filtro_accion_tipo" class="form-label">Tipo Acción</label>
                     <select id="filtro_accion_tipo" name="accion_tipo" class="form-select form-select-sm">
                         <option value="">Todas</option>
-                        <option value="Insercion" <?php echo ($filtrosActuales['accion_tipo'] ?? '') === 'Insercion' ? 'selected' : ''; ?>>Registro</option>
-                        <option value="Actualizacion" <?php echo ($filtrosActuales['accion_tipo'] ?? '') === 'Actualizacion' ? 'selected' : ''; ?>>Actualización</option>
-                        <option value="Eliminacion" <?php echo ($filtrosActuales['accion_tipo'] ?? '') === 'Eliminacion' ? 'selected' : ''; ?>>Eliminación</option>
+                        <option value="Registro" <?php echo ($filtrosActuales['accion_tipo'] ?? '') === 'Registro' ? 'selected' : ''; ?>>
+                            Registro
+                        </option>
+                        <option value="Actualización" <?php echo ($filtrosActuales['accion_tipo'] ?? '') === 'Actualización' ? 'selected' : ''; ?>>
+                            Actualización
+                        </option>
+                        <option value="Eliminación" <?php echo ($filtrosActuales['accion_tipo'] ?? '') === 'Eliminación' ? 'selected' : ''; ?>>
+                            Eliminación
+                        </option>
                     </select>
                 </div>
 
@@ -107,10 +113,15 @@
                          <ion-icon name="filter-outline"></ion-icon> Filtrar
                     </button>
                 </div>
+                <div class="col-md-2">
+                    <a href="<?php echo BASE_URL; ?>index.php?controller=auditoria&action=index" class="btn btn-outline-secondary btn-sm w-100">
+                        Limpiar filtros
+                    </a>
+                </div>
             </div>
             <!-- Segunda fila de filtros: (Acción y búsqueda libre) eliminadas por requerimiento -->
             <!-- Paginación y tamaño de página (oculto, se puede ajustar) -->
-            <input type="hidden" name="page" value="<?php echo (int)($filtrosActuales['page'] ?? 1); ?>">
+            <input type="hidden" name="page" value="1">
             <input type="hidden" name="pageSize" value="<?php echo (int)($filtrosActuales['pageSize'] ?? 10); ?>">
         </form>
     </div>
@@ -215,25 +226,27 @@
         <h5 class="mb-0"><i class="bi bi-file-earmark-bar-graph me-2"></i>Generación de Reportes</h5>
     </div>
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-6 mb-3 mb-md-0">
-                <button class="btn btn-primary w-100" onclick="generarReporteAuditoria('semanal')">
-                    <i class="bi bi-calendar-week me-2"></i>Reporte Semanal
-                </button>
-                <small class="text-muted d-block text-center mt-1">Últimos 7 días</small>
-            </div>
-            <div class="col-md-6">
-                <button class="btn btn-primary w-100" onclick="$('#collapseReportePersonalizado').collapse('toggle')">
-                    <i class="bi bi-calendar-range me-2"></i>Reporte Personalizado
-                </button>
-                <small class="text-muted d-block text-center mt-1">Seleccionar rango de fechas</small>
-            </div>
-        </div>
+        <!-- Reporte semanal (últimos 7 días) -->
+        <button type="button"
+            class="btn btn-primary w-100 mb-2"
+            onclick="auditoriaVista_generarReporte('semanal')">
+            Reporte Semanal
+        </button>
+        <small class="text-light">Últimos 7 días</small>
+
+        <!-- Reporte personalizado (abre modal de fechas) -->
+        <button type="button"
+                class="btn btn-primary w-100 mb-2"
+                data-bs-toggle="modal"
+                data-bs-target="#modalReportePersonalizado">
+            Reporte Personalizado
+        </button>
+        <small class="text-light">Seleccionar rango de fechas</small>
 
         <!-- Formulario de reporte personalizado (colapsable) -->
         <div class="collapse mt-3" id="collapseReportePersonalizado">
             <div class="card card-body bg-light">
-                <form id="formReporteAuditoriaPersonalizado" onsubmit="generarReporteAuditoriaPersonalizado(event)">
+                <form id="formReporteAuditoriaPersonalizado" onsubmit="auditoriaVista_generarReportePersonalizado(event)">
                     <div class="row">
                         <div class="col-md-5">
                             <label for="auditoria_reporte_fecha_inicio" class="form-label">Fecha Inicio</label>
@@ -261,13 +274,10 @@
         <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte de Auditoría</h5>
             <div>
-                <button class="btn btn-success btn-sm me-2" onclick="exportarReporteExcel()">
-                    <i class="bi bi-file-earmark-excel me-1"></i>Excel
-                </button>
-                <button class="btn btn-light btn-sm me-2" onclick="imprimirReporteAuditoria()">
+                <button class="btn btn-light btn-sm me-2" onclick="auditoriaVista_imprimir()">
                     <i class="bi bi-printer me-1"></i>Imprimir
                 </button>
-                <button class="btn btn-light btn-sm" onclick="cerrarReporteAuditoria()">
+                <button class="btn btn-light btn-sm" onclick="auditoriaVista_cerrar()">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -368,6 +378,34 @@
     </div>
 </div>
 
+<!-- Modal para reporte personalizado -->
+<div class="modal fade" id="modalReportePersonalizado" tabindex="-1" aria-labelledby="modalReportePersonalizadoLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form onsubmit="auditoriaVista_generarReportePersonalizado(event)">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalReportePersonalizadoLabel">Reporte Personalizado</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="rep_fecha_inicio" class="form-label">Fecha inicio</label>
+            <input type="date" class="form-control" id="rep_fecha_inicio" name="fecha_inicio" required>
+          </div>
+          <div class="mb-3">
+            <label for="rep_fecha_fin" class="form-label">Fecha fin</label>
+            <input type="date" class="form-control" id="rep_fecha_fin" name="fecha_fin" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Generar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <script>
 // ========== FUNCIONES DE REPORTES DE AUDITORÍA ==========
 console.log('[Auditoría] Script de reportes cargado');
@@ -402,7 +440,7 @@ function showNotification(message, type = 'info') {
     }
 }
 
-function generarReporteAuditoria(tipo) {
+function auditoriaVista_generarReporte(tipo) {
     console.log('[Auditoría] generarReporteAuditoria llamada con tipo:', tipo);
     const url = `<?php echo BASE_URL; ?>index.php?controller=auditoria&action=generarReporte&tipo=${tipo}`;
     console.log('[Auditoría] URL:', url);
@@ -425,18 +463,24 @@ function generarReporteAuditoria(tipo) {
         });
 }
 
-function generarReporteAuditoriaPersonalizado(event) {
+function auditoriaVista_generarReportePersonalizado(event) {
     event.preventDefault();
-    const fechaInicio = document.getElementById('auditoria_reporte_fecha_inicio').value;
-    const fechaFin = document.getElementById('auditoria_reporte_fecha_fin').value;
-    
+    // Leer las fechas desde el modal principal de reporte personalizado
+    const fechaInicio = document.getElementById('rep_fecha_inicio').value;
+    const fechaFin = document.getElementById('rep_fecha_fin').value;
+
+    if (!fechaInicio || !fechaFin) {
+        showNotification('Selecciona ambas fechas para generar el reporte', 'warning');
+        return;
+    }
+
     if (new Date(fechaInicio) > new Date(fechaFin)) {
         showNotification('La fecha de inicio no puede ser mayor a la fecha fin', 'warning');
         return;
     }
-    
+
     const url = `<?php echo BASE_URL; ?>index.php?controller=auditoria&action=generarReporte&tipo=personalizado&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
-    
+
     fetch(url)
         .then(response => response.json())
         .then(data => {
@@ -447,8 +491,13 @@ function generarReporteAuditoriaPersonalizado(event) {
                 data.fechaFin = fechaFin;
                 datosReporteAuditoria = data;
                 mostrarReporteAuditoria(data);
-                // Cerrar el collapse
-                $('#collapseReportePersonalizado').collapse('hide');
+
+                // Cerrar el modal de reporte personalizado
+                const modalEl = document.getElementById('modalReportePersonalizado');
+                if (modalEl && window.bootstrap) {
+                    const modalInstance = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
+                    modalInstance.hide();
+                }
             } else {
                 showNotification(data.error || 'Error al generar reporte', 'danger');
             }
@@ -719,13 +768,13 @@ function renderChartAuditoriaPorUsuario(porUsuario) {
     });
 }
 
-function cerrarReporteAuditoria() {
+function auditoriaVista_cerrar() {
     document.getElementById('resultadoReporteAuditoriaContainer').style.display = 'none';
 }
 
-function exportarReporteExcel() {
+function auditoriaVista_exportarExcel() {
     if (!datosReporteAuditoria || !datosReporteAuditoria.movimientos) {
-        showError('No hay datos de reporte para exportar');
+        showNotification('No hay datos de reporte para exportar', 'danger');
         return;
     }
 
@@ -733,14 +782,14 @@ function exportarReporteExcel() {
     const tipo = datosReporteAuditoria.tipo || 'personalizado';
     const fechaInicio = datosReporteAuditoria.fechaInicio || '';
     const fechaFin = datosReporteAuditoria.fechaFin || '';
-    
-    const url = `<?php echo BASE_URL; ?>generate_reporte_auditoria.php?tipo=${tipo}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&formato=excel`;
+
+    const url = `<?php echo BASE_URL; ?>src/Reportes/Generators/reporte_auditoria.php?tipo=${tipo}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&formato=excel`;
     window.location.href = url;
 }
 
-function imprimirReporteAuditoria() {
+function auditoriaVista_imprimir() {
     if (!datosReporteAuditoria || !datosReporteAuditoria.movimientos) {
-        showError('No hay datos de reporte para imprimir');
+        showNotification('No hay datos de reporte para imprimir', 'danger');
         return;
     }
     
@@ -748,8 +797,8 @@ function imprimirReporteAuditoria() {
     const tipo = datosReporteAuditoria.tipo || 'personalizado';
     const fechaInicio = datosReporteAuditoria.fechaInicio || '';
     const fechaFin = datosReporteAuditoria.fechaFin || '';
-    
-    const url = `<?php echo BASE_URL; ?>generate_reporte_auditoria.php?tipo=${tipo}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&formato=html`;
+
+    const url = `<?php echo BASE_URL; ?>src/Reportes/Generators/reporte_auditoria.php?tipo=${tipo}&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}&formato=html`;
     window.open(url, '_blank');
 }
 
