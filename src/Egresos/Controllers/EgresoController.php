@@ -71,7 +71,7 @@ class EgresoController {
              $response['error'] = 'Los campos Fecha, Monto, Categoría, Destinatario y Forma de Pago son obligatorios.';
              echo json_encode($response); exit;
          }
-         if (!is_numeric($data['monto']) || $data['monto'] <= 0) { $response['error'] = 'El monto debe ser un número positivo.'; echo json_encode($response); exit; }
+         if (!is_numeric($data['monto']) || $data['monto'] < 0) { $response['error'] = 'El monto no puede ser negativo.'; echo json_encode($response); exit; }
          if (isset($data['activo_fijo']) && !in_array($data['activo_fijo'], ['SI', 'NO'])) { $response['error'] = 'Valor inválido para Activo Fijo.'; echo json_encode($response); exit; }
          $formas_validas = ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta D.', 'Tarjeta C.'];
          if (!in_array($data['forma_pago'], $formas_validas)) { $response['error'] = 'Forma de pago inválida.'; echo json_encode($response); exit; }
@@ -121,6 +121,7 @@ class EgresoController {
                         $this->auditoriaModel->addLog('Egreso', 'Insercion', $det, null, json_encode($data), $newId, null, $_SESSION['user_id'] ?? null);
                     }
                     $response['success'] = true;
+                    $response['folio'] = $newId; // Para redirigir al recibo inmediatamente
                 } else { $response['error'] = 'No se pudo crear el egreso.'; }
             } else { // Actualizar
                 // intentar obtener datos antiguos para comparar
@@ -162,35 +163,70 @@ class EgresoController {
      }
 
     /**
-     * Acción AJAX: Elimina un egreso usando su PK (folio_egreso).
+     * Acción AJAX: Actualiza ÚNICAMENTE el monto de un egreso.
      */
-    public function delete() {
+    public function updateMonto() {
          header('Content-Type: application/json');
          if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
 
         $folio_egreso_id = $_POST['id'] ?? 0;
+        $nuevoMonto = $_POST['monto'] ?? null;
         $response = ['success' => false];
 
-        if ($folio_egreso_id > 0) {
-            try {
-                    // Obtener datos anteriores para el log si no hay trigger
-                    $oldData = $this->egresoModel->getEgresoById($folio_egreso_id);
-                    $success = $this->egresoModel->deleteEgreso($folio_egreso_id);
-                if ($success) {
-                        if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
-                            $oldValor = $oldData ? json_encode($oldData) : null;
-                            $this->auditoriaModel->addLog('Egreso', 'Eliminacion', null, $oldValor, null, $folio_egreso_id, null, $_SESSION['user_id'] ?? null);
-                        }
-                        $response['success'] = true;
-                } else {
-                    $response['error'] = 'No se pudo eliminar el egreso de la base de datos.';
-                }
-            } catch (Exception $e) {
-                 error_log("Error en EgresoController->delete: " . $e->getMessage());
-                 $response['error'] = 'Error interno del servidor al eliminar.';
-            }
-        } else {
+        if ($folio_egreso_id <= 0) {
             $response['error'] = 'ID de egreso inválido.';
+            echo json_encode($response); exit;
+        }
+
+        if ($nuevoMonto === null || $nuevoMonto === '' || !is_numeric($nuevoMonto) || $nuevoMonto < 0) {
+            $response['error'] = 'El monto no puede ser negativo.';
+            echo json_encode($response); exit;
+        }
+
+        try {
+            $oldData = $this->egresoModel->getEgresoById($folio_egreso_id);
+            if (!$oldData) {
+                $response['error'] = 'Egreso no encontrado.';
+                echo json_encode($response); exit;
+            }
+
+            // Armar el arreglo completo que espera updateEgreso, reutilizando los datos actuales
+            $dataUpdate = [
+                'proveedor'            => $oldData['proveedor'] ?? null,
+                'descripcion'          => $oldData['descripcion'] ?? null,
+                'monto'                => $nuevoMonto,
+                'fecha'                => $oldData['fecha'] ?? null,
+                'destinatario'         => $oldData['destinatario'] ?? null,
+                'forma_pago'           => $oldData['forma_pago'] ?? null,
+                'documento_de_amparo'  => $oldData['documento_de_amparo'] ?? null,
+                'id_user'              => $_SESSION['user_id'],
+                'id_categoria'         => $oldData['id_categoria'] ?? null,
+            ];
+
+            $success = $this->egresoModel->updateEgreso($folio_egreso_id, $dataUpdate);
+
+            if ($success) {
+                if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
+                    $newData = $oldData;
+                    $newData['monto'] = $nuevoMonto;
+                    $this->auditoriaModel->addLog(
+                        'Egreso',
+                        'ActualizacionMonto',
+                        'Actualización de monto de egreso',
+                        json_encode($oldData),
+                        json_encode($newData),
+                        $folio_egreso_id,
+                        null,
+                        $_SESSION['user_id'] ?? null
+                    );
+                }
+                $response['success'] = true;
+            } else {
+                $response['error'] = 'No se pudo actualizar el monto del egreso.';
+            }
+        } catch (Exception $e) {
+            error_log("Error en EgresoController->updateMonto: " . $e->getMessage());
+            $response['error'] = $e->getMessage() ?: 'Error interno del servidor al actualizar el monto.';
         }
 
         echo json_encode($response);
