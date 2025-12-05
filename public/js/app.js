@@ -153,6 +153,66 @@ const ERPUtils = (function() {
     function showError(message, options) { showNotification('error', message, options); }
 
     /**
+     * Formatea dinámicamente inputs numéricos con separadores de miles mientras se escribe.
+     * - Muestra: 12345.67 => 12,345.67
+     * - Valor enviado al backend (on submit): 12345.67 (sin comas)
+     */
+    function attachMoneyFormatter(selector) {
+        const $inputs = $(selector);
+        if (!$inputs.length) return;
+
+        $inputs.each(function() {
+            const $input = $(this);
+
+            // Formatear valor inicial si ya viene con número
+            const raw = ($input.val() || '').toString().replace(/,/g, '');
+            if (raw && !isNaN(raw)) {
+                const num = parseFloat(raw);
+                $input.val(num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }));
+            }
+
+            // Mientras se escribe
+            $input.off('input.moneyFmt').on('input.moneyFmt', function() {
+                let val = $input.val();
+                // Permitir borrar todo
+                if (val === '') return;
+
+                // Quitar todo excepto dígitos y punto decimal
+                val = val.replace(/,/g, '');
+                val = val.replace(/[^0-9.]/g, '');
+                const parts = val.split('.');
+                if (parts.length > 2) {
+                    // Dejar solo un punto decimal
+                    val = parts[0] + '.' + parts.slice(1).join('');
+                }
+
+                const num = parseFloat(val);
+                if (isNaN(num)) {
+                    $input.val('');
+                    return;
+                }
+
+                const hasDot = val.indexOf('.') !== -1;
+                const decimals = hasDot ? (val.split('.')[1] || '').length : 0;
+                const formatOptions = {
+                    minimumFractionDigits: decimals > 0 ? decimals : 0,
+                    maximumFractionDigits: 2
+                };
+                $input.val(num.toLocaleString('en-US', formatOptions));
+            });
+
+            // Al enviar formulario, limpiar comas para el backend
+            $input.closest('form').off('submit.moneyFmt').on('submit.moneyFmt', function() {
+                const current = $input.val();
+                if (!current) return true;
+                const cleaned = current.replace(/,/g, '');
+                $input.val(cleaned);
+                return true;
+            });
+        });
+    }
+
+    /**
      * Muestra un modal de confirmación reutilizable.
      */
     function showConfirm(message, options = {}) {
@@ -205,7 +265,8 @@ const ERPUtils = (function() {
         showNotification,
         showSuccess,
         showError,
-        showConfirm
+        showConfirm,
+        attachMoneyFormatter
     };
 })();
 
@@ -216,6 +277,7 @@ window.showError = ERPUtils.showError;
 window.showSuccess = ERPUtils.showSuccess;
 window.showNotification = ERPUtils.showNotification;
 window.showConfirm = ERPUtils.showConfirm;
+window.attachMoneyFormatter = ERPUtils.attachMoneyFormatter;
 
 // ============================================================================
 // MÓDULO: Gestión de Usuarios y Perfil
@@ -535,7 +597,7 @@ const IngresosModule = (function() {
     function initModalIngreso() {
         $('#modalIngreso').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-            const ingresoId = button ? $(button).data('id') : null;
+                const ingresoId = button ? $(button).data('id') : null; // Get the ingreso ID
             const $form = $('#formIngreso');
             const $selectCat = $('#in_id_categoria');
 
@@ -548,6 +610,7 @@ const IngresosModule = (function() {
             $('#seccion_cobro_dividido').hide();
             $('#toggleCobroDividido').prop('checked', false);
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
+            $('#btnSubmitIngreso').text('Guardar Ingreso');
 
             ajaxCall('ingreso', 'getCategoriasIngreso', {}, 'GET')
                 .done(categorias => {
@@ -563,6 +626,7 @@ const IngresosModule = (function() {
 
                     if (ingresoId) {
                         $('#modalIngresoTitle').text('Editar Ingreso');
+                        $('#btnSubmitIngreso').text('Actualizar Ingreso');
                         ajaxCall('ingreso', 'getIngresoData', { id: ingresoId }, 'GET')
                             .done(data => {
                                 if (data && !data.error && data.folio_ingreso) {
@@ -602,6 +666,7 @@ const IngresosModule = (function() {
                             .fail(xhr => { mostrarError('cargar datos ingreso', xhr); $('#modalIngreso').modal('hide'); });
                     } else {
                         $('#modalIngresoTitle').text('Registrar Nuevo Ingreso');
+                        $('#btnSubmitIngreso').text('Guardar Ingreso');
                         $('#in_anio').val(new Date().getFullYear());
                         $('#seccion_pago_unico').show();
                         $('#seccion_cobro_dividido').hide();
@@ -663,7 +728,7 @@ const IngresosModule = (function() {
         $(document).on('submit', '#formIngreso', function(e) {
             e.preventDefault();
             const esDividido = $('#toggleCobroDividido').is(':checked');
-            let formData = $(this).serializeArray();
+            let formData = $(this).serializeArray(); // Serialize form data
             let dataObj = {};
             formData.forEach(item => { dataObj[item.name] = item.value; });
             
@@ -691,10 +756,15 @@ const IngresosModule = (function() {
                 dataObj.pagos = JSON.stringify(pagos);
             }
             
+            const esEdicion = !!dataObj.id;
             ajaxCall('ingreso', 'save', dataObj)
                 .done(r => {
                     if (r.success) {
-                        showSuccess('Ingreso guardado correctamente.');
+                        if (esEdicion) {
+                            showSuccess('Ingreso actualizado correctamente.');
+                        } else {
+                            showSuccess('Ingreso guardado correctamente.');
+                        }
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
                         showError('Error al guardar: ' + (r.error || 'Verifique datos.'));
@@ -806,6 +876,7 @@ const EgresosModule = (function() {
             const $form = $('#formEgreso');
             const $selectCat = $('#eg_id_categoria');
             const $selectPres = $('#eg_id_presupuesto');
+            const $montoInput = $('#eg_monto');
 
             if (!$form.length) return;
             
@@ -813,7 +884,12 @@ const EgresosModule = (function() {
             $('#egreso_id').val('');
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
             $selectPres.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
-            ensureNumberEditable('#eg_monto');
+
+            // Limpiar y formatear el campo monto al abrir el modal
+            if ($montoInput.length) {
+                $montoInput.val('');
+                try { if (window.attachMoneyFormatter) attachMoneyFormatter('#eg_monto'); } catch(e) { console.error('attachMoneyFormatter eg_monto', e); }
+            }
 
             ajaxCall('presupuesto', 'getSubPresupuestos', {}, 'GET')
                 .done(presupuestos => {
@@ -856,12 +932,25 @@ const EgresosModule = (function() {
 
                     if (egresoId) {
                         $('#modalEgresoTitle').text('Editar Egreso');
+                        $('#btnSubmitEgreso').text('Actualizar Egreso');
                         ajaxCall('egreso', 'getEgresoData', { id: egresoId }, 'GET')
                             .done(data => {
                                 if (data && !data.error && data.folio_egreso) {
                                     $('#egreso_id').val(data.folio_egreso);
                                     $('#eg_fecha').val(data.fecha);
-                                    $('#eg_monto').val(data.monto);
+                                    // Formatear monto existente con comas y máximo 2 decimales
+                                    if ($montoInput.length) {
+                                        const rawMonto = (data.monto || '').toString().replace(/,/g, '');
+                                        const numMonto = parseFloat(rawMonto);
+                                        if (!isNaN(numMonto)) {
+                                            $montoInput.val(numMonto.toLocaleString('en-US', {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 2
+                                            }));
+                                        } else {
+                                            $montoInput.val('');
+                                        }
+                                    }
                                     $selectCat.val(data.id_categoria);
                                     if (data.id_presupuesto) $selectPres.val(data.id_presupuesto);
                                     else {
@@ -877,6 +966,7 @@ const EgresosModule = (function() {
                             });
                     } else {
                         $('#modalEgresoTitle').text('Registrar Nuevo Egreso');
+                        $('#btnSubmitEgreso').text('Guardar Egreso');
                     }
                 });
         });
@@ -885,12 +975,20 @@ const EgresosModule = (function() {
     function initSubmitEgreso() {
         $(document).on('submit', '#formEgreso', function(e) {
             e.preventDefault();
-            ajaxCall('egreso', 'save', $(this).serialize())
+            const formData = $(this).serialize();
+            const esEdicion = !!$('#egreso_id').val();
+            ajaxCall('egreso', 'save', formData)
                 .done(r => {
                     if (r.success) {
                         $(document).trigger('egresoGuardado');
 
-                        try { showSuccess('Egreso guardado correctamente.'); } catch(e) {}
+                        try {
+                            if (esEdicion) {
+                                showSuccess('Egreso actualizado correctamente.');
+                            } else {
+                                showSuccess('Egreso guardado correctamente.');
+                            }
+                        } catch(e) {}
 
                         // Si es creación, el backend devuelve r.folio
                         if (r.folio) {
@@ -910,22 +1008,39 @@ const EgresosModule = (function() {
         });
     }
 
-    function initEliminarEgreso() {
-        $(document).on('click', '.btn-del-egreso', function() {
+    function initEditarMontoEgreso() {
+        $(document).on('click', '.btn-edit-monto-egreso', function() {
             const id = $(this).data('id');
-            showConfirm('¿Eliminar este egreso?').then(confirmed => {
-                if (!confirmed) return;
-                ajaxCall('egreso', 'delete', { id: id })
-                    .done(r => {
-                        if (r.success) {
-                            $(document).trigger('egresoEliminado');
-                            showSuccess('Egreso eliminado correctamente.');
-                            setTimeout(() => { window.location.reload(); }, 900);
-                        } else {
-                            showError('Error al eliminar: ' + (r.error || ''));
-                        }
-                    });
-            });
+            const monto = $(this).data('monto');
+            $('#editMontoEgresoId').val(id);
+            $('#editMontoEgresoValor').val(monto);
+            const modalEl = document.getElementById('modalEditarMontoEgreso');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+                bsModal.show();
+            } else {
+                $('#modalEditarMontoEgreso').modal('show');
+            }
+        });
+
+        $(document).on('click', '#btnGuardarNuevoMontoEgreso', function() {
+            const id = $('#editMontoEgresoId').val();
+            const monto = $('#editMontoEgresoValor').val();
+            if (!id) { showError('No se encontró el egreso a actualizar.'); return; }
+            if (monto === '' || isNaN(monto) || parseFloat(monto) < 0) {
+                showError('El monto no puede ser negativo.');
+                return;
+            }
+            ajaxCall('egreso', 'updateMonto', { id: id, monto: monto })
+                .done(r => {
+                    if (r.success) {
+                        showSuccess('Monto actualizado correctamente.');
+                        setTimeout(() => { window.location.reload(); }, 900);
+                    } else {
+                        showError('Error al actualizar monto: ' + (r.error || ''));
+                    }
+                })
+                .fail(xhr => mostrarError('actualizar monto de egreso', xhr));
         });
     }
 
@@ -936,6 +1051,7 @@ const EgresosModule = (function() {
         const $fechaInicio = $('#fechaInicioEgresos');
         const $fechaFin = $('#fechaFinEgresos');
         const $clearDateBtn = $('#clearDateEgresos');
+        const $categoriaSelect = $('#filtroCategoriaEgresos');
         const $resultCount = $('#resultCountEgresos');
         const $tableBody = $('#tablaEgresos');
         
@@ -943,8 +1059,9 @@ const EgresosModule = (function() {
             const searchTerm = $searchInput.val().toLowerCase().trim();
             const fechaInicio = $fechaInicio.val();
             const fechaFin = $fechaFin.val();
+            const categoriaId = $categoriaSelect.val();
             $clearBtn.toggle(searchTerm.length > 0);
-            $clearDateBtn.toggle(!!(fechaInicio || fechaFin));
+            $clearDateBtn.toggle(!!(fechaInicio || fechaFin || categoriaId));
             let visibleCount = 0;
             let totalCount = 0;
             
@@ -957,18 +1074,23 @@ const EgresosModule = (function() {
                 const $editBtn = $row.find('.btn-edit-egreso');
                 if ($editBtn.length) folio = $editBtn.data('id').toString().toLowerCase();
                 const fechaRegistro = $row.attr('data-fecha');
+                const catRowId = $row.data('categoria-id') ? $row.data('categoria-id').toString() : '';
                 const searchableText = folio + ' ' + destinatario;
                 let matchText = !searchTerm || searchableText.includes(searchTerm);
                 let matchDate = true;
+                let matchCategoria = true;
                 if (fechaRegistro && (fechaInicio || fechaFin)) {
                     if (fechaInicio && fechaFin) matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
                     else if (fechaInicio) matchDate = fechaRegistro >= fechaInicio;
                     else if (fechaFin) matchDate = fechaRegistro <= fechaFin;
                 }
-                if (matchText && matchDate) { $row.show(); visibleCount++; } else { $row.hide(); }
+                if (categoriaId) {
+                    matchCategoria = catRowId === categoriaId;
+                }
+                if (matchText && matchDate && matchCategoria) { $row.show(); visibleCount++; } else { $row.hide(); }
             });
             
-            if (searchTerm.length > 0 || fechaInicio || fechaFin) {
+            if (searchTerm.length > 0 || fechaInicio || fechaFin || categoriaId) {
                 if (visibleCount === 0) {
                     $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados').addClass('text-danger').removeClass('text-success');
                 } else {
@@ -983,14 +1105,15 @@ const EgresosModule = (function() {
         $fechaInicio.on('change', filtrarEgresos);
         $fechaFin.on('change', filtrarEgresos);
         $clearBtn.on('click', function() { $searchInput.val(''); filtrarEgresos(); $searchInput.focus(); });
-        $clearDateBtn.on('click', function() { $fechaInicio.val(''); $fechaFin.val(''); filtrarEgresos(); });
+        $clearDateBtn.on('click', function() { $fechaInicio.val(''); $fechaFin.val(''); $categoriaSelect.val(''); filtrarEgresos(); });
+        $categoriaSelect.on('change', filtrarEgresos);
         $searchInput.on('keydown', function(e) { if (e.key === 'Escape') { $(this).val(''); filtrarEgresos(); } });
     }
 
     function init() {
         initModalEgreso();
         initSubmitEgreso();
-        initEliminarEgreso();
+        initEditarMontoEgreso();
         initBuscadorEgresos();
         console.log('[✓] Módulo Egresos inicializado');
     }
@@ -1793,7 +1916,10 @@ $(document).ready(function() {
         DashboardModule.init();
         AuditoriaModule.init(); // Ahora incluye reportes y gráficas
         SidebarModule.init();   // Ahora incluye Easter Egg
-        
+
+        // Aplicar autoformato de montos a todos los campos marcados
+        try { attachMoneyFormatter('.monto-autofmt'); } catch(e) { console.error('Error attachMoneyFormatter:', e); }
+
         console.log('[✓] SISTEMA COMPLETAMENTE INICIALIZADO');
     } catch(e) {
         console.error('[✗] ERROR CRÍTICO AL INICIALIZAR:', e);
