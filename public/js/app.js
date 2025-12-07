@@ -2097,18 +2097,148 @@ const DashboardModule = (function() {
     return { init };
 })();
 // ============================================================================
+// MÓDULO: Auditoría (detalle en modal)
+// ============================================================================
+const AuditoriaModule = (function() {
+    const { ajaxCall, mostrarError, escapeHtml } = ERPUtils;
+
+    /**
+     * Maneja la apertura del modal de detalle de auditoría
+     */
+    function initModalDetalleAuditoria() {
+        $('#modalDetalleAuditoria').on('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const auditoriaId = button ? $(button).data('id') : null;
+            const $body = $('#detalleAuditoriaBody');
+            
+            if (!$body.length) {
+                console.error('[ERROR] #detalleAuditoriaBody no encontrado');
+                return;
+            }
+            
+            $body.html('<p class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Cargando...</p>');
+            
+            if (!auditoriaId) {
+                $body.html('<p class="text-danger">Error: ID de auditoría no especificado.</p>');
+                return;
+            }
+            
+            ajaxCall('auditoria', 'getDetalle', { id: auditoriaId }, 'GET')
+                .done(data => {
+                    if (data && !data.error && data.id_auditoria) {
+                        let html = '<div class="audit-detail-content">';
+                        html += `<div class="row mb-3">`;
+                        html += `<div class="col-md-6"><strong>ID Auditoría:</strong> ${escapeHtml(data.id_auditoria)}</div>`;
+                        html += `<div class="col-md-6"><strong>Fecha/Hora:</strong> ${escapeHtml(data.fecha_hora)}</div>`;
+                        html += `</div>`;
+                        html += `<div class="row mb-3">`;
+                        html += `<div class="col-md-6"><strong>Usuario:</strong> ${escapeHtml(data.usuario_nombre || 'N/A')}</div>`;
+                        html += `<div class="col-md-6"><strong>Tabla:</strong> ${escapeHtml(data.tabla_afectada)}</div>`;
+                        html += `</div>`;
+                        html += `<div class="row mb-3">`;
+                        html += `<div class="col-12"><strong>Acción:</strong> <span class="badge bg-info">${escapeHtml(data.accion)}</span></div>`;
+                        html += `</div>`;
+                        
+                        if (data.datos_anteriores && data.datos_anteriores.trim() !== '' && data.datos_anteriores !== '{}') {
+                            html += `<div class="row mb-3">`;
+                            html += `<div class="col-12"><strong>Datos Anteriores:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_anteriores)}</pre></div>`;
+                            html += `</div>`;
+                        }
+                        
+                        if (data.datos_nuevos && data.datos_nuevos.trim() !== '' && data.datos_nuevos !== '{}') {
+                            html += `<div class="row mb-3">`;
+                            html += `<div class="col-12"><strong>Datos Nuevos:</strong><pre class="bg-light p-2 mt-2" style="max-height:200px;overflow:auto;">${escapeHtml(data.datos_nuevos)}</pre></div>`;
+                            html += `</div>`;
+                        }
+                        
+                        if (data.ip_address && data.ip_address.trim() !== '') {
+                            html += `<div class="row mb-3">`;
+                            html += `<div class="col-12"><strong>IP:</strong> ${escapeHtml(data.ip_address)}</div>`;
+                            html += `</div>`;
+                        }
+                        
+                        html += '</div>';
+                        $body.html(html);
+                    } else {
+                        $body.html('<p class="text-danger">Error: ' + (data.error || 'No se pudo obtener el detalle.') + '</p>');
+                    }
+                })
+                .fail(xhr => {
+                    console.error('[ERROR] Cargar detalle auditoría:', xhr);
+                    $body.html('<p class="text-danger">Error al cargar detalle. Verifique la consola (F12).</p>');
+                });
+        });
+    }
+
+    /**
+     * Inicializa todos los componentes del módulo
+     */
+    function init() {
+        initModalDetalleAuditoria();
+        console.log('[✓] Módulo Auditoría inicializado');
+    }
+
+    return { init };
+})();
+
+// ============================================================================
+// MÓDULO: Gestión del Sidebar (Responsive)
+// ============================================================================
+const SidebarModule = (function() {
+    /**
+     * Inicializa el comportamiento del sidebar en móviles
+     */
+    function init() {
+        $('body').on('click', '#sidebar .nav-link', function() {
+            try {
+                if (window.innerWidth < 992) {
+                    $('#sidebar').removeClass('open').addClass('closed');
+                    $('#sidebarOverlay').hide();
+                    document.body.style.overflow = '';
+                }
+            } catch(e) {
+                console.error('[ERROR] Sidebar:', e);
+            }
+        });
+        
+        console.log('[✓] Módulo Sidebar inicializado');
+    }
+
+    return { init };
+})();
+
+// ============================================================================
 // INICIALIZACIÓN GLOBAL DE MÓDULOS
 // ============================================================================
-$(function () {
-    try { UsuariosModule.init(); } catch (e) { console.warn('UsuariosModule.init error', e); }
-    try { IngresosModule.init(); } catch (e) { console.warn('IngresosModule.init error', e); }
-    try { EgresosModule.init(); } catch (e) { console.warn('EgresosModule.init error', e); }
-    try { CategoriasModule.init(); } catch (e) { console.warn('CategoriasModule.init error', e); }
-    try { PresupuestosModule.init(); } catch (e) { console.warn('PresupuestosModule.init error', e); }
-    try { AlertasPresupuestosModule.init(); } catch (e) { console.warn('AlertasPresupuestosModule.init error', e); }
-    try { DashboardModule.init(); } catch (e) { console.warn('DashboardModule.init error', e); }
+$(document).ready(function() {
+    console.log('============================================================================');
+    console.log('ERP IUM - Sistema de Gestión Financiera v2.0');
+    console.log('============================================================================');
+    console.log('[INFO] jQuery:', $.fn.jquery);
+    console.log('[INFO] Bootstrap:', typeof bootstrap !== 'undefined' ? 'Disponible' : 'NO disponible');
+    console.log('[INFO] Usuario:', CURRENT_USER);
+    console.log('[INFO] BASE_URL:', BASE_URL);
+    console.log('----------------------------------------------------------------------------');
+    
+    // Inicializar todos los módulos
+    try {
+        ERPUtils; // Verificar que existe
+        UsuariosModule.init();
+        IngresosModule.init();
+        EgresosModule.init();
+        CategoriasModule.init();
+        PresupuestosModule.init();
+        AlertasPresupuestosModule.init();
+        DashboardModule.init();
+        AuditoriaModule.init();
+        SidebarModule.init();
+        
+        console.log('============================================================================');
+        console.log('[✓] SISTEMA COMPLETAMENTE INICIALIZADO');
+        console.log('============================================================================');
+    } catch(e) {
+        console.error('[✗] ERROR CRÍTICO AL INICIALIZAR:', e);
+        try { showError('Error crítico al inicializar el sistema. Recarga la página. Si el problema persiste, contacte al administrador.', { autoClose: 0 }); }
+        catch (err) { console.error('Error al inicializar el sistema. Por favor, recargue la página. Si el problema persiste, contacte al administrador del sistema.'); }
+    }
 });
-
-// (Nota: definición duplicada/corrupta de AuditoriaModule eliminada.
-// La definición correcta del módulo de Auditoría ya existe más arriba
-// en este archivo con `initModalDetalleAuditoria` e `init()`.)

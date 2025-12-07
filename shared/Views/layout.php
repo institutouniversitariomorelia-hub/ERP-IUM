@@ -59,11 +59,6 @@
                         <div id="presupuestoGeneralAlert" class="alert alert-danger d-none"></div>
                         <input type="hidden" id="presgen_id" name="id">
                         <div class="mb-3">
-                            <label for="presgen_nombre" class="form-label">Nombre del Presupuesto <span class="text-muted">(opcional)</span></label>
-                            <input id="presgen_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Presupuesto General 2025">
-                            <div class="form-text">Nombre descriptivo para identificar fácilmente el presupuesto</div>
-                        </div>
-                        <div class="mb-3">
                             <label for="presgen_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
                             <input id="presgen_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 500000.00" required>
                         </div>
@@ -472,7 +467,9 @@ $currentUser = [
             <button id="btnToggleSidebar" class="btn btn-sm btn-outline-light d-lg-none me-2" type="button" aria-label="Abrir menú">
                 <ion-icon name="menu-outline"></ion-icon>
             </button>
-            <span class="me-auto fw-bold"></span>
+
+            <span class="me-auto fw-bold" style="font-size:1.25rem; letter-spacing:1px;">INSTITUTO UNIVERSITARIO MORELIA</span>
+
             <div class="user-info-header">
                 <div class="d-none d-md-block">
                     <span class="fs-6 fw-normal">Usuario: <strong><?php echo htmlspecialchars($currentUser['nombre']); ?></strong></span>
@@ -565,11 +562,7 @@ $currentUser = [
                             </div>
                         <?php endif; ?>
                         <hr>
-                        <div class="d-grid">
-                            <button type="button" class="btn btn-outline-secondary" id="btnAbrirCambiarPassword">
-                                <ion-icon name="key-outline" style="vertical-align: middle;"></ion-icon> Cambiar Contraseña
-                            </button>
-                        </div>
+                        
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -589,6 +582,24 @@ $currentUser = [
                         <h5 class="modal-title" id="modalUsuarioTitle">Registrar Nuevo Usuario</h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+                    <script>
+                    // Cambia el título del modal según si es edición o registro
+                    document.addEventListener('DOMContentLoaded', function() {
+                        var modalUsuario = document.getElementById('modalUsuario');
+                        if (modalUsuario) {
+                            modalUsuario.addEventListener('show.bs.modal', function (event) {
+                                var title = document.getElementById('modalUsuarioTitle');
+                                var form = document.getElementById('formUsuario');
+                                var idInput = document.getElementById('usuario_id');
+                                if (idInput && idInput.value) {
+                                    title.textContent = 'Editar Usuario';
+                                } else {
+                                    title.textContent = 'Registrar Nuevo Usuario';
+                                }
+                            });
+                        }
+                    });
+                    </script>
                     <div class="modal-body">
                         <input type="hidden" id="usuario_id" name="id">
                         <div class="mb-3">
@@ -622,6 +633,7 @@ $currentUser = [
             </div>
         </div>
     </div>
+
 
     <!-- Modal: Cambiar Contraseña - Propia (perfil) -->
     <div class="modal fade" id="modalCambiarPasswordOwn" tabindex="-1" aria-labelledby="modalCambiarPasswordOwnLabel" aria-hidden="true">
@@ -674,6 +686,7 @@ $currentUser = [
 
     <!-- Modal: Cambiar Contraseña - Usuario (admin cambia a otro usuario) -->
     <div class="modal fade" id="modalCambiarPasswordUser" tabindex="-1" aria-labelledby="modalCambiarPasswordUserLabel" aria-hidden="true">
+
         <div class="modal-dialog modal-fullscreen-sm-down">
             <div class="modal-content">
                 <form id="formCambiarPasswordUser">
