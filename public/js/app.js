@@ -9,67 +9,54 @@
  * ============================================================================
  */
 
-'use strict';
+"use strict";
 
 // ============================================================================
-// MÓDULO: Utilidades Globales
+// MÓDULO: Utilidades Globales (ERPUtils)
 // ============================================================================
 const ERPUtils = (function() {
     /**
-     * Realiza llamadas AJAX genéricas al backend
+     * Wrapper genérico para llamadas AJAX
+     * @param {string} controller
+     * @param {string} action
+     * @param {object} data
+     * @param {string} method
+     * @returns {jqXHR}
      */
     function ajaxCall(controller, action, data = {}, method = 'POST') {
-        let url = `${BASE_URL}index.php?controller=${controller}&action=${action}`;
-        
-        if (method.toUpperCase() === 'GET' && Object.keys(data).length > 0) {
-            url += '&' + $.param(data);
-            data = {};
-        }
-
-        const ajaxOptions = {
-            url: url,
-            type: 'POST',
+        return $.ajax({
+            url: BASE_URL + 'index.php',
+            method: method,
             dataType: 'json',
-            data: data
-        };
-
-        if (method.toUpperCase() !== 'GET' && method.toUpperCase() !== 'POST') {
-            ajaxOptions.data._method = method.toUpperCase();
-        }
-
-        console.log(`[AJAX] ${method} ${controller}/${action}`, ajaxOptions.data);
-        return $.ajax(ajaxOptions);
+            data: Object.assign({}, data, {
+                controller: controller,
+                action: action
+            })
+        });
     }
 
     /**
-     * Muestra mensajes de error amigables
+     * Manejo estándar de errores AJAX
+     * @param {string} contexto
+     * @param {jqXHR} xhr
      */
-    function mostrarError(action, jqXHR = null) {
-        let errorMsg = `Ocurrió un error al ${action}.`;
-        let serverError = 'Error desconocido o sin conexión.';
+    function mostrarError(contexto, xhr) {
+        console.error(`[ERROR] Falló la operación (${contexto})`, xhr);
+        let errorMsg = 'Ocurrió un error al comunicarse con el servidor.';
+        let serverError = '';
 
-        if (jqXHR) {
-            if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
-                serverError = jqXHR.responseJSON.error;
-            } else if (jqXHR.responseText) {
-                console.error(`[ERROR] ${action}:`, jqXHR.responseText);
-                const match = jqXHR.responseText.match(/<b>(?:Fatal error|Warning|Exception)<\/b>:(.*?)<br \/>/i);
-                if (match && match[1]) {
-                    serverError = `Error PHP: ${match[1].trim()}`;
-                } else {
-                    serverError = 'Respuesta del servidor no válida (ver consola).';
-                }
-            } else if (jqXHR.statusText) {
-                serverError = `${jqXHR.statusText} (${jqXHR.status})`;
+        try {
+            if (xhr && xhr.responseJSON && xhr.responseJSON.error) {
+                serverError = xhr.responseJSON.error;
+            } else if (xhr && typeof xhr.responseText === 'string' && xhr.responseText.trim() !== '') {
+                serverError = xhr.responseText.substring(0, 400);
             }
+        } catch (e) {
+            console.warn('No se pudo procesar el mensaje de error del servidor:', e);
         }
 
-        console.error(`[ERROR] ${action}:`, serverError, jqXHR);
-        if (typeof showError === 'function') {
-            showError(`${errorMsg} Detalle: ${serverError}.`, { autoClose: 7000 });
-        } else {
-            alert(`${errorMsg}\nDetalle: ${serverError}`);
-        }
+        // Mostrar notificación de error amigable
+        showError(`${errorMsg} Detalle: ${serverError}. Revise la consola (F12) para más información.`, { autoClose: 7000 });
     }
 
     /**
@@ -612,7 +599,7 @@ const IngresosModule = (function() {
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
             $('#btnSubmitIngreso').text('Guardar Ingreso');
 
-            ajaxCall('ingreso', 'getCategoriasIngreso', {}, 'GET')
+            ajaxCall('ingreso', 'getIngreso', {}, 'GET')
                 .done(categorias => {
                     $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
                     if (categorias && Array.isArray(categorias)) {
@@ -1124,24 +1111,33 @@ const EgresosModule = (function() {
 // ============================================================================
 // MÓDULO: Gestión de Categorías
 // ============================================================================
-const CategoriasModule = (function() {
-    const { ajaxCall, mostrarError, showConfirm, showSuccess, showError } = ERPUtils;
+const CategoriasModule = (function () {
+    const { ajaxCall, mostrarError } = ERPUtils;
 
     function initModalCategoria() {
-        $('#modalCategoria').on('show.bs.modal', function(event) {
+        $('#modalCategoria').on('show.bs.modal', function (event) {
             const button = event.relatedTarget;
             const catId = button ? $(button).data('id') : null;
             const $form = $('#formCategoria');
-            
-            if (!$form.length) return;
-            
+
+            if (!$form.length) {
+                console.error('[ERROR] Formulario #formCategoria no encontrado');
+                return;
+            }
+
             $form[0].reset();
             $('#categoria_id').val('');
             $('#div_cat_concepto').hide();
             $('#cat_concepto').val('');
-            
+            $('#alert_categoria_protegida').hide();
+
+            const $submitBtn = $form.find('button[type="submit"], .btn-submit-categoria');
+
             if (catId) {
                 $('#modalCategoriaTitle').text('Editar Categoría');
+                if ($submitBtn.length) {
+                    $submitBtn.text('Actualizar Categoría');
+                }
                 ajaxCall('categoria', 'getCategoriaData', { id: catId }, 'GET')
                     .done(data => {
                         if (data && !data.error) {
@@ -1150,7 +1146,8 @@ const CategoriasModule = (function() {
                             $('#cat_tipo').val(data.tipo);
                             $('#cat_descripcion').val(data.descripcion);
                             $('#categoria_no_borrable').val(data.no_borrable || 0);
-                            
+
+                            // Mostrar campo concepto si es ingreso y setear valor
                             if (data.tipo === 'Ingreso') {
                                 $('#div_cat_concepto').show();
                                 $('#cat_concepto').val(data.concepto || '');
@@ -1158,26 +1155,53 @@ const CategoriasModule = (function() {
                                 $('#div_cat_concepto').hide();
                                 $('#cat_concepto').val('');
                             }
-                            
-                            if (data.no_borrable == 1) { $('#alert_categoria_protegida').show(); }
-                            else { $('#alert_categoria_protegida').hide(); }
+
+                            // Mostrar alerta si es protegida
+                            if (data.no_borrable == 1) {
+                                $('#alert_categoria_protegida').show();
+                            } else {
+                                $('#alert_categoria_protegida').hide();
+                            }
+                        } else {
+                            $('#modalCategoria').modal('hide');
+                            showError('Error al cargar la categoría. ' + (data.error || 'Verifique la consola.'));
                         }
                     });
             } else {
                 $('#modalCategoriaTitle').text('Agregar Nueva Categoría');
-                if ($('#cat_tipo').val() === 'Ingreso') { $('#div_cat_concepto').show(); }
+                if ($submitBtn.length) {
+                    $submitBtn.text('Guardar Categoría');
+                }
+                // Por defecto, si tipo es Ingreso, mostrar campo concepto
+                if ($('#cat_tipo').val() === 'Ingreso') {
+                    $('#div_cat_concepto').show();
+                } else {
+                    $('#div_cat_concepto').hide();
+                }
             }
 
-            $('#cat_tipo').off('change.categoria').on('change.categoria', function() {
-                if ($(this).val() === 'Ingreso') { $('#div_cat_concepto').show(); }
-                else { $('#div_cat_concepto').hide(); $('#cat_concepto').val(''); }
+            // Evento al cambiar tipo
+            $('#cat_tipo').off('change.categoria').on('change.categoria', function () {
+                if ($(this).val() === 'Ingreso') {
+                    $('#div_cat_concepto').show();
+                } else {
+                    $('#div_cat_concepto').hide();
+                    $('#cat_concepto').val('');
+                }
             });
         });
     }
 
     function initSubmitCategoria() {
-        $(document).on('submit', '#formCategoria', function(e) {
+        // Evitar cualquier envío nativo del formulario
+        $(document).off('submit', '#formCategoria');
+
+        $(document).on('submit', '#formCategoria', function (e) {
             e.preventDefault();
+
+            const $form = $(this);
+
+            // Validación: si tipo es Ingreso, concepto es obligatorio
             const tipo = $('#cat_tipo').val();
             const concepto = $('#cat_concepto').val();
             if (tipo === 'Ingreso' && !concepto) {
@@ -1185,34 +1209,64 @@ const CategoriasModule = (function() {
                 return false;
             }
 
-            ajaxCall('categoria', 'save', $(this).serialize())
-                .done(r => {
-                    if (r.success) {
-                        showSuccess('Categoría guardada correctamente.');
-                        setTimeout(() => { window.location.reload(); }, 900);
-                    } else {
-                        showError('Error: ' + (r.error || 'Intenta de nuevo.'));
-                    }
-                })
-                .fail(xhr => mostrarError('guardar categoría', xhr));
+            // Llamada AJAX directa al endpoint save
+            $.ajax({
+                url: BASE_URL + 'index.php?controller=categoria&action=save',
+                method: 'POST',
+                dataType: 'json',
+                data: $form.serialize()
+            })
+            .done(function (r) {
+                if (r && r.success) {
+                    try { showSuccess('Categoría guardada correctamente.'); } catch (e) {}
+                    setTimeout(function () { window.location.reload(); }, 900);
+                } else {
+                    showError('No fue posible guardar la categoría. ' + (r && r.error ? r.error : 'Intenta de nuevo.'));
+                }
+            })
+            .fail(function (xhr) {
+                mostrarError('guardar categoría', xhr);
+            });
+
+            return false;
         });
     }
 
     function initEliminarCategoria() {
-        $(document).on('click', '.btn-del-categoria', function() {
+        // Evitar handlers duplicados
+        $(document).off('click', '.btn-del-categoria');
+
+        $(document).on('click', '.btn-del-categoria', function () {
             const id = $(this).data('id');
+            const $row = $(this).closest('tr');
+            if (!id) {
+                showError('ID de categoría inválido.');
+                return;
+            }
+
             showConfirm('¿Eliminar esta categoría?').then(confirmed => {
                 if (!confirmed) return;
-                ajaxCall('categoria', 'delete', { id: id })
-                    .done(r => {
-                        if (r.success) {
-                            showSuccess('Categoría eliminada correctamente.');
-                            setTimeout(() => { window.location.reload(); }, 900);
-                        } else {
-                            showError('Error: ' + (r.error || 'Intenta de nuevo.'));
+
+                // Llamada AJAX directa al endpoint delete
+                $.ajax({
+                    url: BASE_URL + 'index.php?controller=categoria&action=delete',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: { id: id }
+                })
+                .done(function (r) {
+                    if (r && r.success) {
+                        try { showSuccess('Categoría eliminada correctamente.'); } catch (e) {}
+                        if ($row && $row.length) {
+                            $row.fadeOut(300, function () { $(this).remove(); });
                         }
-                    })
-                    .fail(xhr => mostrarError('eliminar categoría', xhr));
+                    } else {
+                        showError('No se pudo eliminar la categoría. ' + (r && r.error ? r.error : 'Intenta de nuevo.'));
+                    }
+                })
+                .fail(function (xhr) {
+                    mostrarError('eliminar categoría', xhr);
+                });
             });
         });
     }
@@ -1403,8 +1457,7 @@ const PresupuestosModule = (function() {
                     }
                 })
                 .fail(xhr => mostrarError('guardar presupuesto general', xhr));
-        });
-    }
+        });}
 
     function initModalSubPresupuesto() {
         $('#modalPresupuesto').on('show.bs.modal', function(event) {
@@ -1512,6 +1565,7 @@ const PresupuestosModule = (function() {
                             $selectCat.append(`<option value="${cat.id_categoria}">${escapeHtml(cat.nombre)}</option>`);
                         });
                     }
+
                     $selectCat.prop('disabled', false);
                     
                     if (presId) {
@@ -1596,8 +1650,7 @@ const PresupuestosModule = (function() {
         initModalPresupuestoCategoria();
         initSubmitPresupuestoCategoria();
         initEliminarPresupuesto();
-        initRefrescarPresupuestos();
-        // NUEVO: Inicializar el flujo exclusivo de subpresupuestos
+        // AHORA SÍ: Inicializar el flujo exclusivo de subpresupuestos porque las funciones YA EXISTEN dentro del módulo
         initModalSubPresupuestoExclusivo();
         initSubmitSubPresupuestoExclusivo();
         console.log('[✓] Módulo Presupuestos inicializado');
@@ -1651,9 +1704,8 @@ const DashboardModule = (function() {
     }
     return { init };
 })();
-
 // ============================================================================
-// MÓDULO: Auditoría (Visor de Detalles, Gráficas y Reportes)
+// MÓDULO: Auditoría (detalle en modal)
 // ============================================================================
 const AuditoriaModule = (function() {
     const { ajaxCall, escapeHtml, showNotification, showError } = ERPUtils;
@@ -1898,7 +1950,7 @@ const SidebarModule = (function() {
 })();
 
 // ============================================================================
-// INICIALIZACIÓN GLOBAL
+// INICIALIZACIÓN GLOBAL DE MÓDULOS
 // ============================================================================
 $(document).ready(function() {
     console.log('============================================================================');
