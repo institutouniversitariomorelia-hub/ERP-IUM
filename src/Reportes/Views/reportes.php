@@ -84,9 +84,6 @@
                             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte de Ingresos</h5>
                                 <div>
-                                    <button class="btn btn-light btn-sm me-2" onclick="exportarIngresosExcel()">
-                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel
-                                    </button>
                                     <button class="btn btn-light btn-sm" onclick="imprimirReporteIngresos()">
                                         <i class="bi bi-printer me-1"></i>Imprimir
                                     </button>
@@ -162,9 +159,6 @@
                             <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte de Egresos</h5>
                                 <div>
-                                    <button class="btn btn-light btn-sm me-2" onclick="exportarEgresosExcel()">
-                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel
-                                    </button>
                                     <button class="btn btn-light btn-sm" onclick="imprimirReporteEgresos()">
                                         <i class="bi bi-printer me-1"></i>Imprimir
                                     </button>
@@ -240,9 +234,6 @@
                             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                                 <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte Consolidado</h5>
                                 <div>
-                                    <button class="btn btn-light btn-sm me-2" onclick="exportarConsolidadoExcel()">
-                                        <i class="bi bi-file-earmark-spreadsheet me-1"></i>Excel
-                                    </button>
                                     <button class="btn btn-light btn-sm" onclick="imprimirReporteConsolidado()">
                                         <i class="bi bi-printer me-1"></i>Imprimir
                                     </button>
@@ -501,7 +492,7 @@ function exportarIngresosExcel() {
         return;
     }
     
-    const url = `<?php echo BASE_URL; ?>generate_reporte_ingresos.php?tipo=${datosReporteIngresos.tipo}&fecha_inicio=${datosReporteIngresos.fechaInicio}&fecha_fin=${datosReporteIngresos.fechaFin}&formato=excel`;
+    const url = `<?php echo BASE_URL; ?>generate_reporte_ingresos.php?tipo=${datosReporteIngresos.tipo}&fecha_inicio=${datosReporteIngresos.fechaInicio}&fecha_fin=${datosReporteIngresos.fechaFin}&formato=excel&image_type=2`;
     window.location.href = url;
 }
 
@@ -707,7 +698,7 @@ function exportarEgresosExcel() {
         return;
     }
     
-    const url = `<?php echo BASE_URL; ?>generate_reporte_egresos.php?tipo=${datosReporteEgresos.tipo}&fecha_inicio=${datosReporteEgresos.fechaInicio}&fecha_fin=${datosReporteEgresos.fechaFin}&formato=excel`;
+    const url = `<?php echo BASE_URL; ?>generate_reporte_egresos.php?tipo=${datosReporteEgresos.tipo}&fecha_inicio=${datosReporteEgresos.fechaInicio}&fecha_fin=${datosReporteEgresos.fechaFin}&formato=excel&image_type=2`;
     window.location.href = url;
 }
 
@@ -893,7 +884,7 @@ function exportarConsolidadoExcel() {
         return;
     }
     
-    const url = `<?php echo BASE_URL; ?>generate_reporte_consolidado.php?tipo=${datosReporteConsolidado.tipo}&fecha_inicio=${datosReporteConsolidado.fechaInicio}&fecha_fin=${datosReporteConsolidado.fechaFin}&formato=excel`;
+    const url = `<?php echo BASE_URL; ?>generate_reporte_consolidado.php?tipo=${datosReporteConsolidado.tipo}&fecha_inicio=${datosReporteConsolidado.fechaInicio}&fecha_fin=${datosReporteConsolidado.fechaFin}&formato=excel&image_type=2`;
     window.location.href = url;
 }
 

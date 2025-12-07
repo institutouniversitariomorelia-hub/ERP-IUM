@@ -1,11 +1,12 @@
 <?php
-// views/auditoria_list.php
+// views/auditoria_list.php - Versión Definitiva (Limpia)
+// La lógica JS se ha movido a public/js/app.js (AuditoriaModule)
 // Llamada por AuditoriaController->index()
-// Variables disponibles: $pageTitle, $activeModule, $auditoriaLogs, $usuarios, $filtrosActuales, $currentUser
 ?>
 
 <h3 class="text-danger mb-4"><?php echo htmlspecialchars($pageTitle); ?></h3>
 
+<!-- Tarjeta de Filtros -->
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <form id="formFiltroAuditoria" method="GET" action="<?php echo BASE_URL; ?>index.php">
@@ -43,14 +44,14 @@
                     </div>
                 </div>
 
-                    <style>
-                        /* Estilos específicos para la vista de auditoría */
-                        .aud-action-badge { font-weight:600; font-size:0.85em; }
-                        .aud-row-insert { background: rgba(198, 239, 206, 0.35); }
-                        .aud-row-update { background: rgba(255, 243, 205, 0.35); }
-                        .aud-row-delete { background: rgba(248, 215, 218, 0.35); }
-                        #aud_raw_consulta { font-family: monospace; font-size: 0.9em; }
-                    </style>
+                <style>
+                    /* Estilos específicos locales para badges de auditoría */
+                    .aud-action-badge { font-weight:600; font-size:0.85em; }
+                    .aud-row-insert { background: rgba(198, 239, 206, 0.35); }
+                    .aud-row-update { background: rgba(255, 243, 205, 0.35); }
+                    .aud-row-delete { background: rgba(248, 215, 218, 0.35); }
+                    #aud_raw_consulta { font-family: monospace; font-size: 0.9em; }
+                </style>
 
                 <div class="col-md-2">
                     <label for="filtro_accion_tipo" class="form-label">Tipo Acción</label>
@@ -68,49 +69,48 @@
                     </select>
                 </div>
 
-                    <?php
-                    // Simple controles de paginación: mostrar total y prev/next si se recibieron variables
-                    $totalLogs = isset($totalLogs) ? (int)$totalLogs : null;
-                    $page = isset($page) ? (int)$page : 1;
-                    $pageSize = isset($pageSize) ? (int)$pageSize : 50;
-                    if ($totalLogs !== null):
-                        $totalPages = max(1, (int)ceil($totalLogs / $pageSize));
-                        // Construir base de query con filtros actuales para mantenerlos en los enlaces
-                        $baseParams = [];
-                        if (!empty($filtrosActuales['seccion'])) $baseParams['seccion'] = $filtrosActuales['seccion'];
-                        if (!empty($filtrosActuales['usuario'])) $baseParams['usuario'] = $filtrosActuales['usuario'];
-                        if (!empty($filtrosActuales['fecha_inicio'])) $baseParams['fecha_inicio'] = $filtrosActuales['fecha_inicio'];
-                        if (!empty($filtrosActuales['fecha_fin'])) $baseParams['fecha_fin'] = $filtrosActuales['fecha_fin'];
-                        if (!empty($filtrosActuales['accion_tipo'])) $baseParams['accion_tipo'] = $filtrosActuales['accion_tipo'];
-                        // Helper para construir url
-                        function aud_query($params) {
-                            return htmlspecialchars(BASE_URL . 'index.php?' . http_build_query($params));
-                        }
-                    ?>
-                    <div class="d-flex justify-content-between align-items-center mt-3">
-                        <div class="text-muted">Mostrando página <?php echo $page; ?> de <?php echo $totalPages; ?> — <?php echo $totalLogs; ?> registros</div>
-                        <div>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <?php if ($page > 1):
-                                    $p = $page - 1; $params = array_merge($baseParams, ['controller' => 'auditoria', 'action' => 'index', 'page' => $p, 'pageSize' => $pageSize]); ?>
-                                    <a class="btn btn-outline-secondary" href="<?php echo aud_query($params); ?>">&laquo; Anterior</a>
-                                <?php else: ?>
-                                    <button class="btn btn-outline-secondary disabled">&laquo; Anterior</button>
-                                <?php endif; ?>
+                <?php
+                // Controles de paginación
+                $totalLogs = isset($totalLogs) ? (int)$totalLogs : null;
+                $page = isset($page) ? (int)$page : 1;
+                $pageSize = isset($pageSize) ? (int)$pageSize : 50;
+                if ($totalLogs !== null):
+                    $totalPages = max(1, (int)ceil($totalLogs / $pageSize));
+                    $baseParams = [];
+                    if (!empty($filtrosActuales['seccion'])) $baseParams['seccion'] = $filtrosActuales['seccion'];
+                    if (!empty($filtrosActuales['usuario'])) $baseParams['usuario'] = $filtrosActuales['usuario'];
+                    if (!empty($filtrosActuales['fecha_inicio'])) $baseParams['fecha_inicio'] = $filtrosActuales['fecha_inicio'];
+                    if (!empty($filtrosActuales['fecha_fin'])) $baseParams['fecha_fin'] = $filtrosActuales['fecha_fin'];
+                    if (!empty($filtrosActuales['accion_tipo'])) $baseParams['accion_tipo'] = $filtrosActuales['accion_tipo'];
+                    
+                    function aud_query($params) {
+                        return htmlspecialchars(BASE_URL . 'index.php?' . http_build_query($params));
+                    }
+                ?>
+                <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+                    <div class="text-muted small">Mostrando página <?php echo $page; ?> de <?php echo $totalPages; ?> — <?php echo $totalLogs; ?> registros</div>
+                    <div>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <?php if ($page > 1):
+                                $p = $page - 1; $params = array_merge($baseParams, ['controller' => 'auditoria', 'action' => 'index', 'page' => $p, 'pageSize' => $pageSize]); ?>
+                                <a class="btn btn-outline-secondary" href="<?php echo aud_query($params); ?>">&laquo; Anterior</a>
+                            <?php else: ?>
+                                <button class="btn btn-outline-secondary disabled" type="button">&laquo; Anterior</button>
+                            <?php endif; ?>
 
-                                <?php if ($page < $totalPages):
-                                    $p = $page + 1; $params = array_merge($baseParams, ['controller' => 'auditoria', 'action' => 'index', 'page' => $p, 'pageSize' => $pageSize]); ?>
-                                    <a class="btn btn-outline-secondary" href="<?php echo aud_query($params); ?>">Siguiente &raquo;</a>
-                                <?php else: ?>
-                                    <button class="btn btn-outline-secondary disabled">Siguiente &raquo;</button>
-                                <?php endif; ?>
-                            </div>
+                            <?php if ($page < $totalPages):
+                                $p = $page + 1; $params = array_merge($baseParams, ['controller' => 'auditoria', 'action' => 'index', 'page' => $p, 'pageSize' => $pageSize]); ?>
+                                <a class="btn btn-outline-secondary" href="<?php echo aud_query($params); ?>">Siguiente &raquo;</a>
+                            <?php else: ?>
+                                <button class="btn btn-outline-secondary disabled" type="button">Siguiente &raquo;</button>
+                            <?php endif; ?>
                         </div>
                     </div>
-                    <?php endif; ?>
-                <div class="col-md-2">
+                </div>
+                <?php endif; ?>
+                <div class="col-12 mt-2">
                     <button type="submit" class="btn btn-danger btn-sm w-100">
-                         <ion-icon name="filter-outline"></ion-icon> Filtrar
+                         <ion-icon name="filter-outline" style="vertical-align:middle"></ion-icon> Filtrar
                     </button>
                 </div>
                 <div class="col-md-2">
@@ -127,11 +127,11 @@
     </div>
 </div>
 
-<!-- Historial Global (PRIMERO) -->
+<!-- Tabla Historial Global -->
 <div class="card shadow-sm mb-4">
      <div class="card-header">Historial Global</div>
     <div class="card-body p-0">
-                <div class="table-responsive">
+        <div class="table-responsive">
             <table class="table table-striped table-hover mb-0">
                 <thead><tr class="table-light"><th>Fecha</th><th>Usuario</th><th>Sección</th><th>Acción</th></tr></thead>
                 <tbody id="tablaAuditoria">
@@ -139,7 +139,6 @@
                         <tr><td colspan="4" class="text-center p-4 text-muted">No se encontraron registros con los filtros aplicados.</td></tr>
                     <?php else: ?>
                         <?php foreach ($auditoriaLogs as $log): 
-                            // Preparar campos de forma segura para evitar notices
                             $fechaDisplay = '-';
                             if (!empty($log['fecha'])) {
                                 try {
@@ -153,18 +152,16 @@
                             $seccion = htmlspecialchars($log['seccion'] ?? '-');
                             $accion = htmlspecialchars($log['accion'] ?? '-');
                             $rowId = htmlspecialchars($log['id_auditoria'] ?? $log['id'] ?? '');
+
+                            $actLower = mb_strtolower($accion);
+                            $rowClass = '';
+                            $badgeClass = 'bg-secondary';
+                            $actionLabel = $accion;
+                            if (mb_stripos($actLower, 'inser') !== false || mb_stripos($actLower, 'registro') !== false) { $rowClass = 'aud-row-insert'; $badgeClass = 'bg-success'; $actionLabel = 'Registro'; }
+                            elseif (mb_stripos($actLower, 'actual') !== false || mb_stripos($actLower, 'update') !== false) { $rowClass = 'aud-row-update'; $badgeClass = 'bg-warning text-dark'; $actionLabel = 'Actualización'; }
+                            elseif (mb_stripos($actLower, 'elim') !== false || mb_stripos($actLower, 'delete') !== false) { $rowClass = 'aud-row-delete'; $badgeClass = 'bg-danger'; $actionLabel = 'Eliminación'; }
                         ?>
-                            <?php
-                                // Normalizar tipo de acción para badge/row class
-                                $actLower = mb_strtolower($accion);
-                                $rowClass = '';
-                                $badgeClass = 'bg-secondary';
-                                $actionLabel = $accion;
-                                if (mb_stripos($actLower, 'inser') !== false || mb_stripos($actLower, 'registro') !== false) { $rowClass = 'aud-row-insert'; $badgeClass = 'bg-success'; $actionLabel = 'Registro'; }
-                                elseif (mb_stripos($actLower, 'actual') !== false || mb_stripos($actLower, 'update') !== false) { $rowClass = 'aud-row-update'; $badgeClass = 'bg-warning text-dark'; $actionLabel = 'Actualización'; }
-                                elseif (mb_stripos($actLower, 'elim') !== false || mb_stripos($actLower, 'delete') !== false) { $rowClass = 'aud-row-delete'; $badgeClass = 'bg-danger'; $actionLabel = 'Eliminación'; }
-                            ?>
-                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>">
+                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>" style="cursor:pointer;">
                                 <td><?php echo $fechaDisplay; ?></td>
                                 <td><?php echo $usuario; ?></td>
                                 <td><?php echo $seccion; ?></td>
@@ -178,10 +175,10 @@
     </div>
 </div>
 
-<!-- Movimientos Recientes (SEGUNDO) -->
+<!-- Tabla Movimientos Recientes -->
 <div class="card shadow-sm mb-4">
     <div class="card-header">Movimientos Recientes</div>
-            <div class="card-body p-2">
+    <div class="card-body p-2">
         <?php if (!empty($recentLogs)): ?>
             <div class="table-responsive">
                 <table class="table table-sm table-striped mb-0">
@@ -192,7 +189,6 @@
                             if (!empty($r['fecha'])) {
                                 try { $d = new DateTime($r['fecha']); $dt = $d->format('d/m/Y H:i'); } catch(Exception $e) { $dt = htmlspecialchars($r['fecha']); }
                             }
-                            // Determinar tipo de acción para badge y clase de fila
                             $actRaw = $r['accion'] ?? '';
                             $actLower = mb_strtolower($actRaw);
                             $actionLabel = htmlspecialchars($actRaw ?: '-');
@@ -203,7 +199,7 @@
                             elseif (mb_stripos($actLower, 'elim') !== false || mb_stripos($actLower, 'delete') !== false) { $rowClass = 'aud-row-delete'; $badgeClass = 'bg-danger'; $actionLabel = 'Eliminación'; }
                             $rowId = htmlspecialchars($r['id_auditoria'] ?? $r['id_auditoria']);
                         ?>
-                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>">
+                            <tr class="aud-row <?php echo $rowClass; ?> clickable-row" data-id="<?php echo $rowId; ?>" style="cursor:pointer;">
                                 <td><?php echo $dt; ?></td>
                                 <td><?php echo htmlspecialchars($r['usuario'] ?? 'Sistema'); ?></td>
                                 <td><?php echo htmlspecialchars($r['seccion'] ?? '-'); ?></td>
@@ -223,7 +219,7 @@
 <!-- Sección de Reportes -->
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="bi bi-file-earmark-bar-graph me-2"></i>Generación de Reportes</h5>
+        <h5 class="mb-0"><ion-icon name="bar-chart-outline" style="vertical-align:middle; margin-right:8px;"></ion-icon>Generación de Reportes</h5>
     </div>
     <div class="card-body">
         <!-- Reporte semanal (últimos 7 días) -->
@@ -250,15 +246,15 @@
                     <div class="row">
                         <div class="col-md-5">
                             <label for="auditoria_reporte_fecha_inicio" class="form-label">Fecha Inicio</label>
-                            <input type="date" class="form-control" id="auditoria_reporte_fecha_inicio" name="fecha_inicio" autocomplete="off" required>
+                            <input type="date" class="form-control" id="auditoria_reporte_fecha_inicio" name="fecha_inicio" required>
                         </div>
                         <div class="col-md-5">
                             <label for="auditoria_reporte_fecha_fin" class="form-label">Fecha Fin</label>
-                            <input type="date" class="form-control" id="auditoria_reporte_fecha_fin" name="fecha_fin" autocomplete="off" required>
+                            <input type="date" class="form-control" id="auditoria_reporte_fecha_fin" name="fecha_fin" required>
                         </div>
                         <div class="col-md-2 d-flex align-items-end">
                             <button type="submit" class="btn btn-success w-100">
-                                <i class="bi bi-search me-1"></i>Generar
+                                <ion-icon name="search-outline" class="me-1" style="vertical-align:middle"></ion-icon>Generar
                             </button>
                         </div>
                     </div>
@@ -272,7 +268,7 @@
 <div id="resultadoReporteAuditoriaContainer" style="display: none;" class="mb-4">
     <div class="card shadow-sm">
         <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Reporte de Auditoría</h5>
+            <h5 class="mb-0"><ion-icon name="document-text-outline" class="me-2" style="vertical-align:middle"></ion-icon>Reporte de Auditoría</h5>
             <div>
                 <button class="btn btn-light btn-sm me-2" onclick="auditoriaVista_imprimir()">
                     <i class="bi bi-printer me-1"></i>Imprimir
@@ -1081,147 +1077,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
 @media print {
-    /* Ocultar elementos de navegación y botones */
-    #sidebar, 
-    .top-header, 
-    .btn, 
-    .card-header .btn,
-    #collapseReportePersonalizado:not(.show) {
-        display: none !important;
-    }
-    
-    /* Ocultar gráficas durante impresión */
-    #graficasReporte {
-        display: none !important;
-    }
-    
-    /* Mostrar contenido colapsado si está activo */
-    .collapse.show {
-        display: block !important;
-        height: auto !important;
-    }
-    
-    /* Estilos para el contenedor principal */
-    body {
-        background: white !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
-    
-    .main-content {
-        margin: 0 !important;
-        padding: 15px !important;
-        width: 100% !important;
-    }
-    
-    /* Estilos para tarjetas */
-    .card {
-        border: 1px solid #ddd !important;
-        box-shadow: none !important;
-        page-break-inside: avoid;
-        margin-bottom: 15px !important;
-    }
-    
-    .card-header {
-        background-color: #f8f9fa !important;
-        border-bottom: 2px solid #dee2e6 !important;
-        padding: 10px 15px !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    
-    .card-body {
-        padding: 15px !important;
-    }
-    
-    /* Estilos para tablas */
-    table {
-        width: 100% !important;
-        font-size: 9pt !important;
-        border-collapse: collapse !important;
-    }
-    
-    table thead {
-        background-color: #f8f9fa !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    
-    table th, 
-    table td {
-        padding: 6px 8px !important;
-        border: 1px solid #dee2e6 !important;
-        text-align: left !important;
-    }
-    
-    table th {
-        font-weight: bold !important;
-        font-size: 9pt !important;
-    }
-    
-    /* Estilos para badges */
-    .badge {
-        border: 1px solid #000 !important;
-        padding: 2px 6px !important;
-        font-size: 8pt !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    
-    .badge.bg-primary {
-        background-color: #0d6efd !important;
-        color: white !important;
-    }
-    
-    .badge.bg-success {
-        background-color: #198754 !important;
-        color: white !important;
-    }
-    
-    .badge.bg-warning {
-        background-color: #ffc107 !important;
-        color: #000 !important;
-    }
-    
-    .badge.bg-danger {
-        background-color: #dc3545 !important;
-        color: white !important;
-    }
-    
-    .badge.bg-info {
-        background-color: #0dcaf0 !important;
-        color: #000 !important;
-    }
-    
-    /* Encabezados */
-    h2, h3, h4, h5 {
-        page-break-after: avoid;
-        margin-top: 10px !important;
-        margin-bottom: 8px !important;
-    }
-    
-    h2 {
-        font-size: 16pt !important;
-    }
-    
-    h3 {
-        font-size: 14pt !important;
-    }
-    
-    h5 {
-        font-size: 11pt !important;
-    }
-    
-    /* Evitar saltos de página dentro de elementos */
-    tr, 
-    .alert,
-    .card {
-        page-break-inside: avoid;
-    }
-    
-    /* Márgenes de página */
-    @page {
-        margin: 1.5cm;
-    }
+    #sidebar, .top-header, .btn, .card-header .btn, #collapseReportePersonalizado, form { display: none !important; }
+    #resultadoReporteAuditoriaContainer { display: block !important; }
+    body { background: white !important; padding: 0 !important; margin: 0 !important; overflow: visible !important; }
+    .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+    .card { border: 1px solid #ddd !important; box-shadow: none !important; page-break-inside: avoid; margin-bottom: 20px !important; }
+    table { width: 100% !important; font-size: 10pt !important; border-collapse: collapse !important; }
+    th, td { border: 1px solid #ccc !important; padding: 6px !important; }
+    canvas { max-height: 300px !important; width: auto !important; }
 }
 </style>
