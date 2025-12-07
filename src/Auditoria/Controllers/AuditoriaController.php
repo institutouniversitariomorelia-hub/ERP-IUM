@@ -23,12 +23,11 @@ class AuditoriaController {
 
         // Recoger filtros de la URL (si se enviaron por GET desde el formulario)
         $filtros = [
-            'seccion' => $_GET['seccion'] ?? null,
-            'usuario' => $_GET['usuario'] ?? null,
+            'seccion'      => $_GET['seccion'] ?? null,
+            'usuario'      => $_GET['usuario'] ?? null,
             'fecha_inicio' => $_GET['fecha_inicio'] ?? null,
-            'fecha_fin' => $_GET['fecha_fin'] ?? null,
-            // soporte para filtro por tipo (accion_tipo) desde la UI: Insercion/Actualizacion/Eliminacion
-            'accion_tipo' => $_GET['accion_tipo'] ?? null,
+            'fecha_fin'    => $_GET['fecha_fin'] ?? null,
+            'accion_tipo'  => $_GET['accion_tipo'] ?? ($_GET['tipo_accion'] ?? null),
             // Nota: filtros 'accion' y 'q' eliminados para simplificar la interfaz y evitar búsquedas difusas.
         ];
 
@@ -46,28 +45,30 @@ class AuditoriaController {
 
         // Mantener 'accion_tipo' tal cual; el filtrado específico se realiza en el modelo.
 
-    // Pedir datos a los Modelos
-    // Soporte de paginación: leer página y tamaño desde GET
-    $filtros['page'] = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-    $filtros['pageSize'] = isset($_GET['pageSize']) ? max(1, min(200, (int)$_GET['pageSize'])) : 10;
+        // Soporte de paginación: respetar siempre la página enviada por GET.
+        // El formulario de filtros ya envía page=1 en un input hidden,
+        // y los enlaces de paginación construyen el page correcto.
+        $filtros['page'] = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+        $filtros['pageSize'] = isset($_GET['pageSize']) ? max(1, min(200, (int)$_GET['pageSize'])) : 10;
 
-    $logsResult = $this->auditoriaModel->getAuditoriaLogs($filtros);
-    if (is_array($logsResult) && array_key_exists('data', $logsResult)) {
-        $auditoriaLogs = $logsResult['data'];
-        $totalLogs = $logsResult['total'] ?? count($auditoriaLogs);
-        $page = $logsResult['page'] ?? $filtros['page'];
-        $pageSize = $logsResult['pageSize'] ?? $filtros['pageSize'];
-    } else {
-        // Compatibilidad: si el modelo devolviera solo un array de filas
-        $auditoriaLogs = is_array($logsResult) ? $logsResult : [];
-        $totalLogs = count($auditoriaLogs);
-        $page = $filtros['page'];
-        $pageSize = $filtros['pageSize'];
-    }
+        $logsResult = $this->auditoriaModel->getAuditoriaLogs($filtros);
+        if (is_array($logsResult) && array_key_exists('data', $logsResult)) {
+            $auditoriaLogs = $logsResult['data'];
+            $totalLogs = $logsResult['total'] ?? count($auditoriaLogs);
+            $page = $logsResult['page'] ?? $filtros['page'];
+            $pageSize = $logsResult['pageSize'] ?? $filtros['pageSize'];
+        } else {
+            // Compatibilidad: si el modelo devolviera solo un array de filas
+            $auditoriaLogs = is_array($logsResult) ? $logsResult : [];
+            $totalLogs = count($auditoriaLogs);
+            $page = $filtros['page'];
+            $pageSize = $filtros['pageSize'];
+        }
 
-    $usuarios = $this->userModel->getAllUsers(); // Obtener lista de usuarios para el <select>
-    // Últimos movimientos (compacto)
-    $recentLogs = $this->auditoriaModel->getRecentLogs(5);
+        // Para auditoría necesitamos ver TODOS los usuarios, incluyendo SU
+        $usuarios = $this->userModel->getAllUsersForAudit(); // Obtener lista de usuarios para el <select>
+        // Últimos movimientos (compacto)
+        $recentLogs = $this->auditoriaModel->getRecentLogs(5);
 
         // Datos para la Vista
         $pageTitle = "Historial de Auditoría";

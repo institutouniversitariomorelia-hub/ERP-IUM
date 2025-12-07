@@ -47,15 +47,16 @@ class AuditoriaModel {
             }
         }
 
-        // Filtrar por tipo de acción (Insercion / Actualizacion / Eliminacion)
+        // Filtrar por tipo de acción (Registro / Actualización / Eliminación)
         if (!empty($filtros['accion_tipo'])) {
-            $tipo = mb_strtolower($filtros['accion_tipo']);
-            if (mb_stripos($tipo, 'inser') !== false || mb_stripos($tipo, 'registro') !== false) {
-                $where .= " AND (LOWER(a.accion) LIKE '%insert%' OR LOWER(a.accion) LIKE '%registro%')";
-            } elseif (mb_stripos($tipo, 'actual') !== false || mb_stripos($tipo, 'update') !== false) {
-                $where .= " AND (LOWER(a.accion) LIKE '%actualiz%' OR LOWER(a.accion) LIKE '%update%')";
-            } elseif (mb_stripos($tipo, 'elim') !== false || mb_stripos($tipo, 'delete') !== false) {
-                $where .= " AND (LOWER(a.accion) LIKE '%elim%' OR LOWER(a.accion) LIKE '%delete%')";
+            $tipo = $filtros['accion_tipo'];
+            // Nota: $where es un string; concatenamos con AND
+            if ($tipo === 'Registro') {
+                $where .= " AND a.accion = 'Insercion'";
+            } elseif ($tipo === 'Actualización') {
+                $where .= " AND a.accion = 'Actualizacion'";
+            } elseif ($tipo === 'Eliminación') {
+                $where .= " AND a.accion = 'Eliminacion'";
             }
         }
 
