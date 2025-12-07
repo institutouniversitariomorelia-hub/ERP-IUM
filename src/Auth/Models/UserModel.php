@@ -25,6 +25,21 @@ class UserModel {
     }
 
     /**
+     * Obtiene todos los usuarios para fines de auditoría, incluyendo SU.
+     * Separa este uso para no afectar otros módulos.
+     */
+    public function getAllUsersForAudit() {
+        $query = "SELECT id_user as id, nombre, username, rol FROM usuarios ORDER BY nombre ASC";
+        $result = $this->db->query($query);
+        if ($result) {
+            return $result->fetch_all(MYSQLI_ASSOC);
+        } else {
+            error_log("Error al obtener todos los usuarios (auditoría): " . $this->db->error);
+            return [];
+        }
+    }
+
+    /**
      * Obtiene un usuario específico por su ID.
      * @param int $id ID del usuario.
      * @return array|null Datos del usuario o null si no se encuentra o hay error.

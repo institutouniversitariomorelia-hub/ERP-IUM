@@ -9,67 +9,54 @@
  * ============================================================================
  */
 
-'use strict';
+"use strict";
 
 // ============================================================================
-// MÓDULO: Utilidades Globales
+// MÓDULO: Utilidades Globales (ERPUtils)
 // ============================================================================
 const ERPUtils = (function() {
     /**
-     * Realiza llamadas AJAX genéricas al backend
+     * Wrapper genérico para llamadas AJAX
+     * @param {string} controller
+     * @param {string} action
+     * @param {object} data
+     * @param {string} method
+     * @returns {jqXHR}
      */
     function ajaxCall(controller, action, data = {}, method = 'POST') {
-        let url = `${BASE_URL}index.php?controller=${controller}&action=${action}`;
-        
-        if (method.toUpperCase() === 'GET' && Object.keys(data).length > 0) {
-            url += '&' + $.param(data);
-            data = {};
-        }
-
-        const ajaxOptions = {
-            url: url,
-            type: 'POST',
+        return $.ajax({
+            url: BASE_URL + 'index.php',
+            method: method,
             dataType: 'json',
-            data: data
-        };
-
-        if (method.toUpperCase() !== 'GET' && method.toUpperCase() !== 'POST') {
-            ajaxOptions.data._method = method.toUpperCase();
-        }
-
-        console.log(`[AJAX] ${method} ${controller}/${action}`, ajaxOptions.data);
-        return $.ajax(ajaxOptions);
+            data: Object.assign({}, data, {
+                controller: controller,
+                action: action
+            })
+        });
     }
 
     /**
-     * Muestra mensajes de error amigables
+     * Manejo estándar de errores AJAX
+     * @param {string} contexto
+     * @param {jqXHR} xhr
      */
-    function mostrarError(action, jqXHR = null) {
-        let errorMsg = `Ocurrió un error al ${action}.`;
-        let serverError = 'Error desconocido o sin conexión.';
+    function mostrarError(contexto, xhr) {
+        console.error(`[ERROR] Falló la operación (${contexto})`, xhr);
+        let errorMsg = 'Ocurrió un error al comunicarse con el servidor.';
+        let serverError = '';
 
-        if (jqXHR) {
-            if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
-                serverError = jqXHR.responseJSON.error;
-            } else if (jqXHR.responseText) {
-                console.error(`[ERROR] ${action}:`, jqXHR.responseText);
-                const match = jqXHR.responseText.match(/<b>(?:Fatal error|Warning|Exception)<\/b>:(.*?)<br \/>/i);
-                if (match && match[1]) {
-                    serverError = `Error PHP: ${match[1].trim()}`;
-                } else {
-                    serverError = 'Respuesta del servidor no válida (ver consola).';
-                }
-            } else if (jqXHR.statusText) {
-                serverError = `${jqXHR.statusText} (${jqXHR.status})`;
+        try {
+            if (xhr && xhr.responseJSON && xhr.responseJSON.error) {
+                serverError = xhr.responseJSON.error;
+            } else if (xhr && typeof xhr.responseText === 'string' && xhr.responseText.trim() !== '') {
+                serverError = xhr.responseText.substring(0, 400);
             }
+        } catch (e) {
+            console.warn('No se pudo procesar el mensaje de error del servidor:', e);
         }
 
-        console.error(`[ERROR] ${action}:`, serverError, jqXHR);
-        if (typeof showError === 'function') {
-            showError(`${errorMsg} Detalle: ${serverError}.`, { autoClose: 7000 });
-        } else {
-            alert(`${errorMsg}\nDetalle: ${serverError}`);
-        }
+        // Mostrar notificación de error amigable
+        showError(`${errorMsg} Detalle: ${serverError}. Revise la consola (F12) para más información.`, { autoClose: 7000 });
     }
 
     /**
@@ -153,6 +140,66 @@ const ERPUtils = (function() {
     function showError(message, options) { showNotification('error', message, options); }
 
     /**
+     * Formatea dinámicamente inputs numéricos con separadores de miles mientras se escribe.
+     * - Muestra: 12345.67 => 12,345.67
+     * - Valor enviado al backend (on submit): 12345.67 (sin comas)
+     */
+    function attachMoneyFormatter(selector) {
+        const $inputs = $(selector);
+        if (!$inputs.length) return;
+
+        $inputs.each(function() {
+            const $input = $(this);
+
+            // Formatear valor inicial si ya viene con número
+            const raw = ($input.val() || '').toString().replace(/,/g, '');
+            if (raw && !isNaN(raw)) {
+                const num = parseFloat(raw);
+                $input.val(num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }));
+            }
+
+            // Mientras se escribe
+            $input.off('input.moneyFmt').on('input.moneyFmt', function() {
+                let val = $input.val();
+                // Permitir borrar todo
+                if (val === '') return;
+
+                // Quitar todo excepto dígitos y punto decimal
+                val = val.replace(/,/g, '');
+                val = val.replace(/[^0-9.]/g, '');
+                const parts = val.split('.');
+                if (parts.length > 2) {
+                    // Dejar solo un punto decimal
+                    val = parts[0] + '.' + parts.slice(1).join('');
+                }
+
+                const num = parseFloat(val);
+                if (isNaN(num)) {
+                    $input.val('');
+                    return;
+                }
+
+                const hasDot = val.indexOf('.') !== -1;
+                const decimals = hasDot ? (val.split('.')[1] || '').length : 0;
+                const formatOptions = {
+                    minimumFractionDigits: decimals > 0 ? decimals : 0,
+                    maximumFractionDigits: 2
+                };
+                $input.val(num.toLocaleString('en-US', formatOptions));
+            });
+
+            // Al enviar formulario, limpiar comas para el backend
+            $input.closest('form').off('submit.moneyFmt').on('submit.moneyFmt', function() {
+                const current = $input.val();
+                if (!current) return true;
+                const cleaned = current.replace(/,/g, '');
+                $input.val(cleaned);
+                return true;
+            });
+        });
+    }
+
+    /**
      * Muestra un modal de confirmación reutilizable.
      */
     function showConfirm(message, options = {}) {
@@ -205,7 +252,8 @@ const ERPUtils = (function() {
         showNotification,
         showSuccess,
         showError,
-        showConfirm
+        showConfirm,
+        attachMoneyFormatter
     };
 })();
 
@@ -216,6 +264,7 @@ window.showError = ERPUtils.showError;
 window.showSuccess = ERPUtils.showSuccess;
 window.showNotification = ERPUtils.showNotification;
 window.showConfirm = ERPUtils.showConfirm;
+window.attachMoneyFormatter = ERPUtils.attachMoneyFormatter;
 
 // ============================================================================
 // MÓDULO: Gestión de Usuarios y Perfil
@@ -535,7 +584,7 @@ const IngresosModule = (function() {
     function initModalIngreso() {
         $('#modalIngreso').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
-            const ingresoId = button ? $(button).data('id') : null;
+                const ingresoId = button ? $(button).data('id') : null; // Get the ingreso ID
             const $form = $('#formIngreso');
             const $selectCat = $('#in_id_categoria');
 
@@ -548,8 +597,9 @@ const IngresosModule = (function() {
             $('#seccion_cobro_dividido').hide();
             $('#toggleCobroDividido').prop('checked', false);
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
+            $('#btnSubmitIngreso').text('Guardar Ingreso');
 
-            ajaxCall('ingreso', 'getCategoriasIngreso', {}, 'GET')
+            ajaxCall('ingreso', 'getIngreso', {}, 'GET')
                 .done(categorias => {
                     $selectCat.empty().append('<option value="">Seleccione una categoría...</option>');
                     if (categorias && Array.isArray(categorias)) {
@@ -563,6 +613,7 @@ const IngresosModule = (function() {
 
                     if (ingresoId) {
                         $('#modalIngresoTitle').text('Editar Ingreso');
+                        $('#btnSubmitIngreso').text('Actualizar Ingreso');
                         ajaxCall('ingreso', 'getIngresoData', { id: ingresoId }, 'GET')
                             .done(data => {
                                 if (data && !data.error && data.folio_ingreso) {
@@ -602,6 +653,7 @@ const IngresosModule = (function() {
                             .fail(xhr => { mostrarError('cargar datos ingreso', xhr); $('#modalIngreso').modal('hide'); });
                     } else {
                         $('#modalIngresoTitle').text('Registrar Nuevo Ingreso');
+                        $('#btnSubmitIngreso').text('Guardar Ingreso');
                         $('#in_anio').val(new Date().getFullYear());
                         $('#seccion_pago_unico').show();
                         $('#seccion_cobro_dividido').hide();
@@ -663,7 +715,7 @@ const IngresosModule = (function() {
         $(document).on('submit', '#formIngreso', function(e) {
             e.preventDefault();
             const esDividido = $('#toggleCobroDividido').is(':checked');
-            let formData = $(this).serializeArray();
+            let formData = $(this).serializeArray(); // Serialize form data
             let dataObj = {};
             formData.forEach(item => { dataObj[item.name] = item.value; });
             
@@ -691,10 +743,15 @@ const IngresosModule = (function() {
                 dataObj.pagos = JSON.stringify(pagos);
             }
             
+            const esEdicion = !!dataObj.id;
             ajaxCall('ingreso', 'save', dataObj)
                 .done(r => {
                     if (r.success) {
-                        showSuccess('Ingreso guardado correctamente.');
+                        if (esEdicion) {
+                            showSuccess('Ingreso actualizado correctamente.');
+                        } else {
+                            showSuccess('Ingreso guardado correctamente.');
+                        }
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
                         showError('Error al guardar: ' + (r.error || 'Verifique datos.'));
@@ -806,6 +863,7 @@ const EgresosModule = (function() {
             const $form = $('#formEgreso');
             const $selectCat = $('#eg_id_categoria');
             const $selectPres = $('#eg_id_presupuesto');
+            const $montoInput = $('#eg_monto');
 
             if (!$form.length) return;
             
@@ -813,7 +871,12 @@ const EgresosModule = (function() {
             $('#egreso_id').val('');
             $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
             $selectPres.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
-            ensureNumberEditable('#eg_monto');
+
+            // Limpiar y formatear el campo monto al abrir el modal
+            if ($montoInput.length) {
+                $montoInput.val('');
+                try { if (window.attachMoneyFormatter) attachMoneyFormatter('#eg_monto'); } catch(e) { console.error('attachMoneyFormatter eg_monto', e); }
+            }
 
             ajaxCall('presupuesto', 'getSubPresupuestos', {}, 'GET')
                 .done(presupuestos => {
@@ -856,12 +919,25 @@ const EgresosModule = (function() {
 
                     if (egresoId) {
                         $('#modalEgresoTitle').text('Editar Egreso');
+                        $('#btnSubmitEgreso').text('Actualizar Egreso');
                         ajaxCall('egreso', 'getEgresoData', { id: egresoId }, 'GET')
                             .done(data => {
                                 if (data && !data.error && data.folio_egreso) {
                                     $('#egreso_id').val(data.folio_egreso);
                                     $('#eg_fecha').val(data.fecha);
-                                    $('#eg_monto').val(data.monto);
+                                    // Formatear monto existente con comas y máximo 2 decimales
+                                    if ($montoInput.length) {
+                                        const rawMonto = (data.monto || '').toString().replace(/,/g, '');
+                                        const numMonto = parseFloat(rawMonto);
+                                        if (!isNaN(numMonto)) {
+                                            $montoInput.val(numMonto.toLocaleString('en-US', {
+                                                minimumFractionDigits: 0,
+                                                maximumFractionDigits: 2
+                                            }));
+                                        } else {
+                                            $montoInput.val('');
+                                        }
+                                    }
                                     $selectCat.val(data.id_categoria);
                                     if (data.id_presupuesto) $selectPres.val(data.id_presupuesto);
                                     else {
@@ -877,6 +953,7 @@ const EgresosModule = (function() {
                             });
                     } else {
                         $('#modalEgresoTitle').text('Registrar Nuevo Egreso');
+                        $('#btnSubmitEgreso').text('Guardar Egreso');
                     }
                 });
         });
@@ -885,12 +962,20 @@ const EgresosModule = (function() {
     function initSubmitEgreso() {
         $(document).on('submit', '#formEgreso', function(e) {
             e.preventDefault();
-            ajaxCall('egreso', 'save', $(this).serialize())
+            const formData = $(this).serialize();
+            const esEdicion = !!$('#egreso_id').val();
+            ajaxCall('egreso', 'save', formData)
                 .done(r => {
                     if (r.success) {
                         $(document).trigger('egresoGuardado');
 
-                        try { showSuccess('Egreso guardado correctamente.'); } catch(e) {}
+                        try {
+                            if (esEdicion) {
+                                showSuccess('Egreso actualizado correctamente.');
+                            } else {
+                                showSuccess('Egreso guardado correctamente.');
+                            }
+                        } catch(e) {}
 
                         // Si es creación, el backend devuelve r.folio
                         if (r.folio) {
@@ -910,22 +995,39 @@ const EgresosModule = (function() {
         });
     }
 
-    function initEliminarEgreso() {
-        $(document).on('click', '.btn-del-egreso', function() {
+    function initEditarMontoEgreso() {
+        $(document).on('click', '.btn-edit-monto-egreso', function() {
             const id = $(this).data('id');
-            showConfirm('¿Eliminar este egreso?').then(confirmed => {
-                if (!confirmed) return;
-                ajaxCall('egreso', 'delete', { id: id })
-                    .done(r => {
-                        if (r.success) {
-                            $(document).trigger('egresoEliminado');
-                            showSuccess('Egreso eliminado correctamente.');
-                            setTimeout(() => { window.location.reload(); }, 900);
-                        } else {
-                            showError('Error al eliminar: ' + (r.error || ''));
-                        }
-                    });
-            });
+            const monto = $(this).data('monto');
+            $('#editMontoEgresoId').val(id);
+            $('#editMontoEgresoValor').val(monto);
+            const modalEl = document.getElementById('modalEditarMontoEgreso');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+                bsModal.show();
+            } else {
+                $('#modalEditarMontoEgreso').modal('show');
+            }
+        });
+
+        $(document).on('click', '#btnGuardarNuevoMontoEgreso', function() {
+            const id = $('#editMontoEgresoId').val();
+            const monto = $('#editMontoEgresoValor').val();
+            if (!id) { showError('No se encontró el egreso a actualizar.'); return; }
+            if (monto === '' || isNaN(monto) || parseFloat(monto) < 0) {
+                showError('El monto no puede ser negativo.');
+                return;
+            }
+            ajaxCall('egreso', 'updateMonto', { id: id, monto: monto })
+                .done(r => {
+                    if (r.success) {
+                        showSuccess('Monto actualizado correctamente.');
+                        setTimeout(() => { window.location.reload(); }, 900);
+                    } else {
+                        showError('Error al actualizar monto: ' + (r.error || ''));
+                    }
+                })
+                .fail(xhr => mostrarError('actualizar monto de egreso', xhr));
         });
     }
 
@@ -936,6 +1038,7 @@ const EgresosModule = (function() {
         const $fechaInicio = $('#fechaInicioEgresos');
         const $fechaFin = $('#fechaFinEgresos');
         const $clearDateBtn = $('#clearDateEgresos');
+        const $categoriaSelect = $('#filtroCategoriaEgresos');
         const $resultCount = $('#resultCountEgresos');
         const $tableBody = $('#tablaEgresos');
         
@@ -943,8 +1046,9 @@ const EgresosModule = (function() {
             const searchTerm = $searchInput.val().toLowerCase().trim();
             const fechaInicio = $fechaInicio.val();
             const fechaFin = $fechaFin.val();
+            const categoriaId = $categoriaSelect.val();
             $clearBtn.toggle(searchTerm.length > 0);
-            $clearDateBtn.toggle(!!(fechaInicio || fechaFin));
+            $clearDateBtn.toggle(!!(fechaInicio || fechaFin || categoriaId));
             let visibleCount = 0;
             let totalCount = 0;
             
@@ -957,18 +1061,23 @@ const EgresosModule = (function() {
                 const $editBtn = $row.find('.btn-edit-egreso');
                 if ($editBtn.length) folio = $editBtn.data('id').toString().toLowerCase();
                 const fechaRegistro = $row.attr('data-fecha');
+                const catRowId = $row.data('categoria-id') ? $row.data('categoria-id').toString() : '';
                 const searchableText = folio + ' ' + destinatario;
                 let matchText = !searchTerm || searchableText.includes(searchTerm);
                 let matchDate = true;
+                let matchCategoria = true;
                 if (fechaRegistro && (fechaInicio || fechaFin)) {
                     if (fechaInicio && fechaFin) matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
                     else if (fechaInicio) matchDate = fechaRegistro >= fechaInicio;
                     else if (fechaFin) matchDate = fechaRegistro <= fechaFin;
                 }
-                if (matchText && matchDate) { $row.show(); visibleCount++; } else { $row.hide(); }
+                if (categoriaId) {
+                    matchCategoria = catRowId === categoriaId;
+                }
+                if (matchText && matchDate && matchCategoria) { $row.show(); visibleCount++; } else { $row.hide(); }
             });
             
-            if (searchTerm.length > 0 || fechaInicio || fechaFin) {
+            if (searchTerm.length > 0 || fechaInicio || fechaFin || categoriaId) {
                 if (visibleCount === 0) {
                     $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados').addClass('text-danger').removeClass('text-success');
                 } else {
@@ -983,14 +1092,15 @@ const EgresosModule = (function() {
         $fechaInicio.on('change', filtrarEgresos);
         $fechaFin.on('change', filtrarEgresos);
         $clearBtn.on('click', function() { $searchInput.val(''); filtrarEgresos(); $searchInput.focus(); });
-        $clearDateBtn.on('click', function() { $fechaInicio.val(''); $fechaFin.val(''); filtrarEgresos(); });
+        $clearDateBtn.on('click', function() { $fechaInicio.val(''); $fechaFin.val(''); $categoriaSelect.val(''); filtrarEgresos(); });
+        $categoriaSelect.on('change', filtrarEgresos);
         $searchInput.on('keydown', function(e) { if (e.key === 'Escape') { $(this).val(''); filtrarEgresos(); } });
     }
 
     function init() {
         initModalEgreso();
         initSubmitEgreso();
-        initEliminarEgreso();
+        initEditarMontoEgreso();
         initBuscadorEgresos();
         console.log('[✓] Módulo Egresos inicializado');
     }
@@ -1001,24 +1111,33 @@ const EgresosModule = (function() {
 // ============================================================================
 // MÓDULO: Gestión de Categorías
 // ============================================================================
-const CategoriasModule = (function() {
-    const { ajaxCall, mostrarError, showConfirm, showSuccess, showError } = ERPUtils;
+const CategoriasModule = (function () {
+    const { ajaxCall, mostrarError } = ERPUtils;
 
     function initModalCategoria() {
-        $('#modalCategoria').on('show.bs.modal', function(event) {
+        $('#modalCategoria').on('show.bs.modal', function (event) {
             const button = event.relatedTarget;
             const catId = button ? $(button).data('id') : null;
             const $form = $('#formCategoria');
-            
-            if (!$form.length) return;
-            
+
+            if (!$form.length) {
+                console.error('[ERROR] Formulario #formCategoria no encontrado');
+                return;
+            }
+
             $form[0].reset();
             $('#categoria_id').val('');
             $('#div_cat_concepto').hide();
             $('#cat_concepto').val('');
-            
+            $('#alert_categoria_protegida').hide();
+
+            const $submitBtn = $form.find('button[type="submit"], .btn-submit-categoria');
+
             if (catId) {
                 $('#modalCategoriaTitle').text('Editar Categoría');
+                if ($submitBtn.length) {
+                    $submitBtn.text('Actualizar Categoría');
+                }
                 ajaxCall('categoria', 'getCategoriaData', { id: catId }, 'GET')
                     .done(data => {
                         if (data && !data.error) {
@@ -1027,7 +1146,8 @@ const CategoriasModule = (function() {
                             $('#cat_tipo').val(data.tipo);
                             $('#cat_descripcion').val(data.descripcion);
                             $('#categoria_no_borrable').val(data.no_borrable || 0);
-                            
+
+                            // Mostrar campo concepto si es ingreso y setear valor
                             if (data.tipo === 'Ingreso') {
                                 $('#div_cat_concepto').show();
                                 $('#cat_concepto').val(data.concepto || '');
@@ -1035,26 +1155,53 @@ const CategoriasModule = (function() {
                                 $('#div_cat_concepto').hide();
                                 $('#cat_concepto').val('');
                             }
-                            
-                            if (data.no_borrable == 1) { $('#alert_categoria_protegida').show(); }
-                            else { $('#alert_categoria_protegida').hide(); }
+
+                            // Mostrar alerta si es protegida
+                            if (data.no_borrable == 1) {
+                                $('#alert_categoria_protegida').show();
+                            } else {
+                                $('#alert_categoria_protegida').hide();
+                            }
+                        } else {
+                            $('#modalCategoria').modal('hide');
+                            showError('Error al cargar la categoría. ' + (data.error || 'Verifique la consola.'));
                         }
                     });
             } else {
                 $('#modalCategoriaTitle').text('Agregar Nueva Categoría');
-                if ($('#cat_tipo').val() === 'Ingreso') { $('#div_cat_concepto').show(); }
+                if ($submitBtn.length) {
+                    $submitBtn.text('Guardar Categoría');
+                }
+                // Por defecto, si tipo es Ingreso, mostrar campo concepto
+                if ($('#cat_tipo').val() === 'Ingreso') {
+                    $('#div_cat_concepto').show();
+                } else {
+                    $('#div_cat_concepto').hide();
+                }
             }
 
-            $('#cat_tipo').off('change.categoria').on('change.categoria', function() {
-                if ($(this).val() === 'Ingreso') { $('#div_cat_concepto').show(); }
-                else { $('#div_cat_concepto').hide(); $('#cat_concepto').val(''); }
+            // Evento al cambiar tipo
+            $('#cat_tipo').off('change.categoria').on('change.categoria', function () {
+                if ($(this).val() === 'Ingreso') {
+                    $('#div_cat_concepto').show();
+                } else {
+                    $('#div_cat_concepto').hide();
+                    $('#cat_concepto').val('');
+                }
             });
         });
     }
 
     function initSubmitCategoria() {
-        $(document).on('submit', '#formCategoria', function(e) {
+        // Evitar cualquier envío nativo del formulario
+        $(document).off('submit', '#formCategoria');
+
+        $(document).on('submit', '#formCategoria', function (e) {
             e.preventDefault();
+
+            const $form = $(this);
+
+            // Validación: si tipo es Ingreso, concepto es obligatorio
             const tipo = $('#cat_tipo').val();
             const concepto = $('#cat_concepto').val();
             if (tipo === 'Ingreso' && !concepto) {
@@ -1062,34 +1209,64 @@ const CategoriasModule = (function() {
                 return false;
             }
 
-            ajaxCall('categoria', 'save', $(this).serialize())
-                .done(r => {
-                    if (r.success) {
-                        showSuccess('Categoría guardada correctamente.');
-                        setTimeout(() => { window.location.reload(); }, 900);
-                    } else {
-                        showError('Error: ' + (r.error || 'Intenta de nuevo.'));
-                    }
-                })
-                .fail(xhr => mostrarError('guardar categoría', xhr));
+            // Llamada AJAX directa al endpoint save
+            $.ajax({
+                url: BASE_URL + 'index.php?controller=categoria&action=save',
+                method: 'POST',
+                dataType: 'json',
+                data: $form.serialize()
+            })
+            .done(function (r) {
+                if (r && r.success) {
+                    try { showSuccess('Categoría guardada correctamente.'); } catch (e) {}
+                    setTimeout(function () { window.location.reload(); }, 900);
+                } else {
+                    showError('No fue posible guardar la categoría. ' + (r && r.error ? r.error : 'Intenta de nuevo.'));
+                }
+            })
+            .fail(function (xhr) {
+                mostrarError('guardar categoría', xhr);
+            });
+
+            return false;
         });
     }
 
     function initEliminarCategoria() {
-        $(document).on('click', '.btn-del-categoria', function() {
+        // Evitar handlers duplicados
+        $(document).off('click', '.btn-del-categoria');
+
+        $(document).on('click', '.btn-del-categoria', function () {
             const id = $(this).data('id');
+            const $row = $(this).closest('tr');
+            if (!id) {
+                showError('ID de categoría inválido.');
+                return;
+            }
+
             showConfirm('¿Eliminar esta categoría?').then(confirmed => {
                 if (!confirmed) return;
-                ajaxCall('categoria', 'delete', { id: id })
-                    .done(r => {
-                        if (r.success) {
-                            showSuccess('Categoría eliminada correctamente.');
-                            setTimeout(() => { window.location.reload(); }, 900);
-                        } else {
-                            showError('Error: ' + (r.error || 'Intenta de nuevo.'));
+
+                // Llamada AJAX directa al endpoint delete
+                $.ajax({
+                    url: BASE_URL + 'index.php?controller=categoria&action=delete',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: { id: id }
+                })
+                .done(function (r) {
+                    if (r && r.success) {
+                        try { showSuccess('Categoría eliminada correctamente.'); } catch (e) {}
+                        if ($row && $row.length) {
+                            $row.fadeOut(300, function () { $(this).remove(); });
                         }
-                    })
-                    .fail(xhr => mostrarError('eliminar categoría', xhr));
+                    } else {
+                        showError('No se pudo eliminar la categoría. ' + (r && r.error ? r.error : 'Intenta de nuevo.'));
+                    }
+                })
+                .fail(function (xhr) {
+                    mostrarError('eliminar categoría', xhr);
+                });
             });
         });
     }
@@ -1280,8 +1457,7 @@ const PresupuestosModule = (function() {
                     }
                 })
                 .fail(xhr => mostrarError('guardar presupuesto general', xhr));
-        });
-    }
+        });}
 
     function initModalSubPresupuesto() {
         $('#modalPresupuesto').on('show.bs.modal', function(event) {
@@ -1389,6 +1565,7 @@ const PresupuestosModule = (function() {
                             $selectCat.append(`<option value="${cat.id_categoria}">${escapeHtml(cat.nombre)}</option>`);
                         });
                     }
+
                     $selectCat.prop('disabled', false);
                     
                     if (presId) {
@@ -1473,8 +1650,7 @@ const PresupuestosModule = (function() {
         initModalPresupuestoCategoria();
         initSubmitPresupuestoCategoria();
         initEliminarPresupuesto();
-        initRefrescarPresupuestos();
-        // NUEVO: Inicializar el flujo exclusivo de subpresupuestos
+        // AHORA SÍ: Inicializar el flujo exclusivo de subpresupuestos porque las funciones YA EXISTEN dentro del módulo
         initModalSubPresupuestoExclusivo();
         initSubmitSubPresupuestoExclusivo();
         console.log('[✓] Módulo Presupuestos inicializado');
@@ -1528,9 +1704,8 @@ const DashboardModule = (function() {
     }
     return { init };
 })();
-
 // ============================================================================
-// MÓDULO: Auditoría (Visor de Detalles, Gráficas y Reportes)
+// MÓDULO: Auditoría (detalle en modal)
 // ============================================================================
 const AuditoriaModule = (function() {
     const { ajaxCall, escapeHtml, showNotification, showError } = ERPUtils;
@@ -1775,7 +1950,7 @@ const SidebarModule = (function() {
 })();
 
 // ============================================================================
-// INICIALIZACIÓN GLOBAL
+// INICIALIZACIÓN GLOBAL DE MÓDULOS
 // ============================================================================
 $(document).ready(function() {
     console.log('============================================================================');
@@ -1793,7 +1968,10 @@ $(document).ready(function() {
         DashboardModule.init();
         AuditoriaModule.init(); // Ahora incluye reportes y gráficas
         SidebarModule.init();   // Ahora incluye Easter Egg
-        
+
+        // Aplicar autoformato de montos a todos los campos marcados
+        try { attachMoneyFormatter('.monto-autofmt'); } catch(e) { console.error('Error attachMoneyFormatter:', e); }
+
         console.log('[✓] SISTEMA COMPLETAMENTE INICIALIZADO');
     } catch(e) {
         console.error('[✗] ERROR CRÍTICO AL INICIALIZAR:', e);

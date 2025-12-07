@@ -1,4 +1,3 @@
-
 <?php
 // src/Categorias/Controllers/CategoriaController.php
 
@@ -38,8 +37,20 @@ class CategoriaController {
      * Acción AJAX: Guarda una nueva categoría o actualiza una existente.
      */
     public function save() {
-         header('Content-Type: application/json');
-         if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
+        // Forzar respuesta JSON y evitar que se incluya el layout o cualquier vista
+        // Limpia cualquier salida previa (por si algún include/notice imprimió algo)
+        if (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+
+        // Seguridad: esta acción solo debe usarse vía AJAX/logueado
+        if (!isset($_SESSION['user_id'])) {
+            echo json_encode(['success' => false, 'error' => 'No autorizado']);
+            exit; // cortar completamente la ejecución para que index.php no continúe
+        }
 
         $data = $_POST;
         // <-- ¡CORRECCIÓN 1: AÑADIR EL ID DE USUARIO DE LA SESIÓN!
@@ -51,16 +62,16 @@ class CategoriaController {
 
         // Validación básica
         if (empty($data['nombre']) || empty($data['tipo'])) {
-             $response['error'] = 'El nombre y el tipo de flujo son obligatorios.';
-             echo json_encode($response);
-             exit;
-         }
+            $response['error'] = 'El nombre y el tipo de flujo son obligatorios.';
+            echo json_encode($response);
+            exit;
+        }
          // Validar que el tipo sea 'Ingreso' o 'Egreso'
-         if (!in_array($data['tipo'], ['Ingreso', 'Egreso'])) {
-              $response['error'] = 'Tipo de flujo inválido.';
-              echo json_encode($response);
-              exit;
-         }
+        if (!in_array($data['tipo'], ['Ingreso', 'Egreso'])) {
+            $response['error'] = 'Tipo de flujo inválido.';
+            echo json_encode($response);
+            exit;
+        }
 
         try {
             if (empty($id)) { // Crear
@@ -108,14 +119,14 @@ class CategoriaController {
         }
 
         echo json_encode($response);
-        exit;
+        exit; // asegurarnos de que no se ejecute ningún renderizado adicional
     }
 
     /**
      * Acción AJAX: Obtiene los datos de una categoría específica (para editar).
      */
      public function getCategoriaData() {
-        header('Content-Type: application/json');
+        header('Content-Type: application/json; charset=utf-8');
         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
         $id = $_GET['id'] ?? 0;
@@ -142,7 +153,7 @@ class CategoriaController {
      * Añadido para compatibilidad con llamadas desde frontend (getCategoriasEgreso).
      */
     public function getCategoriasEgreso() {
-        header('Content-Type: application/json');
+        header('Content-Type: application/json; charset=utf-8');
         if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
         try {
@@ -169,7 +180,7 @@ class CategoriaController {
      * Acción AJAX: Elimina una categoría.
      */
     public function delete() {
-         header('Content-Type: application/json');
+         header('Content-Type: application/json; charset=utf-8');
          if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
 
         $id = $_POST['id'] ?? 0;

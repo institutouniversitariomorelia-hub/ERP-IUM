@@ -61,7 +61,7 @@ class EgresoModel {
         $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
         $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
 
-        if (empty($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
+        if (!isset($data['monto']) || $data['monto'] === '' || !is_numeric($data['monto']) || $data['monto'] < 0 ||
             empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['destinatario']) || empty($data['forma_pago']) ||
             empty($data['id_user']) || !filter_var($data['id_user'], FILTER_VALIDATE_INT) ||
@@ -130,7 +130,7 @@ class EgresoModel {
         $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
         $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
 
-        if (empty($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
+        if (!isset($data['monto']) || $data['monto'] === '' || !is_numeric($data['monto']) || $data['monto'] < 0 ||
             empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['destinatario']) || empty($data['forma_pago']) ||
             empty($data['id_user']) || !filter_var($data['id_user'], FILTER_VALIDATE_INT) ||
