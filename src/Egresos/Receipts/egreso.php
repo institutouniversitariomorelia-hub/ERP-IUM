@@ -92,53 +92,54 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
     <meta charset="utf-8">
     <title>Comprobante de Egreso #<?php echo $folioEsc; ?></title>
     <style>
+        /* Tamaño media carta (8.5 x 5.5 pulgadas) */
         @page { size: 8.5in 5.5in; margin: 0; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; }
-        .page { width: 8.5in; height: 5.5in; padding: 0.15in 0.2in; position: relative; background: white; display: flex; flex-direction: column; }
-        
+        body { font-family: Arial, sans-serif; font-size: 8px; line-height: 1.25; background: #f2f2f2; }
+        .page { width: 8.5in; height: 5.5in; padding: 0.2in 0.25in; position: relative; background: #fff; display: flex; flex-direction: column; border: 1px solid #e5e5e5; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+
         .header { display: table; width: 100%; margin-bottom: 8px; }
-        .header-left { display: table-cell; width: 30%; vertical-align: top; }
-        .header-right { display: table-cell; width: 70%; vertical-align: top; text-align: right; }
-        .logo-box { display: inline-block; background: #9e1b32; padding: 4px 8px; border-radius: 3px; }
-        .logo-box img { height: 32px; vertical-align: middle; }
-        .institution { font-size: 7px; color: #333; margin-top: 2px; font-weight: bold; }
-        .doc-title { font-size: 13px; font-weight: bold; color: #1a1a1a; margin-bottom: 1px; }
-        .folio { font-size: 11px; color: #9e1b32; font-weight: bold; }
-        
-        .divider { height: 2px; background: #9e1b32; margin: 6px 0; }
-        
+        .header-left { display: table-cell; width: 35%; vertical-align: top; }
+        .header-right { display: table-cell; width: 65%; vertical-align: top; text-align: right; }
+        .logo-box { display: inline-block; background: #9e1b32; padding: 5px 9px; border-radius: 4px; }
+        .logo-box img { height: 34px; vertical-align: middle; }
+        .institution { font-size: 8px; color: #333; margin-top: 3px; font-weight: bold; letter-spacing: 0.2px; }
+        .doc-title { font-size: 14px; font-weight: 800; color: #1a1a1a; margin-bottom: 2px; letter-spacing: 0.3px; }
+        .folio { font-size: 11px; color: #9e1b32; font-weight: 700; }
+
+        .divider { height: 2px; background: linear-gradient(90deg, #9e1b32, #c62828 60%, #9e1b32); margin: 6px 0 8px; border-radius: 2px; }
+
         .content { flex: 1; display: flex; flex-direction: column; }
-        
+
         .grid { display: table; width: 100%; margin-bottom: 6px; }
         .grid-row { display: table-row; }
-        .grid-cell { display: table-cell; padding: 3px 6px 3px 0; vertical-align: top; }
+        .grid-cell { display: table-cell; padding: 4px 8px 4px 0; vertical-align: top; }
         .grid-cell.full { width: 100%; }
         .grid-cell.half { width: 50%; }
-        
-        .label { font-size: 7px; color: #666; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 1px; }
-        .value { font-size: 9px; color: #000; border-bottom: 1px solid #ddd; padding-bottom: 2px; min-height: 14px; }
-        
-        .monto-section { background: #f8f9fa; border: 2px solid #9e1b32; padding: 8px; text-align: center; margin: 8px 0; border-radius: 4px; }
-        .monto-label { font-size: 8px; color: #666; font-weight: bold; margin-bottom: 3px; }
-        .monto-value { font-size: 20px; font-weight: bold; color: #9e1b32; line-height: 1.2; }
-        .monto-currency { font-size: 8px; color: #666; margin-top: 2px; }
-        
-        .letra-box { background: #fff8dc; border: 1px solid #daa520; padding: 6px; margin: 6px 0; border-radius: 3px; }
-        .letra-text { font-size: 7px; font-style: italic; color: #333; line-height: 1.3; }
-        
-        .payment-box { background: #f5f5f5; border: 1px solid #ddd; padding: 6px; margin: 6px 0; border-radius: 3px; font-size: 7px; }
-        .description-box { border: 1px solid #ddd; padding: 8px; min-height: 45px; background: #fafafa; margin: 6px 0; border-radius: 3px; font-size: 7px; flex: 1; }
-        
-        .signature-section { margin-top: auto; padding-top: 20px; text-align: center; }
-        .signature-line { border-top: 1px solid #333; width: 55%; margin: 0 auto 6px auto; }
-        .signature-label { font-size: 9px; font-weight: bold; color: #333; }
-        .signature-name { font-size: 10px; color: #000; margin-top: 3px; font-weight: bold; }
-        
-        .footer { font-size: 7px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 4px; margin-top: 8px; }
-        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 70px; color: rgba(220, 53, 69, 0.12); font-weight: bold; z-index: 0; pointer-events: none; }
-        
-        @media print { body { margin: 0; } .no-print { display: none; } .page { box-shadow: none; } }
+
+        .label { font-size: 8px; color: #666; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 2px; }
+        .value { font-size: 10px; color: #000; border-bottom: 1px solid #e0e0e0; padding-bottom: 3px; min-height: 16px; }
+
+        .monto-section { background: #f8f9fa; border: 2px solid #9e1b32; padding: 10px; text-align: center; margin: 10px 0; border-radius: 6px; }
+        .monto-label { font-size: 9px; color: #666; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.2px; }
+        .monto-value { font-size: 22px; font-weight: 800; color: #9e1b32; line-height: 1.15; }
+        .monto-currency { font-size: 9px; color: #666; margin-top: 3px; }
+
+        .letra-box { background: #fffdf3; border: 1px solid #e6c565; padding: 8px; margin: 8px 0; border-radius: 4px; }
+        .letra-text { font-size: 8px; font-style: italic; color: #333; line-height: 1.35; }
+
+        .payment-box { background: #f5f5f5; border: 1px solid #ddd; padding: 7px; margin: 6px 0; border-radius: 4px; font-size: 8px; }
+        .description-box { border: 1px solid #ddd; padding: 9px; min-height: 50px; background: #fafafa; margin: 8px 0; border-radius: 4px; font-size: 8px; flex: 1; }
+
+        .signature-section { margin-top: auto; padding-top: 18px; text-align: center; }
+        .signature-line { border-top: 1px solid #444; width: 58%; margin: 0 auto 6px auto; }
+        .signature-label { font-size: 10px; font-weight: 700; color: #333; letter-spacing: 0.2px; }
+        .signature-name { font-size: 11px; color: #000; margin-top: 3px; font-weight: 800; }
+
+        .footer { font-size: 8px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 5px; margin-top: 8px; }
+        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 72px; color: rgba(220, 53, 69, 0.12); font-weight: 800; z-index: 0; pointer-events: none; }
+
+        @media print { body { margin: 0; background: none; } .no-print { display: none; } .page { box-shadow: none; border: none; } }
     </style>
 </head>
 <body>
