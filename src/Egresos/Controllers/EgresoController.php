@@ -29,13 +29,45 @@ class EgresoController {
 
         $egresos = $this->egresoModel->getAllEgresos();
 
+        // Soportar prellenado de reembolso desde ingresos
+        $prefill = [];
+        if (isset($_GET['prellenar_reembolso']) && $_GET['prellenar_reembolso'] == '1' && isset($_GET['from_ingreso'])) {
+            $from = (int)$_GET['from_ingreso'];
+            // Intentar leer datos del ingreso para prellenar
+            require_once __DIR__ . '/../../Ingresos/Models/IngresoModel.php';
+            $ingM = new IngresoModel($this->db);
+            $ing = $ingM->getIngresoById($from);
+            if ($ing) {
+                $prefill = [
+                    'monto' => $ing['monto'],
+                    'destinatario' => $ing['alumno'],
+                    'documento_de_amparo' => 'Recibo de ingreso #' . $from,
+                    'id_categoria' => 224,
+                    'fecha' => date('Y-m-d')
+                ];
+
+                // Buscar subpresupuesto hijo del 9999 con id_categoria = 224
+                $stmt = $this->db->prepare("SELECT id_presupuesto FROM presupuestos WHERE parent_presupuesto = ? AND id_categoria = ? LIMIT 1");
+                if ($stmt) {
+                    $parent = 10; $cat = 21;
+                    $stmt->bind_param('ii', $parent, $cat);
+                    $stmt->execute();
+                    $res = $stmt->get_result();
+                    $row = $res->fetch_assoc();
+                    if ($row) $prefill['id_presupuesto'] = $row['id_presupuesto'];
+                    $stmt->close();
+                }
+            }
+        }
+
         $pageTitle = "Egresos";
         $activeModule = "egresos";
 
         $this->renderView('egresos_list', [
             'pageTitle' => $pageTitle,
             'activeModule' => $activeModule,
-            'egresos' => $egresos
+            'egresos' => $egresos,
+            'prefill_egreso' => $prefill
         ]);
     }
 
@@ -63,11 +95,44 @@ class EgresoController {
         $data['id_user'] = $_SESSION['user_id']; 
         
         $folio_egreso_id = $data['id'] ?? null;
+        // Detectar flujo de reembolso desde el Modal de Reembolsos (robusto)
+        $isReembolso = false;
+        $folioOrigen = null;
+        if (isset($data['reem_folio_origen']) && $data['reem_folio_origen'] !== '') {
+            $isReembolso = true;
+            $folioOrigen = (int)$data['reem_folio_origen'];
+        } elseif (isset($data['from_ingreso']) && $data['from_ingreso'] !== '') {
+            $isReembolso = true;
+            $folioOrigen = (int)$data['from_ingreso'];
+        } else {
+            // Heurística: si llegan IDs 11/21, tratar como reembolso
+            $cat = isset($data['id_categoria']) ? (int)$data['id_categoria'] : 0;
+            $pres = isset($data['id_presupuesto']) ? (int)$data['id_presupuesto'] : 0;
+            if ($cat === 21 || $pres === 11) { $isReembolso = true; }
+        }
         $isUpdate = !empty($folio_egreso_id);
         $response = ['success' => false];
 
-        // --- Validación (igual que antes) ---
-        if (empty($data['fecha']) || !isset($data['monto']) || $data['monto'] === '' || empty($data['id_categoria']) || empty($data['destinatario']) || empty($data['forma_pago'])) {
+        // Normalizar monto si viene con formato (ej. 2,000 o $2,000.00)
+        if (isset($data['monto'])) {
+            $data['monto'] = str_replace(['$',',',' '], '', (string)$data['monto']);
+        }
+        // Para reembolso, establecer valores por defecto y forzar IDs del sistema
+        if ($isReembolso) {
+            // Forzar categoría y presupuesto de reembolsos
+            $data['id_categoria'] = 21;
+            $data['id_presupuesto'] = 11;
+            // Establecer proveedor por defecto si falta
+            if (empty($data['proveedor'])) { $data['proveedor'] = 'IUM Reembolsos'; }
+            // Establecer forma de pago por defecto si falta
+            if (empty($data['forma_pago'])) { $data['forma_pago'] = 'Efectivo'; }
+        }
+        // Debug inicial de entrada
+        error_log('[EgresoController.save] isReembolso=' . ($isReembolso ? '1' : '0') . ' isUpdate=' . ($isUpdate ? '1' : '0'));
+        error_log('[EgresoController.save] POST keys: ' . implode(',', array_keys($_POST)));
+
+         // --- Validación (igual que antes) ---
+         if (empty($data['fecha']) || !isset($data['monto']) || $data['monto'] === '' || empty($data['destinatario']) || empty($data['forma_pago']) || (!$isReembolso && empty($data['proveedor']))) {
              $response['error'] = 'Los campos Fecha, Monto, Categoría, Destinatario y Forma de Pago son obligatorios.';
              echo json_encode($response); exit;
          }
@@ -75,54 +140,118 @@ class EgresoController {
          if (isset($data['activo_fijo']) && !in_array($data['activo_fijo'], ['SI', 'NO'])) { $response['error'] = 'Valor inválido para Activo Fijo.'; echo json_encode($response); exit; }
          $formas_validas = ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta D.', 'Tarjeta C.'];
          if (!in_array($data['forma_pago'], $formas_validas)) { $response['error'] = 'Forma de pago inválida.'; echo json_encode($response); exit; }
-         if (!filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) { $response['error'] = 'Categoría inválida.'; echo json_encode($response); exit; }
-         $data['id_categoria'] = (int)$data['id_categoria'];
+         // Validar categoría sólo si no es reembolso (en reembolso ya se forzó a 21)
+         if (!$isReembolso) {
+             if (!isset($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) { $response['error'] = 'Categoría inválida.'; echo json_encode($response); exit; }
+             $data['id_categoria'] = (int)$data['id_categoria'];
+         } else {
+             $data['id_categoria'] = 21;
+         }
          // --- Fin Validación ---
 
         try {
             if (!$isUpdate) { // Crear
-                // Validar límites de presupuesto: el id_presupuesto debe existir
-                $selectedPres = isset($data['id_presupuesto']) ? (int)$data['id_presupuesto'] : 0;
-                if ($selectedPres <= 0) { $response['error'] = 'Presupuesto inválido.'; echo json_encode($response); exit; }
+                if ($isReembolso) {
+                    // IDs ya forzados arriba
 
-                $presObj = $this->presupuestoModel->getPresupuestoById($selectedPres);
-                if (!$presObj) { $response['error'] = 'Presupuesto no encontrado.'; echo json_encode($response); exit; }
+                    // Verificar que el ingreso origen exista y esté activo (estatus = 1)
+                    $stmtChk = $this->db->prepare("SELECT estatus FROM ingresos WHERE folio_ingreso = ? LIMIT 1");
+         if (!$isReembolso) {
+             if (!isset($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) {
+                 $response['error'] = 'Categoría inválida.';
+                 $response['debug'] = [
+                     'isReembolso' => $isReembolso,
+                     'id_categoria' => $data['id_categoria'] ?? null
+                 ];
+                 echo json_encode($response); exit; 
+             }
+             $data['id_categoria'] = (int)$data['id_categoria'];
+         } else {
+             $data['id_categoria'] = 21;
+         }
+                    $stmtChk->bind_param('i', $folioOrigen);
+                    if (!$stmtChk->execute()) {
+                        $err = $stmtChk->error ?: 'Desconocido';
+                        $stmtChk->close();
+                        throw new Exception('Error validando ingreso: ' . $err);
+                    }
+                    $resChk = $stmtChk->get_result();
+                    $rowChk = $resChk->fetch_assoc();
+                    $stmtChk->close();
+                    if (!$rowChk) { throw new Exception('Ingreso origen no encontrado (folio: ' . $folioOrigen . ').'); }
+                    if (intval($rowChk['estatus']) === 0) { throw new Exception('El ingreso ya fue reembolsado previamente.'); }
 
-                $montoNuevo = floatval($data['monto']);
-                // Gastado actualmente en ese presupuesto
-                $gastadoPres = $this->presupuestoModel->getGastadoEnPresupuesto($selectedPres);
-                if (($gastadoPres + $montoNuevo) > floatval($presObj['monto_limite'])) {
-                    $response['error'] = 'El monto excede el límite del presupuesto de la categoría.';
-                    echo json_encode($response); exit;
-                }
+                    // Transacción: insertar egreso y marcar ingreso como reembolsado
+                    $this->db->begin_transaction();
+                    $newId = $this->egresoModel->createEgreso($data);
+                    if ($newId) {
+                        if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
+                            $det = 'Egreso creado (folio: ' . $newId . ')';
+                            $this->auditoriaModel->addLog('Egreso', 'Insercion', $det, null, json_encode($data), $newId, null, $_SESSION['user_id'] ?? null);
+                        }
 
-                // Si este presupuesto tiene parent_presupuesto, validar también contra el general
-                $parentId = isset($presObj['parent_presupuesto']) ? (int)$presObj['parent_presupuesto'] : 0;
-                if ($parentId > 0) {
-                    // Gastado en el presupuesto general (suma de egresos asociados a ese general)
-                    $gastadoGeneral = $this->presupuestoModel->getGastadoEnPresupuesto($parentId);
-                    $parentObj = $this->presupuestoModel->getPresupuestoById($parentId);
-                    $parentLim = floatval($parentObj['monto_limite'] ?? 0);
-                    if (($gastadoGeneral + $montoNuevo) > $parentLim) {
-                        $response['error'] = 'El monto excede el límite del Presupuesto General asociado.';
-                        echo json_encode($response); exit;
+                        $stmtU = $this->db->prepare("UPDATE ingresos SET estatus = 0 WHERE folio_ingreso = ?");
+                        if (!$stmtU) { throw new Exception('Error preparando actualización de ingreso: ' . $this->db->error); }
+                        $stmtU->bind_param('i', $folioOrigen);
+                        if (!$stmtU->execute()) {
+                            $err = $stmtU->error ?: 'Desconocido';
+                            $stmtU->close();
+                            throw new Exception('Error actualizando ingreso: ' . $err);
+                        }
+                        if ($stmtU->affected_rows === 0) {
+                            $stmtU->close();
+                            throw new Exception('Ingreso no encontrado o ya reembolsado (folio: ' . $folioOrigen . ').');
+                        }
+                        $stmtU->close();
+
+                        $this->db->commit();
+                        $response['success'] = true;
+                        $response['folio'] = $newId;
+                    } else {
+                        $this->db->rollback();
+                        $response['error'] = 'No se pudo crear el egreso.';
+                    }
+                } else {
+                    // Egreso normal: validar presupuesto y límites
+                    $selectedPres = isset($data['id_presupuesto']) ? (int)$data['id_presupuesto'] : 0;
+                    if ($selectedPres <= 0) { $response['error'] = 'Presupuesto inválido.'; echo json_encode($response); exit; }
+
+                    $presObj = $this->presupuestoModel->getPresupuestoById($selectedPres);
+                    if (!$presObj) { $response['error'] = 'Presupuesto no encontrado.'; echo json_encode($response); exit; }
+
+                    $montoNuevo = floatval($data['monto']);
+                    $isPermanent = isset($presObj['es_permanente']) && intval($presObj['es_permanente']) === 1;
+                    if (!$isPermanent) {
+                        $gastadoPres = $this->presupuestoModel->getGastadoEnPresupuesto($selectedPres);
+                        if (($gastadoPres + $montoNuevo) > floatval($presObj['monto_limite'])) {
+                            $response['error'] = 'El monto excede el límite del presupuesto de la categoría.';
+                            echo json_encode($response); exit;
+                        }
+                        $parentId = isset($presObj['parent_presupuesto']) ? (int)$presObj['parent_presupuesto'] : 0;
+                        if ($parentId > 0) {
+                            $gastadoGeneral = $this->presupuestoModel->getGastadoEnPresupuesto($parentId);
+                            $parentObj = $this->presupuestoModel->getPresupuestoById($parentId);
+                            $parentLim = floatval($parentObj['monto_limite'] ?? 0);
+                            if (($gastadoGeneral + $montoNuevo) > $parentLim) {
+                                $response['error'] = 'El monto excede el límite del Presupuesto General asociado.';
+                                echo json_encode($response); exit;
+                            }
+                        }
+                    }
+
+                    // Solo insertar el egreso
+                    $newId = $this->egresoModel->createEgreso($data);
+                    if ($newId) {
+                        if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
+                            $det = 'Egreso creado (folio: ' . $newId . ')';
+                            $this->auditoriaModel->addLog('Egreso', 'Insercion', $det, null, json_encode($data), $newId, null, $_SESSION['user_id'] ?? null);
+                        }
+                        $response['success'] = true;
+                        $response['folio'] = $newId;
+                    } else {
+                        $response['error'] = 'No se pudo crear el egreso.';
                     }
                 }
-
-                $newId = $this->egresoModel->createEgreso($data);
-                if ($newId) {
-                    
-                    // <--- ¡CORREGIDO! BORRAMOS LA LLAMADA A addAudit()
-                    // El trigger 'trg_egresos_after_insert_aud' se encarga de esto.
-
-                    // Si la BD no tiene triggers para egresos, añadir log desde PHP
-                    if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
-                        $det = 'Egreso creado (folio: ' . $newId . ')';
-                        $this->auditoriaModel->addLog('Egreso', 'Insercion', $det, null, json_encode($data), $newId, null, $_SESSION['user_id'] ?? null);
-                    }
-                    $response['success'] = true;
-                    $response['folio'] = $newId; // Para redirigir al recibo inmediatamente
-                } else { $response['error'] = 'No se pudo crear el egreso.'; }
             } else { // Actualizar
                 // intentar obtener datos antiguos para comparar
                 $oldData = $this->egresoModel->getEgresoById($folio_egreso_id);
@@ -140,6 +269,8 @@ class EgresoController {
                  } else { $response['error'] = 'No se pudo actualizar el egreso.'; }
             }
         } catch (Exception $e) {
+            // Revertir cualquier transacción abierta
+            try { if ($this->db) $this->db->rollback(); } catch (Exception $ex) { }
             error_log("Error en EgresoController->save: " . $e->getMessage());
             // Devolver el mensaje de la excepción (ej: matrícula duplicada) si existe
             $response['error'] = $e->getMessage() ?: 'Error interno del servidor al guardar.';

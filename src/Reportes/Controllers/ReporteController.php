@@ -74,10 +74,11 @@ class ReporteController {
             }
 
             // Obtener ingresos del rango
-            $sql = "SELECT i.*, c.nombre as nombre_categoria 
+                $sql = "SELECT i.*, c.nombre as nombre_categoria 
                     FROM ingresos i 
                     LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
                     WHERE i.fecha BETWEEN ? AND ? 
+                      AND COALESCE(i.estatus, 1) = 1
                     ORDER BY i.fecha DESC";
             
             $stmt = $this->db->prepare($sql);
@@ -226,7 +227,7 @@ class ReporteController {
             }
 
             // Obtener totales de ingresos
-            $sqlIngresos = "SELECT SUM(monto) as total FROM ingresos WHERE fecha BETWEEN ? AND ?";
+            $sqlIngresos = "SELECT SUM(monto) as total FROM ingresos WHERE fecha BETWEEN ? AND ? AND COALESCE(estatus, 1) = 1";
             $stmt = $this->db->prepare($sqlIngresos);
             $stmt->bind_param("ss", $fechaInicio, $fechaFin);
             $stmt->execute();

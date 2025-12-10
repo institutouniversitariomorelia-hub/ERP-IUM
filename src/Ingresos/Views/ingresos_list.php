@@ -19,6 +19,16 @@
             <span class="d-none d-sm-inline">Recibo en Blanco</span>
             <span class="d-inline d-sm-none">Blanco</span>
         </button>
+        <?php $isViewingReembolsos = !empty($show_reembolsos); ?>
+        <?php if ($isViewingReembolsos): ?>
+            <a class="btn btn-outline-primary btn-sm" href="index.php?controller=ingreso&action=index" title="Ver Ingresos Activos">
+                <ion-icon name="eye-off-outline"></ion-icon> Ver Activos
+            </a>
+        <?php else: ?>
+            <a class="btn btn-outline-danger btn-sm" href="index.php?controller=ingreso&action=index&ver_reembolsos=1" title="Ver Reembolsos">
+                <ion-icon name="eye-outline"></ion-icon> Ver Reembolsos
+            </a>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -97,10 +107,19 @@
                                 <td class="d-none d-xl-table-cell"><?php echo htmlspecialchars($ingreso['grado'] ?? '-'); ?></td>
                                 <td class="d-none d-xl-table-cell"><?php echo htmlspecialchars($ingreso['grupo'] ?? '-'); ?></td>
                                 <td class="d-none d-md-table-cell"><?php echo htmlspecialchars($ingreso['nombre_categoria'] ?? 'N/A'); ?></td>
-                                <td class="text-end text-success fw-bold"><?php echo $montoFormateado; ?></td>
+                                <?php if (!empty($show_reembolsos)): ?>
+                                    <td class="text-end text-danger fw-bold"><?php echo $montoFormateado; ?></td>
+                                <?php else: ?>
+                                    <td class="text-end text-success fw-bold"><?php echo $montoFormateado; ?></td>
+                                <?php endif; ?>
                                 <td class="text-center align-middle">
                                     <div class="d-flex flex-column flex-sm-row gap-1 justify-content-center align-items-center">
-                                        <?php if (roleCan('edit','ingresos')): ?>
+                                        <?php
+                                            $estatusIngreso = isset($ingreso['estatus']) ? intval($ingreso['estatus']) : 1;
+                                            $estaReembolsado = ($estatusIngreso === 0);
+                                            $viendoReembolsos = !empty($show_reembolsos);
+                                        ?>
+                                        <?php if (!$viendoReembolsos && !$estaReembolsado && roleCan('edit','ingresos')): ?>
                                             <button class="btn btn-sm btn-warning btn-edit-ingreso"
                                                     data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
                                                     data-bs-toggle="modal" data-bs-target="#modalIngreso"
@@ -108,11 +127,14 @@
                                                 <ion-icon name="create-outline"></ion-icon>
                                             </button>
                                         <?php endif; ?>
-                                        <?php if (roleCan('delete','ingresos')): ?>
-                                            <button class="btn btn-sm btn-danger btn-del-ingreso"
+                                        <?php if (!$viendoReembolsos && !$estaReembolsado && roleCan('delete','ingresos')): ?>
+                                            <!-- Reemplazamos eliminar por reembolsar -->
+                                            <button class="btn btn-sm btn-danger btn-reembolsar-ingreso"
                                                     data-id="<?php echo htmlspecialchars($ingreso['folio_ingreso'] ?? 0); ?>"
-                                                    title="Eliminar Ingreso">
-                                                <ion-icon name="trash-outline"></ion-icon>
+                                                    data-alumno="<?php echo htmlspecialchars($ingreso['alumno'] ?? ''); ?>"
+                                                    data-monto="<?php echo htmlspecialchars($ingreso['monto'] ?? 0); ?>"
+                                                    title="Reembolsar Ingreso">
+                                                <ion-icon name="arrow-undo-outline"></ion-icon>
                                             </button>
                                         <?php endif; ?>
                                         <?php if (roleCan('view','ingresos')): ?>
@@ -469,4 +491,192 @@ function cargarGraficasIngresos() {
             console.error('Error al cargar gráfica ingresos por mes:', xhr);
         });
 }
+
+// Funcionalidad de Reembolsos: abrir modal de creación de egreso pre-llenado
+document.addEventListener('DOMContentLoaded', function() {
+    // Delegación: botones .btn-reembolsar-ingreso
+    document.querySelectorAll('.btn-reembolsar-ingreso').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            var id = this.getAttribute('data-id');
+            var alumno = this.getAttribute('data-alumno');
+            var monto = this.getAttribute('data-monto');
+
+            // Obtener únicamente los presupuestos de reembolso y forzar el ID real (11)
+            ajaxCall('presupuesto', 'getReembolsoPresupuestos', {}, 'GET')
+                .done(function(pres) {
+                    var chosenPres = null;
+                    if (Array.isArray(pres)) {
+                        for (var i = 0; i < pres.length; i++) {
+                            try {
+                                var p = pres[i];
+                                // Preferir el sub-presupuesto de reembolsos (ID 11)
+                                if (p.id_presupuesto && parseInt(p.id_presupuesto) === 11) { chosenPres = p; break; }
+                            } catch(e) { }
+                        }
+                    }
+
+                    var prefill = {
+                        folio_ingreso: id,
+                        alumno: alumno,
+                        monto: monto,
+                        fecha: (new Date()).toISOString().slice(0,10),
+                        // Para reembolsos usar categoría fija ID 21 (IUM REEMBOLSOS) y presupuesto fijo ID 11
+                        id_categoria: 21,
+                        proveedor: 'Reembolsos',
+                        documento_de_amparo: 'Recibo de ingreso #' + id,
+                        from_ingreso: id
+                    };
+                    if (chosenPres) prefill.id_presupuesto = chosenPres.id_presupuesto || chosenPres.id;
+                    // Si no se encontró presupuesto candidato, usar ID 11 por defecto (Fondo de Reembolsos)
+                    if (!prefill.id_presupuesto) prefill.id_presupuesto = 11;
+
+                    // Exponer para que el modal lo lea y abrirlo explícitamente con helper
+                    window.PREFILL_EGRESO = prefill;
+                    try {
+                        if (typeof window.openReembolsoModal === 'function') {
+                            window.openReembolsoModal(id, alumno, monto);
+                        } else if (typeof window.openEgresoModalWithPrefill === 'function') {
+                            window.openEgresoModalWithPrefill(prefill);
+                        } else {
+                            var modalEl = document.getElementById('modalEgreso');
+                            if (modalEl && typeof bootstrap !== 'undefined') {
+                                var bs = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+                                bs.show();
+                            } else {
+                                $('#modalEgreso').modal('show');
+                            }
+                        }
+                    } catch(e) {
+                        console.error('Error mostrando modal reembolso:', e);
+                        $('#modalEgreso').modal('show');
+                    }
+                })
+                .fail(function(xhr) {
+                    console.error('Error cargando presupuestos para reembolso:', xhr);
+                    alert('Error cargando datos de presupuestos para reembolso. Revisa la consola.');
+                });
+        });
+    });
+});
 </script>
+
+<script>
+// Inicializar envío de reembolso y prellenado de campos del modal
+(function(){
+    function initReembolsoUI(){
+        if (typeof jQuery === 'undefined') { setTimeout(initReembolsoUI, 100); return; }
+        // Asegurar fecha y documento se prellenan cuando se abre el modal
+        jQuery('#modalReembolso').on('show.bs.modal', function(){
+            var today = new Date().toISOString().slice(0,10);
+            jQuery('#reem_fecha').val(today);
+            var folio = jQuery('#reem_folio_origen').val() || '';
+            jQuery('#reem_documento_de_amparo').val(folio ? ('Recibo de ingreso #' + folio) : '');
+        });
+        // Conectar el submit al handler de EgresosModule
+        if (window.EgresosModule && typeof window.EgresosModule.initSubmitReembolso === 'function') {
+            window.EgresosModule.initSubmitReembolso();
+        } else {
+            // Fallback: prevenir navegación y hacer POST manual
+            jQuery('#formReembolso').off('submit.fallback').on('submit.fallback', function(ev){
+                ev.preventDefault();
+                var formData = jQuery(this).serializeArray();
+                var hasFolio = formData.some(function(p){ return p.name === 'reem_folio_origen'; });
+                if (!hasFolio) formData.push({ name: 'reem_folio_origen', value: jQuery('#reem_folio_origen').val() });
+                jQuery.ajax({
+                    url: BASE_URL + 'index.php?controller=egreso&action=save',
+                    method: 'POST',
+                    data: jQuery.param(formData),
+                    dataType: 'json'
+                }).done(function(resp){
+                    if (resp && resp.success) { jQuery('#modalReembolso').modal('hide'); location.reload(); }
+                    else { alert((resp && resp.error) ? resp.error : 'Error al guardar reembolso.'); }
+                }).fail(function(){ alert('Error de comunicación al guardar reembolso'); });
+            });
+        }
+    }
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initReembolsoUI); }
+    else { initReembolsoUI(); }
+})();
+</script>
+
+<!-- Modal de Reembolso (Sistema) -->
+<div class="modal fade" id="modalReembolso" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-danger">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <ion-icon name="alert-circle-outline" style="vertical-align: bottom;"></ion-icon>
+                    Confirmar Reembolso
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formReembolso" method="post" action="index.php?controller=egreso&action=save">
+                    <input type="hidden" id="reem_folio_origen" name="reem_folio_origen">
+
+                    <!-- Estos campos los fuerza el backend (11/21); se mantienen ocultos -->
+                    <!-- Nota: Usaremos selects visibles para que el usuario vea lo que se forzará -->
+                    <!-- Los valores se establecerán programáticamente a 11 y 21 -->
+                    <input type="hidden" id="reem_proveedor" name="proveedor" value="Reembolsos">
+
+                    <div class="alert alert-warning">
+                        <small>Esta acción cancelará el ingreso original y generará un egreso de reembolso automáticamente.</small>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha de Reembolso</label>
+                            <input type="date" class="form-control" id="reem_fecha" name="fecha" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Monto a Devolver</label>
+                            <input type="text" class="form-control fw-bold text-danger" id="reem_monto" name="monto" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Destinatario</label>
+                            <input type="text" class="form-control" id="reem_destinatario" name="destinatario" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Forma de Pago</label>
+                            <select class="form-select" id="reem_forma_pago" name="forma_pago" required>
+                                <option value="Efectivo" selected>Efectivo</option>
+                                <option value="Transferencia">Transferencia</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="Tarjeta D.">Tarjeta D.</option>
+                                <option value="Tarjeta C.">Tarjeta C.</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Categoría</label>
+                            <select class="form-select" id="reem_id_categoria" name="id_categoria" required></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Presupuesto</label>
+                            <select class="form-select" id="reem_id_presupuesto" name="id_presupuesto" required></select>
+                        </div>
+
+                        <div class="col-12 mt-2">
+                            <label class="form-label">Documento de Amparo</label>
+                            <input type="text" class="form-control" id="reem_documento_de_amparo" name="documento_de_amparo" readonly>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción</label>
+                            <input type="text" class="form-control" id="reem_descripcion" name="descripcion" placeholder="Motivo del reembolso" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Presupuesto Afectado</label>
+                            <input type="text" class="form-control bg-light" value="Fondo de Reembolsos (Sistema)" readonly>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer mt-4">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger fw-bold">
+                            <ion-icon name="arrow-undo-outline"></ion-icon> Confirmar Reembolso
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
