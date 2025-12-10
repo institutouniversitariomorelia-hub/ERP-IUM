@@ -48,7 +48,7 @@ class DashboardController {
             // Total de ingresos del mes actual
             $queryIngresos = "SELECT COALESCE(SUM(monto), 0) as total 
                              FROM ingresos 
-                             WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                             WHERE DATE_FORMAT(fecha, '%Y-%m') = ? AND estatus = 1";
             $stmtI = $this->db->prepare($queryIngresos);
             $stmtI->bind_param('s', $mesActual);
             $stmtI->execute();
@@ -104,7 +104,7 @@ class DashboardController {
                 // Ingresos del mes
                 $queryI = "SELECT COALESCE(SUM(monto), 0) as total 
                           FROM ingresos 
-                          WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                          WHERE DATE_FORMAT(fecha, '%Y-%m') = ? AND estatus = 1";
                 $stmtI = $this->db->prepare($queryI);
                 $stmtI->bind_param('s', $mes);
                 $stmtI->execute();
@@ -141,7 +141,7 @@ class DashboardController {
                     // Ingresos del mes
                     $queryI = "SELECT COALESCE(SUM(monto), 0) as total 
                               FROM ingresos 
-                              WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                              WHERE DATE_FORMAT(fecha, '%Y-%m') = ? AND estatus = 1";
                     $stmtI = $this->db->prepare($queryI);
                     $stmtI->bind_param('s', $mes);
                     $stmtI->execute();
@@ -185,7 +185,7 @@ class DashboardController {
         try {
             $query = "SELECT c.nombre, COALESCE(SUM(i.monto), 0) as total
                      FROM categorias c
-                     LEFT JOIN ingresos i ON i.id_categoria = c.id_categoria
+                     LEFT JOIN ingresos i ON i.id_categoria = c.id_categoria AND i.estatus = 1
                      WHERE c.tipo = 'Ingreso'
                      GROUP BY c.id_categoria, c.nombre
                      HAVING total > 0
@@ -320,7 +320,7 @@ class DashboardController {
                 $nombreMes = date('M Y', strtotime("-$i months"));
                 
                 // Ingresos del mes
-                $queryI = "SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                $queryI = "SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE DATE_FORMAT(fecha, '%Y-%m') = ? AND estatus = 1";
                 $stmtI = $this->db->prepare($queryI);
                 $stmtI->bind_param('s', $mes);
                 $stmtI->execute();

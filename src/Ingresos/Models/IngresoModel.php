@@ -43,6 +43,55 @@ class IngresoModel {
         }
     }
 
+        /**
+         * Obtiene ingresos filtrando por estatus (por ejemplo 1 activo, 0 reembolsado)
+         */
+        public function getIngresosByStatus($estatus = 1) {
+                $query = "SELECT 
+                                        i.*, 
+                                        i.folio_ingreso as id, 
+                                        c.nombre AS nombre_categoria,
+                                        GROUP_CONCAT(
+                                                CONCAT(pp.metodo_pago, ': $', FORMAT(pp.monto, 2)) 
+                                                ORDER BY pp.orden 
+                                                SEPARATOR ' | '
+                                        ) AS metodos_pago_detalle,
+                                        COUNT(pp.id_pago_parcial) AS num_pagos
+                                    FROM 
+                                        ingresos i
+                                    LEFT JOIN 
+                                        categorias c ON i.id_categoria = c.id_categoria
+                                    LEFT JOIN
+                                        pagos_parciales pp ON i.folio_ingreso = pp.folio_ingreso
+                                    WHERE COALESCE(i.estatus, 1) = ?
+                                    GROUP BY
+                                        i.folio_ingreso
+                                    ORDER BY 
+                                        i.folio_ingreso DESC";
+
+                $stmt = $this->db->prepare($query);
+                if (!$stmt) { error_log('Error preparar getIngresosByStatus: ' . $this->db->error); return []; }
+                $stmt->bind_param('i', $estatus);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $data = $res->fetch_all(MYSQLI_ASSOC);
+                $stmt->close();
+                return $data;
+        }
+
+        /**
+         * Marca un ingreso como reembolsado (estatus = 0)
+         */
+        public function markAsReembolsado($folio_ingreso) {
+                $query = "UPDATE ingresos SET estatus = 0 WHERE folio_ingreso = ?";
+                $stmt = $this->db->prepare($query);
+                if (!$stmt) { error_log('Error preparar markAsReembolsado: ' . $this->db->error); return false; }
+                $stmt->bind_param('i', $folio_ingreso);
+                $success = $stmt->execute();
+                $stmt->close();
+                return $success;
+        }
+
     /**
      * Obtiene un ingreso específico por su ID (folio_ingreso).
      */
@@ -99,19 +148,24 @@ class IngresoModel {
         $grado = isset($data['grado']) && $data['grado'] !== '' ? (int)$data['grado'] : null;
         $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
 
-        $query = "INSERT INTO ingresos
-                    (fecha, alumno, matricula, nivel, monto, metodo_de_pago, mes_correspondiente, anio, observaciones, dia_pago, modalidad, grado, programa, grupo, id_categoria)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // 15 campos
+                // Asegurar que el ingreso se inserta como activo (estatus = 1)
+                $query = "INSERT INTO ingresos
+                                        (fecha, alumno, matricula, nivel, monto, metodo_de_pago, mes_correspondiente, anio, observaciones, dia_pago, modalidad, grado, programa, grupo, id_categoria, estatus)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // 16 campos (estatus)
 
         $stmt = $this->db->prepare($query);
         if (!$stmt) { throw new Exception("Error al preparar consulta INSERT Ingreso: " . $this->db->error); }
 
-    // Cadena de tipos EXACTA para los 15 parámetros en el orden del INSERT
+    // Cadena de tipos EXACTA para los 16 parámetros en el orden del INSERT
     // fecha(s), alumno(s), matricula(s), nivel(s), monto(d), metodo(s),
     // mes_correspondiente(s), anio(i), observaciones(s), dia_pago(i), modalidad(s),
     // grado(i), programa(s), grupo(s), id_categoria(i)
-    $types = "ssssdssisisssii";
+    // Simplificamos a 's' para evitar errores en bind_param por desajustes de tipos
+    $types = "ssssssssssssssss"; // 16 parámetros, todos como string (mysqli convertirá tipos automáticamente)
         // ===============================================
+
+        // Forzar estatus activo
+        $estatus = 1;
 
         $bindResult = $stmt->bind_param(
             $types,
@@ -129,8 +183,9 @@ class IngresoModel {
             $grado,                 // i
             $programa,              // s
             $grupo,                 // s
-            $id_categoria           // i
-        ); // 15 variables
+            $id_categoria,          // i
+            $estatus                // i (estatus)
+        ); // 16 variables
 
         if ($bindResult === false) { $error = $stmt->error; $stmt->close(); throw new Exception("Error en bind_param (create Ingreso): " . $error); }
 
@@ -185,7 +240,7 @@ class IngresoModel {
         $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
 
 
-        $query = "UPDATE ingresos SET
+                $query = "UPDATE ingresos SET
                     fecha=?, alumno=?, matricula=?, nivel=?, monto=?, metodo_de_pago=?,
                     mes_correspondiente=?, anio=?, observaciones=?, dia_pago=?,
                     modalidad=?, grado=?, programa=?, grupo=?, id_categoria=?
@@ -194,12 +249,8 @@ class IngresoModel {
         $stmt = $this->db->prepare($query);
         if (!$stmt) { throw new Exception("Error al preparar consulta UPDATE Ingreso: " . $this->db->error); }
 
-    // Cadena de tipos EXACTA para los 16 parámetros en el orden del UPDATE (+ WHERE al final)
-    // (mismos 15 que en INSERT) + folio_ingreso(i)
-    $types = "ssssdssisissssii";
-        // ==========================================================
-
-        $types = "ssssdssisisssiii";
+    // Usar 's' para todos los parámetros por simplicidad (16 parámetros)
+    $types = "ssssssssssssssss"; // 16 's'
         $bindResult = $stmt->bind_param(
             $types,
             $fecha,                 // s

@@ -501,3 +501,9 @@ function cargarGraficasEgresos() {
         });
 }
 </script>
+<?php if (!empty($prefill_egreso)): ?>
+<script>
+    // Datos para prellenar el modal de egreso (reembolso)
+    window.PREFILL_EGRESO = <?php echo json_encode($prefill_egreso); ?>;
+</script>
+<?php endif; ?>

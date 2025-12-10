@@ -108,12 +108,12 @@
                     </div>
                 </div>
                 <?php endif; ?>
-                <div class="col-12 mt-2">
+                <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-danger btn-sm w-100">
                          <ion-icon name="filter-outline" style="vertical-align:middle"></ion-icon> Filtrar
                     </button>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 d-flex align-items-end">
                     <a href="<?php echo BASE_URL; ?>index.php?controller=auditoria&action=index" class="btn btn-outline-secondary btn-sm w-100">
                         Limpiar filtros
                     </a>

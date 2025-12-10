@@ -57,10 +57,13 @@ class EgresoModel {
      * Crea un nuevo egreso (sin id_presupuesto, alineado al changelog).
      */
     public function createEgreso($data) {
-        $proveedor   = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : null;
-        $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
-        $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
+        // Preferimos soportar `id_presupuesto` como opcional. Usar NULL para campos no proporcionados.
+        $proveedor       = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : null;
+        $descripcion     = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
+        $doc_amparo      = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
+        $id_presupuesto  = isset($data['id_presupuesto']) && is_numeric($data['id_presupuesto']) ? (int)$data['id_presupuesto'] : null;
 
+        // Validación: id_presupuesto es opcional; el resto de campos obligatorios sí se requieren
         if (!isset($data['monto']) || $data['monto'] === '' || !is_numeric($data['monto']) || $data['monto'] < 0 ||
             empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['destinatario']) || empty($data['forma_pago']) ||
@@ -76,28 +79,51 @@ class EgresoModel {
         $destinatario = trim($data['destinatario']);
         $forma_pago   = $data['forma_pago'];
 
-        $query = "INSERT INTO egresos
-                    (proveedor, descripcion, monto, fecha, destinatario, forma_pago, documento_de_amparo, id_user, id_categoria)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Construir consulta condicionalmente según si se proporcionó id_presupuesto
+        if ($id_presupuesto) {
+            $query = "INSERT INTO egresos
+                        (proveedor, descripcion, monto, fecha, destinatario, forma_pago, documento_de_amparo, id_user, id_presupuesto, id_categoria)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        } else {
+            $query = "INSERT INTO egresos
+                        (proveedor, descripcion, monto, fecha, destinatario, forma_pago, documento_de_amparo, id_user, id_categoria)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        }
 
         $stmt = $this->db->prepare($query);
         if (!$stmt) {
             throw new Exception("Error al preparar consulta INSERT: " . $this->db->error);
         }
 
-        // s s d s s s s i i  => 9 parámetros
-        $bindResult = $stmt->bind_param(
-            "ssds" . "ss" . "sii",
-            $proveedor,
-            $descripcion,
-            $monto,
-            $fecha,
-            $destinatario,
-            $forma_pago,
-            $doc_amparo,
-            $id_user,
-            $id_categoria
-        );
+        // Usar 's' para todos los bind_param por robustez y conversión automática
+        if ($id_presupuesto) {
+            $bindResult = $stmt->bind_param(
+                str_repeat('s', 10),
+                $proveedor,
+                $descripcion,
+                (string)$monto,
+                $fecha,
+                $destinatario,
+                $forma_pago,
+                $doc_amparo,
+                (string)$id_user,
+                (string)$id_presupuesto,
+                (string)$id_categoria
+            );
+        } else {
+            $bindResult = $stmt->bind_param(
+                str_repeat('s', 9),
+                $proveedor,
+                $descripcion,
+                (string)$monto,
+                $fecha,
+                $destinatario,
+                $forma_pago,
+                $doc_amparo,
+                (string)$id_user,
+                (string)$id_categoria
+            );
+        }
 
         if ($bindResult === false) {
             $error = $stmt->error;
@@ -126,10 +152,13 @@ class EgresoModel {
      * Actualiza un egreso existente (sin id_presupuesto).
      */
     public function updateEgreso($folio_egreso, $data) {
-        $proveedor   = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : null;
-        $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
-        $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
+        // Normalizar campos y permitir id_presupuesto opcional
+        $proveedor       = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : null;
+        $descripcion     = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
+        $doc_amparo      = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
+        $id_presupuesto  = isset($data['id_presupuesto']) && is_numeric($data['id_presupuesto']) ? (int)$data['id_presupuesto'] : null;
 
+        // Validación (id_presupuesto opcional)
         if (!isset($data['monto']) || $data['monto'] === '' || !is_numeric($data['monto']) || $data['monto'] < 0 ||
             empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['destinatario']) || empty($data['forma_pago']) ||
@@ -145,31 +174,56 @@ class EgresoModel {
         $destinatario = trim($data['destinatario']);
         $forma_pago   = $data['forma_pago'];
 
-        $query = "UPDATE egresos SET
-                    proveedor = ?, descripcion = ?, monto = ?, fecha = ?,
-                    destinatario = ?, forma_pago = ?, documento_de_amparo = ?,
-                    id_user = ?, id_categoria = ?
-                  WHERE folio_egreso = ?";
+        // Construir consulta condicionalmente según id_presupuesto
+        if ($id_presupuesto) {
+            $query = "UPDATE egresos SET
+                        proveedor = ?, descripcion = ?, monto = ?, fecha = ?,
+                        destinatario = ?, forma_pago = ?, documento_de_amparo = ?,
+                        id_user = ?, id_presupuesto = ?, id_categoria = ?
+                      WHERE folio_egreso = ?";
+        } else {
+            $query = "UPDATE egresos SET
+                        proveedor = ?, descripcion = ?, monto = ?, fecha = ?,
+                        destinatario = ?, forma_pago = ?, documento_de_amparo = ?,
+                        id_user = ?, id_categoria = ?
+                      WHERE folio_egreso = ?";
+        }
 
         $stmt = $this->db->prepare($query);
         if (!$stmt) {
             throw new Exception("Error al preparar consulta UPDATE: " . $this->db->error);
         }
 
-        // s s d s s s s i i i => 10 parámetros
-        $bindResult = $stmt->bind_param(
-            "ssds" . "ss" . "siii",
-            $proveedor,
-            $descripcion,
-            $monto,
-            $fecha,
-            $destinatario,
-            $forma_pago,
-            $doc_amparo,
-            $id_user,
-            $id_categoria,
-            $folio_egreso
-        );
+        if ($id_presupuesto) {
+            $bindResult = $stmt->bind_param(
+                str_repeat('s', 11),
+                $proveedor,
+                $descripcion,
+                (string)$monto,
+                $fecha,
+                $destinatario,
+                $forma_pago,
+                $doc_amparo,
+                (string)$id_user,
+                (string)$id_presupuesto,
+                (string)$id_categoria,
+                (string)$folio_egreso
+            );
+        } else {
+            $bindResult = $stmt->bind_param(
+                str_repeat('s', 10),
+                $proveedor,
+                $descripcion,
+                (string)$monto,
+                $fecha,
+                $destinatario,
+                $forma_pago,
+                $doc_amparo,
+                (string)$id_user,
+                (string)$id_categoria,
+                (string)$folio_egreso
+            );
+        }
 
         if ($bindResult === false) {
             $error = $stmt->error;

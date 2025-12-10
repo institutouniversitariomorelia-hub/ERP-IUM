@@ -102,8 +102,7 @@ if ($cantidadConLetra === '') {
     $cantidadConLetra = '(' . $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.)';
 }
 
-// 6. Preparar variables para el HTML (campos de Opción 3)
-$logoPath = '../../../public/logo ium blanco.png'; // Ruta desde src/Egresos/Receipts/
+$logoPath = '../../../public/logo ium rojo (3).png'; // Ruta desde src/Egresos/Receipts/
 $fecha = htmlspecialchars($egreso['fecha'] ?? 'N/A');
 // Formatear fecha (si tienes 'intl' instalado)
 if (class_exists('IntlDateFormatter')) {
@@ -127,11 +126,17 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
     <meta charset="utf-8">
     <title>Comprobante de Egreso #<?php echo $folioEsc; ?></title>
     <style>
-        /* Tamaño media carta (8.5 x 5.5 pulgadas) */
-        @page { size: 8.5in 5.5in; margin: 0; }
+        /* Force portrait Letter (same as ingresos) */
+        @page { size: Letter portrait !important; margin: 0 !important; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 8px; line-height: 1.25; background: #f2f2f2; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 16px; }
-        .page { width: 8.5in; height: 5.5in; padding: 0.2in 0.25in; position: relative; background: #fff; display: flex; flex-direction: column; border: 1px solid #e5e5e5; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        body { font-family: Arial, sans-serif; font-size: 10.5px; line-height: 1.15; background: #f2f2f2; padding: 0; }
+        .page { width: 100%; max-width: 8.5in; height: 13.4cm; padding: 0.2in 0.25in; position: relative; background: white; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #e5e5e5; border-radius: 4px; page-break-inside: avoid; overflow: hidden; }
+        @media print {
+            body { margin: 0; background: white; padding: 0; }
+            .no-print { display: none; }
+            .page { box-shadow: none; border: none; width: 100%; max-width: 8.5in; height: 13.4cm; margin: 0; border-radius: 0; }
+            html, body { width: 100%; max-width: 8.5in; height: 13.4cm; }
+        }
 
         .header { display: table; width: 100%; margin-bottom: 8px; }
         .header-left { display: table-cell; width: 35%; vertical-align: top; }
@@ -174,10 +179,10 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
         .footer { font-size: 8px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 5px; margin-top: 8px; }
         .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 72px; color: rgba(220, 53, 69, 0.12); font-weight: 800; z-index: 0; pointer-events: none; }
 
-        .no-print { position: fixed; top: 16px; right: 16px; z-index: 10; }
+        .no-print { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 9999; }
         .print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
         .print-btn:hover { background: #b7213c; }
-        @media print { body { margin: 0; background: none; display: block; } .no-print { display: none; } .page { box-shadow: none; border: none; } }
+        @media print { body { margin: 0; background: none; padding: 0; display: block; } .no-print { display: none; } .page { box-shadow: none; border: none; width: 8.5in; height: 5.5in; } }
     </style>
 </head>
 <body>
@@ -236,9 +241,9 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
                 <div class="monto-currency">PESOS MEXICANOS (MXN)</div>
             </div>
             
-            <!-- Cantidad con Letra -->
+            <!-- Cantidad en letra (solo texto) -->
             <div class="letra-box">
-                <div class="letra-text">CANTIDAD CON LETRA<br><?php echo $cantidadConLetra; ?></div>
+                <div class="letra-text"><?php echo $cantidadConLetra; ?></div>
             </div>
             
             <!-- Descripción -->
