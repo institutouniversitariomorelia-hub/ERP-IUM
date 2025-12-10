@@ -28,10 +28,11 @@ if (!$fechaInicio || !$fechaFin) {
 
 // Obtener ingresos del rango
 $sql = "SELECT i.*, c.nombre as nombre_categoria
-        FROM ingresos i 
-        LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
-        WHERE i.fecha BETWEEN ? AND ? 
-        ORDER BY i.fecha DESC";
+    FROM ingresos i 
+    LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
+    WHERE i.fecha BETWEEN ? AND ? 
+      AND COALESCE(i.estatus, 1) = 1
+    ORDER BY i.fecha DESC";
 
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("ss", $fechaInicio, $fechaFin);

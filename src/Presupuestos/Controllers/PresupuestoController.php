@@ -494,19 +494,23 @@ class PresupuestoController {
         }
 
         try {
-            $query = "SELECT 
-                        c.nombre as categoria,
-                        p.monto_limite as presupuesto,
-                        COALESCE(
-                            (SELECT SUM(e.monto) 
-                             FROM egresos e 
-                             WHERE e.id_categoria = p.id_categoria), 
-                            0
-                        ) as gastado
-                     FROM presupuestos p
-                     INNER JOIN categorias c ON c.id_categoria = p.id_categoria
-                     WHERE p.monto_limite > 0
-                     ORDER BY c.nombre ASC";
+                        $query = "SELECT 
+                                                c.nombre as categoria,
+                                                p.monto_limite as presupuesto,
+                                                COALESCE(
+                                                        (SELECT SUM(e.monto) 
+                                                         FROM egresos e 
+                                                         WHERE e.id_categoria = p.id_categoria), 
+                                                        0
+                                                ) as gastado
+                                         FROM presupuestos p
+                                         INNER JOIN categorias c ON c.id_categoria = p.id_categoria
+                                         WHERE p.monto_limite > 0
+                                             AND COALESCE(p.parent_presupuesto, 0) <> 10
+                                             AND p.id_presupuesto <> 10
+                                             AND p.id_presupuesto <> 11
+                                             AND p.id_categoria <> 21
+                                         ORDER BY c.nombre ASC";
             
             $result = $this->db->query($query);
             $categorias = [];
