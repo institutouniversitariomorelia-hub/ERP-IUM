@@ -129,13 +129,18 @@ if ($cantidadConLetra === '') {
 // Métodos de pago
 $detalleMetodos = '';
 if (!empty($pagosParciales)) {
-    $parts = [];
+    $methods = [];
+    $amounts = [];
     foreach ($pagosParciales as $p) {
         $m = htmlspecialchars($p['metodo'] ?? $p['metodo_pago'] ?? '');
-        $amt = isset($p['monto']) ? number_format((float)$p['monto'], 2) : '0.00';
-        $parts[] = "<div class='payment-item'><span class='pay-method'>" . $m . "</span><span class='pay-amt'>$ " . $amt . "</span></div>";
+        $amt = '$ ' . (isset($p['monto']) ? number_format((float)$p['monto'], 2) : '0.00');
+        $methods[] = '<div class="pm-item">' . $m . '</div>';
+        $amounts[] = '<span class="pa-item">' . $amt . '</span>';
     }
-    $detalleMetodos = "<div class='payment-items'>" . implode('', $parts) . "</div>";
+    $detalleMetodos = '<div class="payment-grid">'
+        . '<div class="payment-methods">' . implode('', $methods) . '</div>'
+        . '<div class="payment-amounts">' . implode('', $amounts) . '</div>'
+        . '</div>';
     $metodo = 'Pago Dividido';
 } else {
     $metodo = htmlspecialchars($ingreso['metodo_de_pago'] ?? $ingreso['metodo'] ?? '-');
@@ -169,7 +174,7 @@ $conn->close();
 /* Reducimos altura total + aumentamos letra */
 body {
     font-family: Arial, sans-serif;
-    font-size: 8.2px;     /* +15% */
+    font-size: 10.5px;     /* +15% */
     line-height: 1.15;
     background: #f2f2f2;
     padding: 0;
@@ -218,16 +223,16 @@ body {
 .grid-cell { display: table-cell; padding: 2px 4px 2px 0; vertical-align: top; }
 
 .label {
-    font-size: 7.5px;   /* +15% */
+    font-size: 10px;   /* +15% */
     color: #444;
     font-weight: bold;
 }
 
 .value {
-    font-size: 9.5px;   /* +15% */
+    font-size: 12px;   /* +15% */
     border-bottom: 1px solid #ccc;
-    padding: 1px 0;
-    min-height: 10px;   /* -30% */
+    padding: 2px 0;
+    min-height: 12px;   /* -30% */
 }
 
 /* ------------------------ */
@@ -239,7 +244,7 @@ body {
 }
 .monto-label { font-size: 8px; }
 .monto-value {
-    font-size: 18px;    /* -10% para que quepa */
+    font-size: 24px;    /* -10% para que quepa */
     font-weight: bold;
     color: #9e1b32;
 }
@@ -251,12 +256,18 @@ body {
 .payment-box {
     background: #f8f8f8;
     border: 1px solid #ccc;
-    padding: 4px;
+    padding: 6px;
     border-radius: 3px;
-    font-size: 8px;
+    font-size: 12px;
 }
 
-/* Presentación horizontal de métodos de pago (evita crecimiento vertical) */
+/* Payments: methods in a single top row, amounts in a single row beneath them, left-aligned */
+.payment-grid { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.payment-methods { display:flex; flex-direction:row; gap:12px; flex-wrap:nowrap; }
+.payment-amounts { display:flex; flex-direction:row; gap:12px; align-items:center; white-space:nowrap; }
+.pm-item { font-weight:600; color:#333; font-size:12px; display:inline-block; }
+.pa-item { font-weight:700; color:#9e1b32; font-size:12px; display:inline-block; }
+/* Legacy helper styles for chips (kept minimal) */
 .payment-items { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .payment-item { display: inline-flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid #e6e6e6; padding: 4px 6px; border-radius: 4px; font-size: 8px; }
 .pay-method { font-weight: 600; color: #333; }
@@ -279,7 +290,7 @@ body {
 /*     FIRMA (CRÍTICO)      */
 /* ------------------------ */
 .signature-section {
-    margin-top: 4px;   /* SUPER COMPACTO */
+    margin-top: 0.5cm;   /* SUPER COMPACTO */
     text-align: center;
 }
 
