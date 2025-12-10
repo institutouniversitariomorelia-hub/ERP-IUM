@@ -27,7 +27,7 @@ if (!$fechaInicio || !$fechaFin) {
 }
 
 // Obtener totales de ingresos
-$sqlIngresos = "SELECT SUM(monto) as total, COUNT(*) as cantidad FROM ingresos WHERE fecha BETWEEN ? AND ?";
+$sqlIngresos = "SELECT SUM(monto) as total, COUNT(*) as cantidad FROM ingresos WHERE fecha BETWEEN ? AND ? AND COALESCE(estatus, 1) = 1";
 $stmt = $conn->prepare($sqlIngresos);
 $stmt->bind_param("ss", $fechaInicio, $fechaFin);
 $stmt->execute();
@@ -48,11 +48,12 @@ $stmt->close();
 
 // Obtener ingresos por categoría
 $sqlIngresosCat = "SELECT c.nombre, SUM(i.monto) as total 
-                   FROM ingresos i 
-                   LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
-                   WHERE i.fecha BETWEEN ? AND ? 
-                   GROUP BY i.id_categoria, c.nombre 
-                   ORDER BY total DESC";
+                                     FROM ingresos i 
+                                     LEFT JOIN categorias c ON i.id_categoria = c.id_categoria 
+                                     WHERE i.fecha BETWEEN ? AND ? 
+                                         AND COALESCE(i.estatus, 1) = 1
+                                     GROUP BY i.id_categoria, c.nombre 
+                                     ORDER BY total DESC";
 $stmt = $conn->prepare($sqlIngresosCat);
 $stmt->bind_param("ss", $fechaInicio, $fechaFin);
 $stmt->execute();

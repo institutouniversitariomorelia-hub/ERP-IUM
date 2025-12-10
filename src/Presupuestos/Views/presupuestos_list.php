@@ -85,6 +85,8 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                     $isActive = isset($presGeneral['activo']) ? intval($presGeneral['activo']) === 1 : true;
                     $presId = $presGeneral['id'] ?? ($presGeneral['id_presupuesto'] ?? 0);
                     $fecha = $presGeneral['fecha'] ?? '';
+                    // Ocultar presupuesto permanente en la vista
+                    if ($isPermanent) { continue; }
                     
                     // Formatear moneda
                     if ($isPermanent) {
@@ -122,7 +124,7 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                             <div class="d-flex justify-content-between align-items-center">
                                 <h5 class="text-success mb-0 fw-bold">
                                     <ion-icon name="calendar-outline" style="vertical-align: middle;"></ion-icon>
-                                    <?php echo $isPermanent ? 'PERMANENTE' : htmlspecialchars(date('F Y', strtotime($fecha))); ?>
+                                    <?php echo htmlspecialchars(date('F Y', strtotime($fecha))); ?>
                                 </h5>
                                 <?php if ($hasActions): ?>
                                     <?php
@@ -172,13 +174,13 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                                 <div class="col-4">
                                     <div class="border-end">
                                         <h6 class="text-primary mb-1">Asignado</h6>
-                                        <p class="h6 text-warning mb-0 monto-display"><?php echo $isPermanent ? '$0.00' : '$' . number_format($totalAsignado, 2); ?></p>
+                                        <p class="h6 text-warning mb-0 monto-display"><?php echo '$' . number_format($totalAsignado, 2); ?></p>
                                     </div>
                                 </div>
                                 <div class="col-4">
                                     <h6 class="text-primary mb-1">Disponible</h6>
-                                    <p class="h6 <?php echo (!$isPermanent && $disponible >= 0) ? 'text-success' : (!$isPermanent ? 'text-danger' : 'text-muted'); ?> mb-0 monto-display">
-                                        <?php echo $isPermanent ? 'Ilimitado' : ('$' . number_format($disponible, 2)); ?>
+                                    <p class="h6 <?php echo ($disponible >= 0) ? 'text-success' : 'text-danger'; ?> mb-0 monto-display">
+                                        <?php echo '$' . number_format($disponible, 2); ?>
                                     </p>
                                 </div>
                             </div>
@@ -186,20 +188,14 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <small class="text-muted">% Asignado</small>
-                                    <?php if ($isPermanent): ?>
-                                        <span class="badge bg-secondary">-</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-porcentaje <?php echo $porcentajeAsignado > 90 ? 'bg-danger' : ($porcentajeAsignado > 70 ? 'bg-warning' : 'bg-success'); ?>">
-                                            <?php echo number_format($porcentajeAsignado, 1); ?>%
-                                        </span>
-                                    <?php endif; ?>
+                                    <span class="badge badge-porcentaje <?php echo $porcentajeAsignado > 90 ? 'bg-danger' : ($porcentajeAsignado > 70 ? 'bg-warning' : 'bg-success'); ?>">
+                                        <?php echo number_format($porcentajeAsignado, 1); ?>%
+                                    </span>
                                 </div>
-                                <?php if (!$isPermanent): ?>
                                 <div class="progress progress-custom">
                                     <div class="progress-bar <?php echo $porcentajeAsignado > 90 ? 'bg-danger' : ($porcentajeAsignado > 70 ? 'bg-warning' : 'bg-success'); ?>" 
                                          style="width: <?php echo min($porcentajeAsignado, 100); ?>%"></div>
                                 </div>
-                                <?php endif; ?>
                             </div>
                             
                             <?php if (roleCan('add','presupuestos')): ?>
@@ -416,136 +412,9 @@ function cargarGraficaPresupuestoVsGastado() {
                 }
                 $('#indicadoresPresupuesto').html(html);
 
-                // 2. Cargar Presupuestos "Phantom" (Reembolsos/Parent 9999)
+                // 2. Ocultar sección de Presupuestos especiales (Reembolsos/Parent 10)
                 const $phantom = $('#phantomPresupuestoSection');
-                $phantom.empty();
-
-                ajaxCall('presupuesto', 'getAllPresupuestos', {}, 'GET')
-                    .done(function(allPres) {
-                        if (!Array.isArray(allPres)) return;
-                        
-                        // Filtrar candidatos (año 3000 o parent 10)
-                        const candidates = allPres.filter(p => {
-                           return (p.parent_presupuesto && Number(p.parent_presupuesto) === 10);
-                        });
-
-                        // Agrupar por padre real
-                        const parentMap = {};
-                        candidates.forEach(p => {
-                            const pid = p.id || p.id_presupuesto;
-                            if(pid) parentMap[pid] = p; 
-                        });
-                        const reembolsoParents = Object.values(parentMap);
-
-                        // Crear tarjetas para cada presupuesto especial
-                        reembolsoParents.forEach(function(parent) {
-                            const pid = parent.id || parent.id_presupuesto;
-                            const title = 'Presupuesto Reembolsos';
-                            const canvasId = 'ph_chart_' + pid;
-                            const indicatorsId = 'ph_indicators_' + pid;
-                            
-                            // HTML de la tarjeta
-                            const cardHtml = `
-                                <div class="card shadow-sm mb-3">
-                                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                                        <h6 class="mb-0"><ion-icon name="repeat-outline" style="color: #B80000;"></ion-icon> ${title} (ID: ${pid})</h6>
-                                        <button class="btn btn-sm btn-outline-secondary btn-ver-detalle" data-parent-id="${pid}">Ver detalle</button>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 col-lg-8"><canvas id="${canvasId}" style="height:260px; width:100%;"></canvas></div>
-                                            <div class="col-12 col-lg-4" id="${indicatorsId}">Cargando...</div>
-                                        </div>
-                                    </div>
-                                </div>`;
-                            
-                            $phantom.append(cardHtml);
-
-                            // Cargar datos específicos para este padre
-                            ajaxCall('presupuesto', 'getGraficaPresupuestoPorPadre', { parent_id: pid }, 'GET')
-                                .done(function(res) {
-                                    if(res && res.success) {
-                                        // Render Chart
-                                        new Chart(document.getElementById(canvasId).getContext('2d'), {
-                                            type: 'bar',
-                                            data: {
-                                                labels: res.categorias,
-                                                datasets: [
-                                                    { label: 'Presupuestado', data: res.presupuestos, backgroundColor: 'rgba(40,167,69,0.7)' },
-                                                    { label: 'Gastado', data: res.gastados, backgroundColor: 'rgba(220,53,69,0.7)' }
-                                                ]
-                                            },
-                                            options: { maintainAspectRatio: false }
-                                        });
-                                        
-                                        // Render Indicators
-                                        let indHtml = '';
-                                        for(let k=0; k<res.categorias.length; k++){
-                                            let pct = Number(res.porcentajes[k]||0);
-                                            let clr = pct >= 90 ? 'danger' : (pct >= 70 ? 'warning' : 'success');
-                                            indHtml += `<div class="mb-2 border-bottom pb-1">
-                                                <div class="d-flex justify-content-between">
-                                                    <strong>${res.categorias[k]}</strong>
-                                                    <span class="badge bg-${clr}">${pct.toFixed(2)}%</span>
-                                                </div>
-                                                <small>Disp: ${fmt.format(res.presupuestos[k] - res.gastados[k])}</small>
-                                            </div>`;
-                                        }
-                                        $('#'+indicatorsId).html(indHtml);
-                                    } else {
-                                        $('#'+indicatorsId).html('Sin datos.');
-                                    }
-                                });
-                        });
-                        
-                        // Delegar evento Click en "Ver Detalle"
-                        $(document).off('click', '.btn-ver-detalle').on('click', '.btn-ver-detalle', function(e) {
-                            e.preventDefault();
-                            const pId = $(this).data('parentId');
-                            const modalId = 'modalDetalle_' + pId;
-                            $('#'+modalId).remove();
-                            
-                            const modalHtml = `
-                            <div class="modal fade" id="${modalId}" tabindex="-1">
-                                <div class="modal-dialog modal-lg"><div class="modal-content">
-                                    <div class="modal-header"><h5 class="modal-title">Detalle</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                                    <div class="modal-body" id="${modalId}_body">Cargando...</div>
-                                </div></div>
-                            </div>`;
-                            $('body').append(modalHtml);
-                            const modal = new bootstrap.Modal(document.getElementById(modalId));
-                            modal.show();
-                            
-                            ajaxCall('presupuesto', 'getSubPresupuestos', {}, 'GET').done(function(list) {
-                                const subs = list.filter(s => s.parent_presupuesto == pId);
-                                if(subs.length === 0) { $('#'+modalId+'_body').text('No hay subpresupuestos'); return; }
-                                
-                                let tbl = '<table class="table table-sm"><thead><tr><th>Categoría</th><th>Monto</th><th>Gastado</th><th>Acción</th></tr></thead><tbody>';
-                                subs.forEach(row => {
-                                    tbl += `<tr>
-                                        <td>${row.cat_nombre || row.categoria}</td>
-                                        <td>${fmt.format(row.monto_limite || row.monto)}</td>
-                                        <td>${fmt.format(row.gastado)}</td>
-                                        <td><button class="btn btn-sm btn-outline-primary btn-edit-sub" data-id="${row.id_presupuesto || row.id}">Editar</button></td>
-                                    </tr>`;
-                                });
-                                tbl += '</tbody></table>';
-                                $('#'+modalId+'_body').html(tbl);
-                                
-                                // Click Editar Sub
-                                $('#'+modalId).on('click', '.btn-edit-sub', function() {
-                                    const editId = $(this).data('id');
-                                    modal.hide();
-                                    setTimeout(() => {
-                                        $('#modalSubPresupuesto').modal('show');
-                                        // Aquí deberías añadir tu lógica para cargar el form, 
-                                        // simulamos un trigger si ya tienes lógica global
-                                        // $('.btn-edit-presupuesto[data-id="'+editId+'"]').trigger('click');
-                                    }, 300);
-                                });
-                            });
-                        });
-                    });
+                $phantom.empty().hide();
 
             } else {
                 $('#chartPresupuestoVsGastado').parent().html('<p class="text-muted text-center">No hay datos.</p>');

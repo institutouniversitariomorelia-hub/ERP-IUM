@@ -95,9 +95,21 @@ class EgresoController {
         $data['id_user'] = $_SESSION['user_id']; 
         
         $folio_egreso_id = $data['id'] ?? null;
-        // Detectar flujo de reembolso desde el Modal de Reembolsos
-        $isReembolso = isset($data['reem_folio_origen']) && $data['reem_folio_origen'] !== '';
-        $folioOrigen = $isReembolso ? (int)$data['reem_folio_origen'] : null;
+        // Detectar flujo de reembolso desde el Modal de Reembolsos (robusto)
+        $isReembolso = false;
+        $folioOrigen = null;
+        if (isset($data['reem_folio_origen']) && $data['reem_folio_origen'] !== '') {
+            $isReembolso = true;
+            $folioOrigen = (int)$data['reem_folio_origen'];
+        } elseif (isset($data['from_ingreso']) && $data['from_ingreso'] !== '') {
+            $isReembolso = true;
+            $folioOrigen = (int)$data['from_ingreso'];
+        } else {
+            // Heurística: si llegan IDs 11/21, tratar como reembolso
+            $cat = isset($data['id_categoria']) ? (int)$data['id_categoria'] : 0;
+            $pres = isset($data['id_presupuesto']) ? (int)$data['id_presupuesto'] : 0;
+            if ($cat === 21 || $pres === 11) { $isReembolso = true; }
+        }
         $isUpdate = !empty($folio_egreso_id);
         $response = ['success' => false];
 
@@ -105,10 +117,19 @@ class EgresoController {
         if (isset($data['monto'])) {
             $data['monto'] = str_replace(['$',',',' '], '', (string)$data['monto']);
         }
-        // Para reembolso, establecer proveedor por defecto si no viene del formulario
-        if ($isReembolso && (empty($data['proveedor']) || !isset($data['proveedor']))) {
-            $data['proveedor'] = 'Reembolsos';
+        // Para reembolso, establecer valores por defecto y forzar IDs del sistema
+        if ($isReembolso) {
+            // Forzar categoría y presupuesto de reembolsos
+            $data['id_categoria'] = 21;
+            $data['id_presupuesto'] = 11;
+            // Establecer proveedor por defecto si falta
+            if (empty($data['proveedor'])) { $data['proveedor'] = 'IUM Reembolsos'; }
+            // Establecer forma de pago por defecto si falta
+            if (empty($data['forma_pago'])) { $data['forma_pago'] = 'Efectivo'; }
         }
+        // Debug inicial de entrada
+        error_log('[EgresoController.save] isReembolso=' . ($isReembolso ? '1' : '0') . ' isUpdate=' . ($isUpdate ? '1' : '0'));
+        error_log('[EgresoController.save] POST keys: ' . implode(',', array_keys($_POST)));
 
          // --- Validación (igual que antes) ---
          if (empty($data['fecha']) || !isset($data['monto']) || $data['monto'] === '' || empty($data['destinatario']) || empty($data['forma_pago']) || (!$isReembolso && empty($data['proveedor']))) {
@@ -119,20 +140,35 @@ class EgresoController {
          if (isset($data['activo_fijo']) && !in_array($data['activo_fijo'], ['SI', 'NO'])) { $response['error'] = 'Valor inválido para Activo Fijo.'; echo json_encode($response); exit; }
          $formas_validas = ['Efectivo', 'Transferencia', 'Cheque', 'Tarjeta D.', 'Tarjeta C.'];
          if (!in_array($data['forma_pago'], $formas_validas)) { $response['error'] = 'Forma de pago inválida.'; echo json_encode($response); exit; }
-         if (!filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) { $response['error'] = 'Categoría inválida.'; echo json_encode($response); exit; }
-         $data['id_categoria'] = (int)$data['id_categoria'];
+         // Validar categoría sólo si no es reembolso (en reembolso ya se forzó a 21)
+         if (!$isReembolso) {
+             if (!isset($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) { $response['error'] = 'Categoría inválida.'; echo json_encode($response); exit; }
+             $data['id_categoria'] = (int)$data['id_categoria'];
+         } else {
+             $data['id_categoria'] = 21;
+         }
          // --- Fin Validación ---
 
         try {
             if (!$isUpdate) { // Crear
                 if ($isReembolso) {
-                    // Fuerza IDs de sistema para reembolsos
-                    $data['id_presupuesto'] = 11;
-                    $data['id_categoria'] = 21;
+                    // IDs ya forzados arriba
 
                     // Verificar que el ingreso origen exista y esté activo (estatus = 1)
                     $stmtChk = $this->db->prepare("SELECT estatus FROM ingresos WHERE folio_ingreso = ? LIMIT 1");
-                    if (!$stmtChk) { throw new Exception('Error preparando validación de ingreso: ' . $this->db->error); }
+         if (!$isReembolso) {
+             if (!isset($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) {
+                 $response['error'] = 'Categoría inválida.';
+                 $response['debug'] = [
+                     'isReembolso' => $isReembolso,
+                     'id_categoria' => $data['id_categoria'] ?? null
+                 ];
+                 echo json_encode($response); exit; 
+             }
+             $data['id_categoria'] = (int)$data['id_categoria'];
+         } else {
+             $data['id_categoria'] = 21;
+         }
                     $stmtChk->bind_param('i', $folioOrigen);
                     if (!$stmtChk->execute()) {
                         $err = $stmtChk->error ?: 'Desconocido';
