@@ -54,8 +54,37 @@ if (class_exists('NumberFormatter')) {
     } catch (Exception $e) { /* fallback */ }
 }
 
-// 5. Cantidad en letra (copiado de tu ejemplo de ingreso)
+// 5. Cantidad en letra: usar intl si existe; fallback simple si no
 $cantidadConLetra = '';
+function numToWordsEs($num) {
+    $num = (int)$num;
+    $U = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
+    $T = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+    $C = ['', 'cien', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+    $to99 = function($n) use ($U, $T) {
+        if ($n < 20) return $U[$n];
+        if ($n == 20) return 'veinte';
+        $d = intdiv($n, 10); $u = $n % 10;
+        if ($d == 2 && $u > 0) return 'veinti' . $U[$u];
+        return $T[$d] . ($u ? ' y ' . $U[$u] : '');
+    };
+    $to999 = function($n) use ($C, $to99) {
+        if ($n == 0) return '';
+        if ($n == 100) return 'cien';
+        $c = intdiv($n, 100); $r = $n % 100;
+        $pref = $c ? (($c == 1) ? 'ciento' : $C[$c]) : '';
+        return trim($pref . ($r ? ' ' . $to99($r) : ''));
+    };
+    if ($num == 0) return 'cero';
+    $millones = intdiv($num, 1000000); $resto = $num % 1000000;
+    $miles = intdiv($resto, 1000); $unidades = $resto % 1000;
+    $parts = [];
+    if ($millones) $parts[] = ($millones == 1 ? 'un millón' : trim(numToWordsEs($millones) . ' millones'));
+    if ($miles) $parts[] = ($miles == 1 ? 'mil' : trim($to999($miles) . ' mil'));
+    if ($unidades) $parts[] = $to999($unidades);
+    return trim(implode(' ', $parts));
+}
+
 if (class_exists('NumberFormatter')) {
     try {
         $entero = floor($monto);
@@ -64,11 +93,16 @@ if (class_exists('NumberFormatter')) {
         $letras = $fmtSpell->format($entero);
         $letras = strtoupper($letras);
         $cantidadConLetra = '(' . $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.)';
-    } catch (Exception $e) { $cantidadConLetra = '(No disponible)'; }
+    } catch (Exception $e) { /* fallback abajo */ }
+}
+if ($cantidadConLetra === '') {
+    $entero = floor($monto);
+    $centavos = round(($monto - $entero) * 100);
+    $letras = strtoupper(numToWordsEs($entero));
+    $cantidadConLetra = '(' . $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.)';
 }
 
-// 6. Preparar variables para el HTML (campos de Opción 3)
-$logoPath = '../../../public/logo ium blanco.png'; // Ruta desde src/Egresos/Receipts/
+$logoPath = '../../../public/logo ium rojo (3).png'; // Ruta desde src/Egresos/Receipts/
 $fecha = htmlspecialchars($egreso['fecha'] ?? 'N/A');
 // Formatear fecha (si tienes 'intl' instalado)
 if (class_exists('IntlDateFormatter')) {
@@ -92,11 +126,17 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
     <meta charset="utf-8">
     <title>Comprobante de Egreso #<?php echo $folioEsc; ?></title>
     <style>
-        /* Tamaño media carta (8.5 x 5.5 pulgadas) */
-        @page { size: 8.5in 5.5in; margin: 0; }
+        /* Force portrait Letter (same as ingresos) */
+        @page { size: Letter portrait !important; margin: 0 !important; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 8px; line-height: 1.25; background: #f2f2f2; }
-        .page { width: 8.5in; height: 5.5in; padding: 0.2in 0.25in; position: relative; background: #fff; display: flex; flex-direction: column; border: 1px solid #e5e5e5; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        body { font-family: Arial, sans-serif; font-size: 10.5px; line-height: 1.15; background: #f2f2f2; padding: 0; }
+        .page { width: 100%; max-width: 8.5in; height: 13.4cm; padding: 0.2in 0.25in; position: relative; background: white; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #e5e5e5; border-radius: 4px; page-break-inside: avoid; overflow: hidden; }
+        @media print {
+            body { margin: 0; background: white; padding: 0; }
+            .no-print { display: none; }
+            .page { box-shadow: none; border: none; width: 100%; max-width: 8.5in; height: 13.4cm; margin: 0; border-radius: 0; }
+            html, body { width: 100%; max-width: 8.5in; height: 13.4cm; }
+        }
 
         .header { display: table; width: 100%; margin-bottom: 8px; }
         .header-left { display: table-cell; width: 35%; vertical-align: top; }
@@ -139,10 +179,14 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
         .footer { font-size: 8px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 5px; margin-top: 8px; }
         .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 72px; color: rgba(220, 53, 69, 0.12); font-weight: 800; z-index: 0; pointer-events: none; }
 
-        @media print { body { margin: 0; background: none; } .no-print { display: none; } .page { box-shadow: none; border: none; } }
+        .no-print { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 9999; }
+        .print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+        .print-btn:hover { background: #b7213c; }
+        @media print { body { margin: 0; background: none; padding: 0; display: block; } .no-print { display: none; } .page { box-shadow: none; border: none; width: 8.5in; height: 5.5in; } }
     </style>
 </head>
 <body>
+    <div class="no-print"><button class="print-btn" onclick="window.print()">Imprimir</button></div>
     
     <?php if ($reimpresion): ?>
         <div class="watermark">REIMPRESIÓN</div>
@@ -197,9 +241,9 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
                 <div class="monto-currency">PESOS MEXICANOS (MXN)</div>
             </div>
             
-            <!-- Cantidad con Letra -->
+            <!-- Cantidad en letra (solo texto) -->
             <div class="letra-box">
-                <div class="letra-text">CANTIDAD CON LETRA<br><?php echo $cantidadConLetra; ?></div>
+                <div class="letra-text"><?php echo $cantidadConLetra; ?></div>
             </div>
             
             <!-- Descripción -->

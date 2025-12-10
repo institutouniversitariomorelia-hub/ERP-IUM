@@ -25,7 +25,13 @@ class IngresoController {
     public function index() {
         if (!isset($_SESSION['user_id'])) { header('Location: ' . BASE_URL . 'index.php?controller=auth&action=login'); exit; }
 
-        $ingresos = $this->ingresoModel->getAllIngresos();
+        // Por defecto mostramos solo ingresos activos (estatus = 1). Si viene ?ver_reembolsos=1, mostramos solo estatus = 0
+        $showReembolsos = isset($_GET['ver_reembolsos']) && $_GET['ver_reembolsos'] == '1';
+        if ($showReembolsos) {
+            $ingresos = $this->ingresoModel->getIngresosByStatus(0);
+        } else {
+            $ingresos = $this->ingresoModel->getIngresosByStatus(1);
+        }
 
         $pageTitle = "Ingresos";
         $activeModule = "ingresos";
@@ -33,8 +39,77 @@ class IngresoController {
         $this->renderView('ingresos_list', [
             'pageTitle' => $pageTitle,
             'activeModule' => $activeModule,
-            'ingresos' => $ingresos
+            'ingresos' => $ingresos,
+            'show_reembolsos' => $showReembolsos
         ]);
+    }
+
+    /**
+     * Acción AJAX: Genera un egreso a partir de un ingreso y marca el ingreso como reembolsado (transacción).
+     * Espera POST: id (folio_ingreso), opcionales: forma_pago, descripcion
+     */
+    public function reembolsar() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
+
+        $folio = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        if ($folio <= 0) { echo json_encode(['success' => false, 'error' => 'ID de ingreso inválido']); exit; }
+
+        // Obtener ingreso
+        $ingreso = $this->ingresoModel->getIngresoById($folio);
+        if (!$ingreso) { echo json_encode(['success' => false, 'error' => 'Ingreso no encontrado']); exit; }
+
+        // Buscar subpresupuesto hijo de 9999 con id_categoria = 224
+        $stmt = $this->db->prepare("SELECT id_presupuesto FROM presupuestos WHERE parent_presupuesto = ? AND id_categoria = ? LIMIT 1");
+        if (!$stmt) { echo json_encode(['success' => false, 'error' => 'Error interno (presupuesto)']); exit; }
+        $parent = 10; $catReembolso = 21;
+        $stmt->bind_param('ii', $parent, $catReembolso);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res->fetch_assoc();
+        $stmt->close();
+        $id_presupuesto = $row['id_presupuesto'] ?? null;
+
+        // Datos para el egreso
+        $egresoData = [
+            'proveedor' => 'Reembolsos',
+            'descripcion' => isset($_POST['descripcion']) ? trim($_POST['descripcion']) : 'Reembolso por ingreso ' . $folio,
+            'monto' => $ingreso['monto'],
+            'fecha' => date('Y-m-d'),
+            'destinatario' => $ingreso['alumno'] ?? 'N/A',
+            'forma_pago' => isset($_POST['forma_pago']) ? $_POST['forma_pago'] : 'Efectivo',
+            'documento_de_amparo' => 'Recibo de ingreso #' . $folio,
+            'id_user' => $_SESSION['user_id'],
+            'id_categoria' => 224
+        ];
+        if ($id_presupuesto) $egresoData['id_presupuesto'] = (int)$id_presupuesto;
+
+        // Ejecutar transacción: insertar egreso y marcar ingreso
+        try {
+            $this->db->begin_transaction();
+            $newEgresoId = $this->egresoModel->createEgreso($egresoData);
+            if (!$newEgresoId) throw new Exception('No se pudo crear el egreso');
+
+            $ok = $this->ingresoModel->markAsReembolsado($folio);
+            if (!$ok) throw new Exception('No se pudo actualizar el estatus del ingreso');
+
+            // Auditoría (si la BD no tiene trigger)
+            if (!$this->auditoriaModel->hasTriggerForTable('ingresos')) {
+                $this->auditoriaModel->addLog('Ingreso', 'Actualizacion', 'Ingreso marcado como reembolsado', null, null, null, $folio, $_SESSION['user_id'] ?? null);
+            }
+            if (!$this->auditoriaModel->hasTriggerForTable('egresos')) {
+                $this->auditoriaModel->addLog('Egreso', 'Insercion', 'Egreso creado por reembolso (folio ingreso ' . $folio . ')', null, json_encode($egresoData), $newEgresoId, null, $_SESSION['user_id'] ?? null);
+            }
+
+            $this->db->commit();
+            echo json_encode(['success' => true, 'folio_egreso' => $newEgresoId]);
+            exit;
+        } catch (Exception $e) {
+            $this->db->rollback();
+            error_log('Error en reembolsar: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            exit;
+        }
     }
 
     /**
@@ -234,7 +309,7 @@ class IngresoController {
         try {
             $query = "SELECT c.nombre, COALESCE(SUM(i.monto), 0) as total
                      FROM categorias c
-                     LEFT JOIN ingresos i ON i.id_categoria = c.id_categoria
+                     LEFT JOIN ingresos i ON i.id_categoria = c.id_categoria AND i.estatus = 1
                      WHERE c.tipo = 'Ingreso'
                      GROUP BY c.id_categoria, c.nombre
                      HAVING total > 0
@@ -280,7 +355,7 @@ class IngresoController {
                 
                 $query = "SELECT COALESCE(SUM(monto), 0) as total 
                          FROM ingresos 
-                         WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+                         WHERE DATE_FORMAT(fecha, '%Y-%m') = ? AND estatus = 1";
                 $stmt = $this->db->prepare($query);
                 $stmt->bind_param('s', $mes);
                 $stmt->execute();

@@ -1,6 +1,13 @@
 <?php
 // db.php (Conexión a BD y Funciones Auxiliares - MODIFICADO PARA TRIGGERS)
 
+// Validar y limpiar PHPSESSID inválido antes de iniciar sesión
+
+
+// In this file we only ensure a session exists and clean invalid cookies.
+// Cookie parameter configuration is done centrally in `index.php` before including
+// this file to avoid duplicate calls to session_set_cookie_params() which can
+// emit warnings if a session is already active.
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

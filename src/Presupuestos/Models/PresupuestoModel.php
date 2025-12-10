@@ -14,12 +14,13 @@ class PresupuestoModel {
      */
     public function getAllPresupuestos() {
         // Nuevo diseño: incluir parent_presupuesto, nombre y permitir id_categoria NULL para presupuestos generales
-        $query = "SELECT p.*, p.id_presupuesto AS id,
-                         c.id_categoria, c.nombre AS cat_nombre,
-                         p.parent_presupuesto, p.nombre
-                  FROM presupuestos p
-                  LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
-                  ORDER BY p.id_presupuesto DESC";
+         $query = "SELECT p.*, p.id_presupuesto AS id,
+                    c.id_categoria, c.nombre AS cat_nombre,
+                    p.parent_presupuesto,
+                    NULL AS nombre
+                FROM presupuestos p
+                LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+                ORDER BY p.id_presupuesto DESC";
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);
@@ -34,11 +35,13 @@ class PresupuestoModel {
      * @return array Lista de sub-presupuestos con nombre, fecha y categoría
      */
     public function getSubPresupuestos() {
-        $query = "SELECT p.id_presupuesto, p.nombre, p.fecha, p.monto_limite,
-                         c.nombre AS cat_nombre, p.id_categoria
+        // Mostrar únicamente subpresupuestos activos o permanentes
+        $query = "SELECT p.id_presupuesto, NULL AS nombre, p.fecha, p.monto_limite,
+                 c.nombre AS cat_nombre, p.id_categoria, p.activo, p.es_permanente
                   FROM presupuestos p
                   LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
                   WHERE p.parent_presupuesto IS NOT NULL
+                  AND (p.activo = 1 OR p.es_permanente = 1)
                   ORDER BY p.fecha DESC, p.id_presupuesto DESC";
         $result = $this->db->query($query);
         if ($result) {
@@ -53,15 +56,15 @@ class PresupuestoModel {
      * @return array Lista de presupuestos con alerta
      */
     public function getPresupuestosEnAlerta() {
-        $query = "SELECT p.id_presupuesto, p.nombre, p.monto_limite,
-                         COALESCE(SUM(e.monto), 0) AS gastado,
-                         ROUND((COALESCE(SUM(e.monto), 0) / p.monto_limite) * 100, 2) AS porcentaje
-                  FROM presupuestos p
-                  LEFT JOIN egresos e ON e.id_presupuesto = p.id_presupuesto
-                  WHERE p.parent_presupuesto IS NOT NULL
-                  GROUP BY p.id_presupuesto, p.nombre, p.monto_limite
-                  HAVING porcentaje >= 90
-                  ORDER BY porcentaje DESC";
+         $query = "SELECT p.id_presupuesto, NULL AS nombre, p.monto_limite,
+                    COALESCE(SUM(e.monto), 0) AS gastado,
+                    ROUND((COALESCE(SUM(e.monto), 0) / p.monto_limite) * 100, 2) AS porcentaje
+                FROM presupuestos p
+                LEFT JOIN egresos e ON e.id_presupuesto = p.id_presupuesto
+                WHERE p.parent_presupuesto IS NOT NULL
+                GROUP BY p.id_presupuesto, p.monto_limite
+                HAVING porcentaje >= 90
+                ORDER BY porcentaje DESC";
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);
@@ -143,15 +146,15 @@ class PresupuestoModel {
             $id = (int)$data['id_presupuesto'];
         }
         if ($id) { // Actualizar
-            $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_categoria=?, id_user=?, parent_presupuesto=?, nombre=? WHERE id_presupuesto=?";
+            $query = "UPDATE presupuestos SET monto_limite=?, fecha=?, id_categoria=?, id_user=?, parent_presupuesto=? WHERE id_presupuesto=?";
             $stmt = $this->db->prepare($query);
             if (!$stmt) { error_log('Error al preparar updatePresupuesto: ' . $this->db->error); return false; }
-            $stmt->bind_param('dsiissi', $data['monto_limite'], $data['fecha'], $cat, $data['id_user'], $parent, $nombre, $id);
+            $stmt->bind_param('dsiiii', $data['monto_limite'], $data['fecha'], $cat, $data['id_user'], $parent, $id);
         } else { // Crear
-            $query = "INSERT INTO presupuestos (monto_limite, fecha, id_categoria, id_user, parent_presupuesto, nombre) VALUES (?, ?, ?, ?, ?, ?)";
+            $query = "INSERT INTO presupuestos (monto_limite, fecha, id_categoria, id_user, parent_presupuesto) VALUES (?, ?, ?, ?, ?)";
             $stmt = $this->db->prepare($query);
             if (!$stmt) { error_log('Error al preparar createPresupuesto: ' . $this->db->error); return false; }
-            $stmt->bind_param('dsiiss', $data['monto_limite'], $data['fecha'], $cat, $data['id_user'], $parent, $nombre);
+            $stmt->bind_param('dsiii', $data['monto_limite'], $data['fecha'], $cat, $data['id_user'], $parent);
         }
 
         $success = $stmt->execute();
@@ -180,6 +183,44 @@ class PresupuestoModel {
             error_log("Error al preparar deletePresupuesto: " . $this->db->error);
             return false;
         }
+    }
+
+    /**
+     * Establece el estado activo (1) o inactivo (0) de un presupuesto.
+     * @param int $id
+     * @param int $activo 0|1
+     * @return bool
+     */
+    public function setActivo($id, $activo) {
+        $query = "UPDATE presupuestos SET activo = ? WHERE id_presupuesto = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) { error_log('Error al preparar setActivo: ' . $this->db->error); return false; }
+        $stmt->bind_param('ii', $activo, $id);
+        $success = $stmt->execute();
+        if (!$success) error_log('Error al ejecutar setActivo: ' . $stmt->error);
+        $stmt->close();
+        return $success;
+    }
+
+    /**
+     * Establece el estado activo de un presupuesto y propaga a sus hijos (si los hay).
+     * @param int $id
+     * @param int $activo
+     * @return bool
+     */
+    public function setActivoCascade($id, $activo) {
+        $ok = true;
+        // Actualizar el propio presupuesto
+        $ok = $this->setActivo($id, $activo) && $ok;
+        // Actualizar hijos (sub-presupuestos) cuya parent_presupuesto == $id
+        $query = "UPDATE presupuestos SET activo = ? WHERE parent_presupuesto = ?";
+        $stmt = $this->db->prepare($query);
+        if (!$stmt) { error_log('Error al preparar setActivoCascade: ' . $this->db->error); return $ok; }
+        $stmt->bind_param('ii', $activo, $id);
+        $res = $stmt->execute();
+        if (!$res) error_log('Error al ejecutar setActivoCascade: ' . $stmt->error);
+        $stmt->close();
+        return $ok && (bool)$res;
     }
 }
 ?>
