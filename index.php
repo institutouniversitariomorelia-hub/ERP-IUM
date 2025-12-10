@@ -1,7 +1,35 @@
 <?php
 // index.php (Enrutador Principal)
 
-// Iniciar sesión SIEMPRE al principio
+// Validar y limpiar PHPSESSID inválido antes de iniciar sesión
+if (isset($_COOKIE[session_name()])) {
+    $sid = $_COOKIE[session_name()];
+    if (!preg_match('/^[A-Za-z0-9,-]+$/', $sid)) {
+        // Borrar cookie inválida para evitar warnings en session_start()
+        setcookie(session_name(), '', time() - 3600, '/');
+        unset($_COOKIE[session_name()]);
+    }
+}
+
+// Configurar parámetros seguros para la cookie de sesión antes de iniciar
+// Si el servidor está bajo HTTPS, marcamos Secure y SameSite=None si necesitas cross-site
+$isSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['SERVER_PORT'] ?? '') == 443;
+$cookieParams = [
+    'lifetime' => 0,
+    'path' => '/',
+    'domain' => '',
+    'secure' => $isSecure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+];
+if (PHP_VERSION_ID >= 70300) {
+    session_set_cookie_params($cookieParams);
+} else {
+    // Fallback para versiones antiguas de PHP (sin array soportado)
+    session_set_cookie_params($cookieParams['lifetime'], $cookieParams['path'] . '; samesite=' . $cookieParams['samesite'], $cookieParams['domain'], $cookieParams['secure'], $cookieParams['httponly']);
+}
+
+// Iniciar sesión SIEMPRE al principio (si no está activa)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
