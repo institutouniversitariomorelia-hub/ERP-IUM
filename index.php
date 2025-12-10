@@ -6,10 +6,17 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// (request debug removed)
+
 // Configuración básica
 define('BASE_URL', '/erp-ium/'); // Ajusta si tu carpeta tiene otro nombre
 define('DEFAULT_CONTROLLER', 'user'); // Controlador por defecto si hay sesión
 define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
+
+// Modo debug temporal: activa para mostrar trazas de error en la pantalla
+if (!defined('APP_DEBUG')) {
+    define('APP_DEBUG', true);
+}
 
 // Incluir archivos necesarios
 // Cargar configuración de aplicación (APP_DEBUG, rutas de logs)
@@ -32,9 +39,9 @@ $directFiles = [
     'generate_reporte_egresos.php'
 ];
 
-// Determinar controlador y acción
-$controllerName = $_GET['controller'] ?? (isset($_SESSION['user_id']) ? DEFAULT_CONTROLLER : 'auth');
-$actionName = $_GET['action'] ?? (isset($_SESSION['user_id']) ? DEFAULT_ACTION : 'login');
+// Determinar controlador y acción (aceptar tanto GET como POST para llamadas AJAX)
+$controllerName = $_GET['controller'] ?? $_POST['controller'] ?? (isset($_SESSION['user_id']) ? DEFAULT_CONTROLLER : 'auth');
+$actionName = $_GET['action'] ?? $_POST['action'] ?? (isset($_SESSION['user_id']) ? DEFAULT_ACTION : 'login');
 
 // Mapeo de controladores a sus rutas modulares
 $controllerMap = [
@@ -78,9 +85,24 @@ if ($controllerFile && file_exists(__DIR__ . '/' . $controllerFile)) {
             try {
                 $controller->$actionName();
             } catch (Exception $e) {
-                // Manejo básico de errores
-                error_log("Error ejecutando acción: " . $e->getMessage()); // Registrar error
-                die("Ocurrió un error inesperado."); // Mensaje genérico al usuario
+                // Registrar en PHP error_log
+                error_log("Error ejecutando acción: " . $e->getMessage());
+                // Registrar también en nuestro debug.log si la función está disponible
+                if (function_exists('debug_log')) {
+                    debug_log('Error ejecutando acción', [
+                        'controller' => $controllerClassName,
+                        'action' => $actionName,
+                        'message' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+                }
+                // En modo debug mostrar detalles, en producción mostrar mensaje genérico
+                if (defined('APP_DEBUG') && APP_DEBUG === true) {
+                    echo "<pre>" . htmlspecialchars($e->getMessage() . "\n\n" . $e->getTraceAsString()) . "</pre>";
+                } else {
+                    die("Ocurrió un error inesperado.");
+                }
             }
         } else {
             // Si la acción no existe, mostrar error 404

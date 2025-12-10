@@ -857,10 +857,12 @@ Si deseas que ejecute pasos adicionales del protocolo `newchat` (por ejemplo cre
 **Resumen:** Ajustes en la UI de Reportes y restauración de la funcionalidad de Auditoría para corregir regresiones introducidas durante integraciones recientes. No se registraron cambios en migraciones ni estructura de base de datos en esta tanda de cambios.
 
 - `src/Reportes/Views/reportes.php`:
+
   - Se eliminó el botón visible "Excel" en los encabezados de los paneles (Ingresos / Egresos / Consolidado). La interfaz principal ahora muestra únicamente el botón "Imprimir" en esos encabezados.
   - Se añadieron parámetros `image_type=2` a las URLs de exportación generadas por las funciones JavaScript para facilitar un filtrado futuro del servidor.
 
 - `src/Reportes/Generators/*.php`:
+
   - Se restablecieron los botones "📊 Exportar a Excel" en las páginas imprimibles (Ingresos, Egresos, Consolidado, Auditoría y Comparativa) para permitir la descarga desde la vista de impresión.
   - El comportamiento existente de exportar CSV/Excel (cuando `formato=excel`) permanece sin cambios.
 

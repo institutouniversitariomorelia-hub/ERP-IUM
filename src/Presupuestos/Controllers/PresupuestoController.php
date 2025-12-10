@@ -50,6 +50,8 @@ class PresupuestoController {
          header('Content-Type: application/json');
          if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
 
+        // (debug logging removed)
+
         $data = $_POST;
         // <-- ¡CORRECCIÓN 1: AÑADIR EL ID DE USUARIO DE LA SESIÓN!
         $data['id_user'] = $_SESSION['user_id'];
@@ -75,12 +77,16 @@ class PresupuestoController {
         }
         $data['id_categoria'] = (int)($rawCat !== '' ? $rawCat : 0);
 
-       // Validaciones: monto y fecha obligatorios. id_categoria puede ser NULL para presupuesto general.
-       if (empty($data['monto_limite']) || empty($data['fecha'])) {
-           $response['error'] = 'Monto límite y fecha son obligatorios.';
+       // Validaciones: monto obligatorio. Fecha se asigna automáticamente si no viene (nuevo esquema)
+       if (empty($data['monto_limite'])) {
+           $response['error'] = 'Monto límite es obligatorio.';
              echo json_encode($response);
              exit;
          }
+        // Si no se envió fecha (nuevo esquema), asignar la fecha actual
+        if (empty($data['fecha'])) {
+            $data['fecha'] = date('Y-m-d');
+        }
          if (!is_numeric($data['monto_limite']) || $data['monto_limite'] <= 0) {
              $response['error'] = 'El monto debe ser un número positivo.';
              echo json_encode($response);
@@ -207,17 +213,26 @@ class PresupuestoController {
          if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
          $pres = $this->presupuestoModel->getAllPresupuestos();
-         // Normalizar salida: id, monto_limite, fecha, nombre
+         // Normalizar salida: id, monto_limite, fecha, nombre. Añadir disponible calculado.
          $out = [];
          foreach ($pres as $p) {
+             $idp = $p['id_presupuesto'] ?? ($p['id'] ?? null);
+             $monto = floatval($p['monto_limite'] ?? ($p['monto'] ?? 0));
+             $gastado = $this->presupuestoModel->getGastadoEnPresupuesto($idp);
+             $esPerm = isset($p['es_permanente']) && intval($p['es_permanente']) === 1;
+             $disponible = $esPerm ? null : ($monto - floatval($gastado));
              $out[] = [
-                 'id' => $p['id_presupuesto'] ?? ($p['id'] ?? null),
-                 'monto_limite' => $p['monto_limite'] ?? ($p['monto'] ?? null),
+                 'id' => $idp,
+                 'monto_limite' => $monto,
                  'fecha' => $p['fecha'] ?? null,
                 'id_categoria' => $p['id_categoria'] ?? null,
                 'cat_nombre' => $p['cat_nombre'] ?? ($p['categoria'] ?? null),
                 'parent_presupuesto' => $p['parent_presupuesto'] ?? null,
-                'nombre' => $p['nombre'] ?? null
+                'nombre' => $p['nombre'] ?? null,
+                'gastado' => floatval($gastado),
+                'disponible' => $disponible,
+                'es_permanente' => $esPerm ? 1 : 0,
+                'activo' => $p['activo'] ?? 0
              ];
          }
          echo json_encode($out);
@@ -236,6 +251,114 @@ class PresupuestoController {
          exit;
      }
 
+    /**
+     * Acción AJAX: Devuelve sub-presupuestos filtrados para creación de egresos.
+     * Regla: Mostrar únicamente los subpresupuestos cuyo mes/año == mes/año actual
+     * y además incluir siempre los hijos del presupuesto 9999 (presupuesto fantasma).
+     */
+    public function getFilteredSubPresupuestos() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+        // Consulta corregida: Trae todos los hijos activos sin importar el mes
+        $query = "SELECT p.id_presupuesto, NULL AS nombre, p.fecha, p.monto_limite, c.nombre AS cat_nombre, p.id_categoria, p.parent_presupuesto,
+                             p.es_permanente, p.activo,
+                             COALESCE((SELECT SUM(e.monto) FROM egresos e WHERE e.id_presupuesto = p.id_presupuesto), 0) AS gastado
+                        FROM presupuestos p
+                        LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+                        WHERE p.parent_presupuesto IS NOT NULL
+                        AND (
+                            p.parent_presupuesto = 10
+                            OR p.activo = 1 
+                            OR p.es_permanente = 1
+                        )
+                        ORDER BY p.fecha DESC, p.id_presupuesto DESC";
+
+        $result = $this->db->query($query); // Usamos query directo, ya no requerimos bind_param de fecha
+        
+        $out = [];
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $row['gastado'] = floatval($row['gastado'] ?? 0);
+                // Si es permanente, marcar disponible como NULL para que el frontend lo trate como ilimitado
+                $esPerm = isset($row['es_permanente']) && intval($row['es_permanente']) === 1;
+                if ($esPerm) {
+                    $row['disponible'] = null;
+                } else {
+                    $row['disponible'] = floatval($row['monto_limite'] ?? 0) - $row['gastado'];
+                }
+                $out[] = $row;
+            }
+        }
+        
+        echo json_encode($out);
+        exit;
+    }
+
+    /**
+     * Acción AJAX: Cierra un presupuesto (activo = 0). Protege IDs del sistema.
+     */
+    public function close() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $response = ['success' => false];
+        if ($id <= 0) { $response['error'] = 'ID inválido.'; echo json_encode($response); exit; }
+
+        // Protección: no cerrar presupuestos del sistema (IDs 1 y 2)
+        if (in_array($id, [1,2])) {
+            $response['error'] = 'Este presupuesto del sistema no puede cerrarse.';
+            echo json_encode($response); exit;
+        }
+
+        try {
+            $old = $this->presupuestoModel->getPresupuestoById($id);
+            // Propagar cierre a sub-presupuestos
+            $success = $this->presupuestoModel->setActivoCascade($id, 0);
+            if ($success) {
+                if (!$this->auditoriaModel->hasTriggerForTable('presupuestos')) {
+                    $this->auditoriaModel->addLog('Presupuesto', 'Cerrar', null, json_encode($old), json_encode(['activo' => 0]), null, null, $_SESSION['user_id'] ?? null);
+                }
+                $response['success'] = true;
+            } else {
+                $response['error'] = 'No se pudo cerrar el presupuesto.';
+            }
+        } catch (Exception $e) {
+            error_log('Error PresupuestoController->close: ' . $e->getMessage());
+            $response['error'] = 'Error interno al cerrar.';
+        }
+        echo json_encode($response); exit;
+    }
+
+    /**
+     * Acción AJAX: Reabre un presupuesto (activo = 1).
+     */
+    public function reopen() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
+        $id = isset($_POST['id']) ? (int)$_POST['id'] : 0;
+        $response = ['success' => false];
+        if ($id <= 0) { $response['error'] = 'ID inválido.'; echo json_encode($response); exit; }
+
+        try {
+            $old = $this->presupuestoModel->getPresupuestoById($id);
+            // Propagar reapertura a sub-presupuestos
+            $success = $this->presupuestoModel->setActivoCascade($id, 1);
+            if ($success) {
+                if (!$this->auditoriaModel->hasTriggerForTable('presupuestos')) {
+                    $this->auditoriaModel->addLog('Presupuesto', 'Reabrir', null, json_encode($old), json_encode(['activo' => 1]), null, null, $_SESSION['user_id'] ?? null);
+                }
+                $response['success'] = true;
+            } else {
+                $response['error'] = 'No se pudo reabrir el presupuesto.';
+            }
+        } catch (Exception $e) {
+            error_log('Error PresupuestoController->reopen: ' . $e->getMessage());
+            $response['error'] = 'Error interno al reabrir.';
+        }
+        echo json_encode($response); exit;
+    }
+
      /**
       * Acción AJAX: Devuelve solo presupuestos generales (sin parent_presupuesto)
       * Para usar en el dropdown al crear sub-presupuestos
@@ -245,7 +368,7 @@ class PresupuestoController {
          if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
          // Obtener solo presupuestos generales (parent_presupuesto IS NULL)
-         $query = "SELECT id_presupuesto, nombre, fecha, monto_limite 
+         $query = "SELECT id_presupuesto, NULL AS nombre, fecha, monto_limite 
                    FROM presupuestos 
                    WHERE parent_presupuesto IS NULL 
                    ORDER BY fecha DESC, id_presupuesto DESC";
@@ -261,6 +384,37 @@ class PresupuestoController {
          echo json_encode($presupuestos);
          exit;
      }
+
+    /**
+     * Acción AJAX: Devuelve explícitamente los presupuestos de reembolso (IDs 1 y 2 si existen).
+     * Usado por el flujo de reembolso para garantizar que sólo se ofrezcan esos presupuestos.
+     */
+    public function getReembolsoPresupuestos() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
+
+        $query = "SELECT p.id_presupuesto, p.parent_presupuesto, p.fecha, p.monto_limite, p.id_categoria, p.es_permanente, c.nombre AS cat_nombre
+                  FROM presupuestos p
+                  LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
+                  WHERE p.id_presupuesto IN (1,2)
+                  ORDER BY p.id_presupuesto ASC";
+        $res = $this->db->query($query);
+        $out = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                $idp = $row['id_presupuesto'] ?? ($row['id'] ?? null);
+                $gastado = $this->presupuestoModel->getGastadoEnPresupuesto($idp);
+                $esPerm = isset($row['es_permanente']) && intval($row['es_permanente']) === 1;
+                $disponible = $esPerm ? null : (floatval($row['monto_limite'] ?? 0) - floatval($gastado));
+                $row['gastado'] = floatval($gastado);
+                $row['disponible'] = $disponible;
+                $row['es_permanente'] = $esPerm ? 1 : 0;
+                $out[] = $row;
+            }
+        }
+        echo json_encode($out);
+        exit;
+    }
 
      /**
       * Acción AJAX: Devuelve el conteo de presupuestos en alerta (>=90% consumidos)
@@ -288,6 +442,23 @@ class PresupuestoController {
             try {
                 // Obtener datos del presupuesto antes de eliminarlo
                 $presupuesto = $this->presupuestoModel->getPresupuestoById($id);
+                    // Proteger Presupuesto Fantasma y sus hijos: no permitir eliminación
+                    $presIdToCheck = $presupuesto['id_presupuesto'] ?? $presupuesto['id'] ?? 0;
+                    $parentOfPres = $presupuesto['parent_presupuesto'] ?? null;
+                    if ($presIdToCheck == 10 || $parentOfPres == 10) {
+                        $response['error'] = 'El presupuesto del sistema no se puede eliminar ni modificar desde la interfaz.';
+                        echo json_encode($response); exit;
+                    }
+
+                    // Protección histórica: sólo permitir eliminar presupuestos del mes en curso
+                    if ($presupuesto && !empty($presupuesto['fecha'])) {
+                        $presYm = date('Y-m', strtotime($presupuesto['fecha']));
+                        $currentYm = date('Y-m');
+                        if ($presYm < $currentYm) {
+                            $response['error'] = 'No se puede eliminar un presupuesto histórico (cerrado).';
+                            echo json_encode($response); exit;
+                        }
+                    }
                 
                 $success = $this->presupuestoModel->deletePresupuesto($id);
                 if ($success) {
@@ -354,6 +525,59 @@ class PresupuestoController {
                 $porcentajes[] = $porcentaje;
             }
             
+            echo json_encode([
+                'success' => true,
+                'categorias' => $categorias,
+                'presupuestos' => $presupuestos,
+                'gastados' => $gastados,
+                'porcentajes' => $porcentajes
+            ]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        }
+        exit;
+    }
+
+    /**
+     * Acción AJAX: Devuelve la comparativa Presupuesto vs Gastado para un presupuesto padre específico
+     * Parámetro GET/POST: parent_id
+     */
+    public function getGraficaPresupuestoPorPadre() {
+        header('Content-Type: application/json');
+        if (!isset($_SESSION['user_id'])) { echo json_encode(['success' => false, 'error' => 'No autorizado']); exit; }
+
+        $parentId = $_REQUEST['parent_id'] ?? null;
+        if (empty($parentId)) { echo json_encode(['success' => false, 'error' => 'parent_id requerido']); exit; }
+
+        try {
+            $query = "SELECT c.nombre as categoria, p.monto_limite as presupuesto, COALESCE((SELECT SUM(e.monto) FROM egresos e WHERE e.id_presupuesto = p.id_presupuesto), 0) as gastado
+                      FROM presupuestos p
+                      INNER JOIN categorias c ON c.id_categoria = p.id_categoria
+                      WHERE p.parent_presupuesto = ?
+                      ORDER BY c.nombre ASC";
+
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) { echo json_encode(['success' => false, 'error' => 'Error en consulta']); exit; }
+            $stmt->bind_param('i', $parentId);
+            $stmt->execute();
+            $res = $stmt->get_result();
+
+            $categorias = [];
+            $presupuestos = [];
+            $gastados = [];
+            $porcentajes = [];
+
+            while ($row = $res->fetch_assoc()) {
+                $presupuesto = floatval($row['presupuesto']);
+                $gastado = floatval($row['gastado']);
+                $porcentaje = $presupuesto > 0 ? round(($gastado / $presupuesto) * 100, 2) : 0;
+
+                $categorias[] = $row['categoria'];
+                $presupuestos[] = $presupuesto;
+                $gastados[] = $gastado;
+                $porcentajes[] = $porcentaje;
+            }
+
             echo json_encode([
                 'success' => true,
                 'categorias' => $categorias,
