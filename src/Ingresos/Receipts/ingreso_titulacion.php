@@ -116,12 +116,18 @@ $metodo = htmlspecialchars($ingreso['metodo_de_pago'] ?? '');
 $observaciones = htmlspecialchars($ingreso['observaciones'] ?? '');
 
 $detalleMetodos = '';
+$detalleMetodos = '';
 if (!empty($pagosParciales)) {
+    $methods = [];
+    $amounts = [];
     foreach ($pagosParciales as $pago) {
-        $metodoPago = htmlspecialchars($pago['metodo_pago']);
-        $montoPago = number_format((float)$pago['monto'], 2);
-        $detalleMetodos .= '<div style="padding: 2px 0; font-size: 11px;"><strong>' . $metodoPago . ':</strong> $' . $montoPago . '</div>';
+        $methods[] = '<div class="pm-item">' . htmlspecialchars($pago['metodo_pago']) . '</div>';
+        $amounts[] = '<span class="pa-item">$' . number_format((float)$pago['monto'], 2) . '</span>';
     }
+    $detalleMetodos = '<div class="payment-grid">'
+        . '<div class="payment-methods">' . implode('', $methods) . '</div>'
+        . '<div class="payment-amounts">' . implode('', $amounts) . '</div>'
+        . '</div>';
 }
 ?>
 <!DOCTYPE html>
@@ -134,6 +140,7 @@ if (!empty($pagosParciales)) {
 @page { size: Letter portrait !important; margin: 0 !important; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: Arial, sans-serif; font-size: 8.2px; line-height: 1.15; background: #f2f2f2; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 10.5px; line-height: 1.15; background: #f2f2f2; padding: 0; }
 .page { width: 100%; max-width: 8.5in; height: 13.4cm; padding: 0.2in 0.25in; background: white; border-radius: 4px; overflow: hidden; }
 .header { display: table; width: 100%; margin-bottom: 4px; }
 .header-left { display: table-cell; width: 35%; vertical-align: top; }
@@ -147,15 +154,21 @@ body { font-family: Arial, sans-serif; font-size: 8.2px; line-height: 1.15; back
 .grid { display: table; width: 100%; margin-bottom: 4px; }
 .grid-row { display: table-row; }
 .grid-cell { display: table-cell; padding: 2px 4px 2px 0; vertical-align: top; }
-.label { font-size: 7.5px; color: #444; font-weight: bold; }
-.value { font-size: 9.5px; border-bottom: 1px solid #ccc; padding: 1px 0; min-height: 10px; }
+.label { font-size: 10px; color: #444; font-weight: bold; }
+.value { font-size: 12px; border-bottom: 1px solid #ccc; padding: 2px 0; min-height: 12px; }
 .monto-section { text-align: right; margin: 4px 0; }
 .monto-label { font-size: 8px; }
 .monto-value { font-size: 18px; font-weight: bold; color: #9e1b32; }
 .monto-currency { font-size: 8px; }
-.payment-box { background: #f8f8f8; border: 1px solid #ccc; padding: 4px; border-radius: 3px; font-size: 8px; }
+.payment-box { background: #f8f8f8; border: 1px solid #ccc; padding: 6px; border-radius: 3px; font-size: 12px; }
+/* Payments: methods in a single top row, amounts in a single row beneath them, left-aligned */
+.payment-grid { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.payment-methods { display:flex; flex-direction:row; gap:12px; flex-wrap:nowrap; }
+.payment-amounts { display:flex; flex-direction:row; gap:12px; align-items:center; white-space:nowrap; }
+.pm-item { font-weight:600; color:#333; font-size:12px; display:inline-block; }
+.pa-item { font-weight:700; color:#9e1b32; font-size:12px; display:inline-block; }
 .description-box { border: 1px solid #ddd; padding: 6px; min-height: 35px; background: #fafafa; border-radius: 3px; font-size: 8px; }
-.signature-section { margin-top: 4px; text-align: center; }
+.signature-section { margin-top: 0.5cm; text-align: center; }
 .signature-line { border-top: 1px solid #444; width: 55%; margin: 0 auto 3px auto; }
 .signature-label { font-size: 9px; font-weight: bold; }
 .signature-name { font-size: 10.5px; font-weight: bold; margin-top: 2px; }

@@ -126,18 +126,16 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
     <meta charset="utf-8">
     <title>Comprobante de Egreso #<?php echo $folioEsc; ?></title>
     <style>
-        @page { size: 20cm 14cm; margin: 0; }
-        @page { size: 8.5in 5.5in; margin: 0; }
+        /* Force portrait Letter (same as ingresos) */
+        @page { size: Letter portrait !important; margin: 0 !important; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 8px; line-height: 1.25; background: #f2f2f2; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 16px; }
-        body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; background: #f2f2f2; display: flex; justify-content: center; align-items: flex-start; padding: 0.5rem; }
-        .page { width: 20cm; height: 14cm; padding: 10mm; position: relative; background: white; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #e5e5e5; border-radius: 6px; page-break-inside: avoid; overflow: hidden; }
-        .page { width: 8.5in; height: 5.5in; padding: 0.2in 0.25in; position: relative; background: #fff; display: flex; flex-direction: column; border: 1px solid #e5e5e5; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+        body { font-family: Arial, sans-serif; font-size: 10.5px; line-height: 1.15; background: #f2f2f2; padding: 0; }
+        .page { width: 100%; max-width: 8.5in; height: 13.4cm; padding: 0.2in 0.25in; position: relative; background: white; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #e5e5e5; border-radius: 4px; page-break-inside: avoid; overflow: hidden; }
         @media print {
-            body { margin: 0; background: none; padding: 0; }
+            body { margin: 0; background: white; padding: 0; }
             .no-print { display: none; }
-            .page { box-shadow: none; border: none; width: 20cm; height: 14cm; margin: 0; border-radius: 0; }
-            html, body { width: 20cm; height: 14cm; }
+            .page { box-shadow: none; border: none; width: 100%; max-width: 8.5in; height: 13.4cm; margin: 0; border-radius: 0; }
+            html, body { width: 100%; max-width: 8.5in; height: 13.4cm; }
         }
 
         .header { display: table; width: 100%; margin-bottom: 8px; }

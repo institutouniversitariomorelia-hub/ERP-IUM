@@ -128,11 +128,16 @@ $observaciones = htmlspecialchars($ingreso['observaciones'] ?? '');
 
 $detalleMetodos = '';
 if (!empty($pagosParciales)) {
+    $methods = [];
+    $amounts = [];
     foreach ($pagosParciales as $pago) {
-        $metodoPago = htmlspecialchars($pago['metodo_pago']);
-        $montoPago = number_format((float)$pago['monto'], 2);
-        $detalleMetodos .= '<div style="padding: 2px 0; font-size: 11px;"><strong>' . $metodoPago . ':</strong> $' . $montoPago . '</div>';
+        $methods[] = '<div class="pm-item">' . htmlspecialchars($pago['metodo_pago']) . '</div>';
+        $amounts[] = '<span class="pa-item">$' . number_format((float)$pago['monto'], 2) . '</span>';
     }
+    $detalleMetodos = '<div class="payment-grid">'
+        . '<div class="payment-methods">' . implode('', $methods) . '</div>'
+        . '<div class="payment-amounts">' . implode('', $amounts) . '</div>'
+        . '</div>';
 }
 ?>
 <!DOCTYPE html>
@@ -161,7 +166,7 @@ if (!empty($pagosParciales)) {
 /* Reducimos altura total + aumentamos letra */
 body {
     font-family: Arial, sans-serif;
-    font-size: 8.2px;     /* +15% */
+    font-size: 10.5px;     /* +15% */
     line-height: 1.15;
     background: #f2f2f2;
     padding: 0;
@@ -176,6 +181,8 @@ body {
     background: white;
     border-radius: 4px;
     overflow: hidden;      /* evita cortar */
+    display: flex;
+    flex-direction: column;
 }
 
 /* ------------------------ */
@@ -205,21 +212,21 @@ body {
 /* ------------------------ */
 /*   TABLA DE DATOS COMPACTA */
 /* ------------------------ */
-.grid { display: table; width: 100%; margin-bottom: 4px; }
+.grid { display: table; width: 100%; margin-bottom: 2px; }
 .grid-row { display: table-row; }
 .grid-cell { display: table-cell; padding: 2px 4px 2px 0; vertical-align: top; }
 
 .label {
-    font-size: 7.5px;   /* +15% */
+    font-size: 10px;   /* +15% */
     color: #444;
     font-weight: bold;
 }
 
 .value {
-    font-size: 9.5px;   /* +15% */
+    font-size: 11px;   /* +15% */
     border-bottom: 1px solid #ccc;
-    padding: 1px 0;
-    min-height: 10px;   /* -30% */
+    padding: 0px 0;
+    min-height: 9px;   /* -30% */
 }
 
 /* ------------------------ */
@@ -231,7 +238,7 @@ body {
 }
 .monto-label { font-size: 8px; }
 .monto-value {
-    font-size: 18px;    /* -10% para que quepa */
+    font-size: 16px;    /* -10% para que quepa */
     font-weight: bold;
     color: #9e1b32;
 }
@@ -245,8 +252,16 @@ body {
     border: 1px solid #ccc;
     padding: 4px;
     border-radius: 3px;
-    font-size: 8px;
+    font-size: 12px;
+    margin-bottom: 4px;
 }
+
+/* Payments: methods in a single top row, amounts in a single row beneath them, left-aligned */
+.payment-grid { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.payment-methods { display:flex; flex-direction:row; gap:12px; flex-wrap:nowrap; }
+.payment-amounts { display:flex; flex-direction:row; gap:12px; align-items:center; white-space:nowrap; }
+.pm-item { font-weight:600; color:#333; font-size:12px; display:inline-block; }
+.pa-item { font-weight:700; color:#9e1b32; font-size:12px; display:inline-block; }
 
 /* ------------------------ */
 /*   OBSERVACIONES          */
@@ -264,26 +279,34 @@ body {
 /*     FIRMA (CRÍTICO)      */
 /* ------------------------ */
 .signature-section {
-    margin-top: 4px;   /* SUPER COMPACTO */
+    margin-top: auto; /* push to bottom of .page */
+    padding-top: 6px;
     text-align: center;
 }
 
+.signature-section .logo-box { display: inline-block; margin-bottom: 6px; }
+
 .signature-line {
     border-top: 1px solid #444;
-    width: 55%;
-    margin: 0 auto 3px auto;
+    width: 55%; /* línea centrada y visible */
+    margin: 6px auto;
 }
 
 .signature-label {
-    font-size: 9px; /* +15% */
+    font-size: 9px;
     font-weight: bold;
+    text-align: center;
 }
 
 .signature-name {
-    font-size: 10.5px; /* +15% */
+    font-size: 10.5px;
     font-weight: bold;
     margin-top: 2px;
+    text-align: center;
 }
+
+/* Reduce vertical space between payment box and amount-in-words */
+.letra-box { margin-top: 4px; margin-bottom: 4px; font-size: 10px; }
 
 /* ------------------------ */
 /*       FOOTER             */
@@ -399,7 +422,7 @@ body {
     </div>
     <?php endif; ?>
 
-    <div style="display: table; width: 100%; margin: 10px 0;">
+    <div style="display: table; width: 100%; margin: 6px 0;">
         <div style="display: table-cell; width: 50%; padding-right: 10px;">
             <div class="label">Cantidad con letra</div>
             <div class="value" style="font-size: 10px; font-style: italic; min-height: 30px; line-height: 1.4;">
