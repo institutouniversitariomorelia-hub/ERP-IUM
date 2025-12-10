@@ -48,7 +48,7 @@ if ($mesEspecifico && $anioEspecifico) {
     $tituloReporte = "Comparativa de $nombreMes";
     
     // Ingresos del mes
-    $queryI = "SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+    $queryI = "SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE DATE_FORMAT(fecha, '%Y-%m') = ? AND estatus = 1";
     $stmtI = $conn->prepare($queryI);
     $stmtI->bind_param('s', $mes);
     $stmtI->execute();
@@ -89,7 +89,7 @@ if ($mesEspecifico && $anioEspecifico) {
         $nombreMes = nombreMesEsp($fecha);
         
         // Ingresos del mes
-        $queryI = "SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE DATE_FORMAT(fecha, '%Y-%m') = ?";
+        $queryI = "SELECT COALESCE(SUM(monto), 0) as total FROM ingresos WHERE DATE_FORMAT(fecha, '%Y-%m') = ? AND estatus = 1";
         $stmtI = $conn->prepare($queryI);
         $stmtI->bind_param('s', $mes);
         $stmtI->execute();

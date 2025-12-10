@@ -16,7 +16,8 @@ class CategoriaModel {
     public function getCategoriasByTipo($tipo = null) {
         // Selección explícita de columnas para evitar errores y mejorar rendimiento
         // Se asume que la BD ya fue migrada y tiene las columnas concepto, id_user, no_borrable
-        $query = "SELECT id_categoria AS id, nombre, tipo, concepto, descripcion, id_user, no_borrable FROM categorias";
+        // Return both `id_categoria` and `id` (alias) so frontend code can use either key.
+        $query = "SELECT id_categoria, id_categoria AS id, nombre, tipo, concepto, descripcion, id_user, no_borrable FROM categorias";
 
         $params = [];
         $types = '';

@@ -849,3 +849,28 @@ Si deseas que ejecute pasos adicionales del protocolo `newchat` (por ejemplo cre
 
 7. **Backup completo del sistema actualizado**
    - Realizar y documentar un respaldo de la base de datos y archivos.
+
+---
+
+## Actualización breve (07 de Diciembre de 2025)
+
+**Resumen:** Ajustes en la UI de Reportes y restauración de la funcionalidad de Auditoría para corregir regresiones introducidas durante integraciones recientes. No se registraron cambios en migraciones ni estructura de base de datos en esta tanda de cambios.
+
+- `src/Reportes/Views/reportes.php`:
+
+  - Se eliminó el botón visible "Excel" en los encabezados de los paneles (Ingresos / Egresos / Consolidado). La interfaz principal ahora muestra únicamente el botón "Imprimir" en esos encabezados.
+  - Se añadieron parámetros `image_type=2` a las URLs de exportación generadas por las funciones JavaScript para facilitar un filtrado futuro del servidor.
+
+- `src/Reportes/Generators/*.php`:
+
+  - Se restablecieron los botones "📊 Exportar a Excel" en las páginas imprimibles (Ingresos, Egresos, Consolidado, Auditoría y Comparativa) para permitir la descarga desde la vista de impresión.
+  - El comportamiento existente de exportar CSV/Excel (cuando `formato=excel`) permanece sin cambios.
+
+- `public/js/app.js` y `src/Auditoria/Views/auditoria_list.php`:
+  - Se restauró la función de detalle de Auditoría (`abrirModalDetalleAuditoria`) y se corrigieron handlers para abrir el modal correctamente, incluyendo compatibilidad con el marcado legacy de la vista de auditoría.
+
+**Pendiente (opcional):** Implementar filtrado server-side en los generadores para que, cuando se reciba `image_type=2`, se excluyan imágenes tipo `image` y se mantengan solo `image2` en la exportación a Excel.
+
+---
+
+(Entrada añadida automáticamente el 2025-12-07)
