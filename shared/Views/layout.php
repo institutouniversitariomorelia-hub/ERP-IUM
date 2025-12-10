@@ -696,7 +696,7 @@ $currentUser = [
                                         </div>
                                         <div class="col-md-4">
                                             <label for="eg_monto" class="form-label">Monto <span class="text-danger">*</span></label>
-                                            <input id="eg_monto" name="monto" type="number" step="0.01" class="form-control form-control-sm" min="0.01" placeholder="Ej: 700.00" required>
+                                            <input id="eg_monto" name="monto" type="text" class="form-control form-control-sm monto-autofmt" placeholder="Ej: 1,500.00" required>
                                         </div>
                                         <div class="col-md-4">
                                             <label for="eg_id_categoria" class="form-label">Categoría <span class="text-danger">*</span></label>
@@ -710,13 +710,13 @@ $currentUser = [
                                             </select>
                                         </div>
 
-                                        <div class="col-md-4">
-                                            <!-- spacer to keep layout -->
+                                        <div class="col-md-6">
+                                            <label for="eg_proveedor" class="form-label">Proveedor <span class="text-danger">*</span></label>
+                                            <input id="eg_proveedor" name="proveedor" type="text" class="form-control form-control-sm" placeholder="Proveedor/Beneficiario" required>
                                         </div>
 
-                                        <div class="col-md-6">
-                                            <label for="eg_proveedor" class="form-label">Proveedor</label>
-                                            <input id="eg_proveedor" name="proveedor" type="text" class="form-control form-control-sm" placeholder="Nombre del proveedor">
+                                        <div class="col-md-4">
+                                            <!-- spacer to keep layout -->
                                         </div>
                                         <div class="col-md-6">
                                             <label for="eg_destinatario" class="form-label">Destinatario <span class="text-danger">*</span></label>
@@ -745,7 +745,7 @@ $currentUser = [
                                 </div>
                                 <div class="modal-footer">
                                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                                    <button type="submit" class="btn btn-danger btn-sm">Guardar Egreso</button>
+                                    <button type="submit" class="btn btn-danger btn-sm" id="btnSubmitEgreso">Guardar Egreso</button>
                                 </div>
                             </form>
                         </div>
@@ -764,7 +764,7 @@ $currentUser = [
                         <input type="hidden" id="ingreso_id" name="id">
                         <div class="row g-3">
                             <div class="col-md-6"><label for="in_fecha" class="form-label">Fecha Pago <span class="text-danger">*</span></label><input id="in_fecha" name="fecha" type="date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>" required></div>
-                            <div class="col-md-6"><label for="in_monto" class="form-label">Monto Total <span class="text-danger">*</span></label><input id="in_monto" name="monto" type="number" step="0.01" class="form-control form-control-sm" min="0.01" placeholder="Ej: 5000.00" required></div>
+                            <div class="col-md-6"><label for="in_monto" class="form-label">Monto Total <span class="text-danger">*</span></label><input id="in_monto" name="monto" type="text" class="form-control form-control-sm monto-autofmt" placeholder="Ej: 5,000.00" required></div>
                             
                             <!-- Toggle Métodos de Pago / Cobro Dividido -->
                             <div class="col-12">
@@ -797,7 +797,7 @@ $currentUser = [
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label">Monto <span class="text-danger">*</span></label>
-                                        <input id="in_monto_unico" type="number" step="0.01" class="form-control form-control-sm" placeholder="0.00" readonly style="background-color: #e9ecef;">
+                                        <input id="in_monto_unico" type="text" class="form-control form-control-sm monto-autofmt" placeholder="0.00" readonly style="background-color: #e9ecef;">
                                     </div>
                                 </div>
                             </div>
@@ -838,7 +838,7 @@ $currentUser = [
                             <div class="col-12"><label for="in_observaciones" class="form-label">Observaciones</label><textarea id="in_observaciones" name="observaciones" class="form-control form-control-sm" rows="2"></textarea></div>
                         </div>
                     </div>
-                    <div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger btn-sm">Guardar Ingreso</button></div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-danger btn-sm" id="btnSubmitIngreso">Guardar Ingreso</button></div>
                 </form>
             </div>
         </div>
@@ -917,10 +917,7 @@ $currentUser = [
                             <label for="presgen_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
                             <input id="presgen_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 500000.00" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="presgen_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
-                            <input id="presgen_fecha" name="fecha" type="date" class="form-control" required>
-                        </div>
+                        <!-- Fecha de asignación: ahora se asigna automáticamente en el backend -->
                         <div class="mb-3">
                             <label for="presgen_descripcion" class="form-label">Descripción <span class="text-muted">(opcional)</span></label>
                             <textarea id="presgen_descripcion" name="descripcion" class="form-control" maxlength="255" rows="2" placeholder="Descripción breve del presupuesto general"></textarea>
@@ -960,19 +957,12 @@ $currentUser = [
                             </select>
                             <div id="msgNoCategoriasEgreso" class="form-text text-danger d-none">No hay categorías de egreso disponibles.</div>
                         </div>
-                        <div class="mb-3">
-                            <label for="subpres_nombre" class="form-label">Nombre del Sub-Presupuesto <span class="text-muted">(opcional)</span></label>
-                            <input id="subpres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Subpresupuesto Nómina Q1">
-                            <div class="form-text">Nombre descriptivo para identificar fácilmente el subpresupuesto</div>
-                        </div>
+                        <!-- Nombre del subpresupuesto eliminado: ahora se asigna/identifica por categoría y fecha -->
                         <div class="mb-3">
                             <label for="subpres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
                             <input id="subpres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="subpres_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
-                            <input id="subpres_fecha" name="fecha" type="date" class="form-control" required>
-                        </div>
+                        <!-- Fecha de asignación: asignada por el servidor automáticamente -->
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -1007,20 +997,13 @@ $currentUser = [
                             <select id="pres_categoria_categoria" name="id_categoria" class="form-select"></select>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="pres_nombre_categoria" class="form-label">Nombre del Presupuesto <span class="text-muted">(opcional)</span></label>
-                            <input id="pres_nombre_categoria" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Presupuesto Nómina Q1">
-                            <div class="form-text">Nombre descriptivo para identificar fácilmente el presupuesto</div>
-                        </div>
+                        <!-- Nombre del presupuesto por categoría eliminado: no se solicita al usuario -->
 
                         <div class="mb-3">
                             <label for="pres_monto_categoria" class="form-label">Monto Límite</label>
                             <input id="pres_monto_categoria" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="pres_fecha_categoria" class="form-label">Fecha de Asignación</label>
-                            <input id="pres_fecha_categoria" name="fecha" type="date" class="form-control" required>
-                        </div>
+                        <!-- Fecha de asignación: asignada por el servidor automáticamente -->
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -1054,19 +1037,12 @@ $currentUser = [
                             <label for="pres_categoria" class="form-label">Categoría <span class="text-danger">*</span></label>
                             <select id="pres_categoria" name="id_categoria" class="form-select" required></select>
                         </div>
-                        <div class="mb-3">
-                            <label for="pres_nombre" class="form-label">Nombre del Presupuesto <span class="text-muted">(opcional)</span></label>
-                            <input id="pres_nombre" name="nombre" type="text" class="form-control" maxlength="100" placeholder="Ej: Presupuesto Q1 2025">
-                            <div class="form-text">Nombre descriptivo para identificar fácilmente el presupuesto</div>
-                        </div>
+                        <!-- Campo 'nombre' eliminado: el backend ya no requiere nombre para subpresupuestos -->
                         <div class="mb-3">
                             <label for="pres_monto" class="form-label">Monto Límite <span class="text-danger">*</span></label>
                             <input id="pres_monto" name="monto" type="number" step="0.01" class="form-control" min="0.01" placeholder="Ej: 150000.00" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="pres_fecha" class="form-label">Fecha de Asignación <span class="text-danger">*</span></label>
-                            <input id="pres_fecha" name="fecha" type="date" class="form-control" required>
-                        </div>
+                        <!-- Fecha de asignación: asignada por el servidor automáticamente -->
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

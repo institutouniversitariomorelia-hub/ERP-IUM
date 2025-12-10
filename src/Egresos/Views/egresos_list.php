@@ -26,7 +26,7 @@
 <div class="card shadow-sm mb-3">
     <div class="card-body py-2">
         <div class="row g-2">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-white border-end-0">
                         <ion-icon name="search-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
@@ -37,7 +37,7 @@
                     </button>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="input-group">
                     <span class="input-group-text bg-white">
                         <ion-icon name="calendar-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
@@ -47,6 +47,30 @@
                     <button class="btn btn-outline-secondary" type="button" id="clearDateEgresos" style="display:none;">
                         <ion-icon name="close-outline"></ion-icon>
                     </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text bg-white">
+                        <ion-icon name="pricetags-outline" style="font-size: 1.2em; color: #B80000;"></ion-icon>
+                    </span>
+                    <select class="form-select" id="filtroCategoriaEgresos">
+                        <option value="">Todas las categorías</option>
+                        <?php
+                        $categoriasUsadas = [];
+                        if (!empty($egresos)) {
+                            foreach ($egresos as $egreso) {
+                                $cid = $egreso['id_categoria'] ?? null;
+                                $cname = $egreso['nombre_categoria'] ?? 'Sin categoría';
+                                if ($cid !== null) {
+                                    $categoriasUsadas[$cid] = $cname;
+                                }
+                            }
+                        }
+                        foreach ($categoriasUsadas as $cid => $cname): ?>
+                            <option value="<?php echo htmlspecialchars($cid); ?>"><?php echo htmlspecialchars($cname); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
         </div>
@@ -92,7 +116,7 @@
                             $descripcionCompleta = htmlspecialchars($egreso['descripcion'] ?? '');
                             $descripcionCorta = mb_strimwidth($descripcionCompleta, 0, 25, '...'); // Acortar a 25 caracteres
                         ?>
-                            <tr data-fecha="<?php echo htmlspecialchars($egreso['fecha'] ?? ''); ?>">
+                            <tr data-fecha="<?php echo htmlspecialchars($egreso['fecha'] ?? ''); ?>" data-categoria-id="<?php echo htmlspecialchars($egreso['id_categoria'] ?? ''); ?>">
                                 <td><?php echo htmlspecialchars($egreso['fecha'] ?? 'N/A'); ?></td>
                                 <td class="d-none d-lg-table-cell"><?php echo htmlspecialchars($egreso['nombre_categoria'] ?? 'Sin categoría'); ?></td>
                                 <td>
@@ -113,10 +137,11 @@
                                             </button>
                                         <?php endif; ?>
                                         <?php if (roleCan('delete','egresos')): ?>
-                                            <button class="btn btn-sm btn-danger btn-del-egreso"
+                                            <button class="btn btn-sm btn-danger btn-edit-monto-egreso"
                                                     data-id="<?php echo htmlspecialchars($egreso['folio_egreso'] ?? 0); ?>"
-                                                    title="Eliminar Egreso">
-                                                <ion-icon name="trash-outline"></ion-icon>
+                                                    data-monto="<?php echo htmlspecialchars($egreso['monto'] ?? 0); ?>"
+                                                    title="Editar solo monto">
+                                                <ion-icon name="cash-outline"></ion-icon>
                                             </button>
                                         <?php endif; ?>
                                         <?php if (roleCan('view','egresos')): ?>
@@ -215,6 +240,43 @@
         </div>
   <?php endforeach; ?>
 <?php endif; ?>
+
+<!-- Modal para editar solo el monto del egreso -->
+<div class="modal fade" id="modalEditarMontoEgreso" tabindex="-1" aria-labelledby="modalEditarMontoEgresoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 14px; overflow: hidden;">
+            <div class="modal-header" style="background-color:#B80000; color:#fff;">
+                <h5 class="modal-title" id="modalEditarMontoEgresoLabel">
+                    <ion-icon name="cash-outline" style="vertical-align:middle; font-size:1.3em; margin-right:6px;"></ion-icon>
+                    Editar monto de egreso
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background-color:#f8f9fa;">
+                <form id="formEditarMontoEgreso" autocomplete="off">
+                    <input type="hidden" id="editMontoEgresoId" name="id">
+                    <div class="mb-3">
+                        <label for="editMontoEgresoValor" class="form-label fw-semibold">Nuevo monto</label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background-color:#fff; color:#B80000; border-right:0;">
+                                <ion-icon name="logo-usd" style="font-size:1.2em;"></ion-icon>
+                            </span>
+                              <input type="text" class="form-control monto-autofmt" id="editMontoEgresoValor" name="monto" required style="border-left:0;">
+                        </div>
+                        <small class="text-muted">Solo se modificará el monto, los demás datos permanecerán iguales.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="background-color:#f8f9fa; border-top:1px solid #e9ecef;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnGuardarNuevoMontoEgreso">
+                    <ion-icon name="save-outline" style="vertical-align:middle; margin-right:4px;"></ion-icon>
+                    Aceptar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal de Gráficas de Egresos -->
 <div class="modal fade" id="modalGraficasEgresos" tabindex="-1" aria-labelledby="modalGraficasEgresosLabel" aria-hidden="true">
@@ -439,3 +501,9 @@ function cargarGraficasEgresos() {
         });
 }
 </script>
+<?php if (!empty($prefill_egreso)): ?>
+<script>
+    // Datos para prellenar el modal de egreso (reembolso)
+    window.PREFILL_EGRESO = <?php echo json_encode($prefill_egreso); ?>;
+</script>
+<?php endif; ?>

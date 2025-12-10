@@ -43,6 +43,55 @@ class IngresoModel {
         }
     }
 
+        /**
+         * Obtiene ingresos filtrando por estatus (por ejemplo 1 activo, 0 reembolsado)
+         */
+        public function getIngresosByStatus($estatus = 1) {
+                $query = "SELECT 
+                                        i.*, 
+                                        i.folio_ingreso as id, 
+                                        c.nombre AS nombre_categoria,
+                                        GROUP_CONCAT(
+                                                CONCAT(pp.metodo_pago, ': $', FORMAT(pp.monto, 2)) 
+                                                ORDER BY pp.orden 
+                                                SEPARATOR ' | '
+                                        ) AS metodos_pago_detalle,
+                                        COUNT(pp.id_pago_parcial) AS num_pagos
+                                    FROM 
+                                        ingresos i
+                                    LEFT JOIN 
+                                        categorias c ON i.id_categoria = c.id_categoria
+                                    LEFT JOIN
+                                        pagos_parciales pp ON i.folio_ingreso = pp.folio_ingreso
+                                    WHERE COALESCE(i.estatus, 1) = ?
+                                    GROUP BY
+                                        i.folio_ingreso
+                                    ORDER BY 
+                                        i.folio_ingreso DESC";
+
+                $stmt = $this->db->prepare($query);
+                if (!$stmt) { error_log('Error preparar getIngresosByStatus: ' . $this->db->error); return []; }
+                $stmt->bind_param('i', $estatus);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $data = $res->fetch_all(MYSQLI_ASSOC);
+                $stmt->close();
+                return $data;
+        }
+
+        /**
+         * Marca un ingreso como reembolsado (estatus = 0)
+         */
+        public function markAsReembolsado($folio_ingreso) {
+                $query = "UPDATE ingresos SET estatus = 0 WHERE folio_ingreso = ?";
+                $stmt = $this->db->prepare($query);
+                if (!$stmt) { error_log('Error preparar markAsReembolsado: ' . $this->db->error); return false; }
+                $stmt->bind_param('i', $folio_ingreso);
+                $success = $stmt->execute();
+                $stmt->close();
+                return $success;
+        }
+
     /**
      * Obtiene un ingreso específico por su ID (folio_ingreso).
      */
