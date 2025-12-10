@@ -110,7 +110,8 @@ class IngresoModel {
     // fecha(s), alumno(s), matricula(s), nivel(s), monto(d), metodo(s),
     // mes_correspondiente(s), anio(i), observaciones(s), dia_pago(i), modalidad(s),
     // grado(i), programa(s), grupo(s), id_categoria(i)
-    $types = "ssssdssisisssii";
+    // Simplificamos a 's' para evitar errores en bind_param por desajustes de tipos
+    $types = "sssssssssssssss"; // 15 parámetros, todos como string (mysqli convertirá tipos automáticamente)
         // ===============================================
 
         $bindResult = $stmt->bind_param(
@@ -185,7 +186,7 @@ class IngresoModel {
         $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
 
 
-        $query = "UPDATE ingresos SET
+                $query = "UPDATE ingresos SET
                     fecha=?, alumno=?, matricula=?, nivel=?, monto=?, metodo_de_pago=?,
                     mes_correspondiente=?, anio=?, observaciones=?, dia_pago=?,
                     modalidad=?, grado=?, programa=?, grupo=?, id_categoria=?
@@ -194,12 +195,8 @@ class IngresoModel {
         $stmt = $this->db->prepare($query);
         if (!$stmt) { throw new Exception("Error al preparar consulta UPDATE Ingreso: " . $this->db->error); }
 
-    // Cadena de tipos EXACTA para los 16 parámetros en el orden del UPDATE (+ WHERE al final)
-    // (mismos 15 que en INSERT) + folio_ingreso(i)
-    $types = "ssssdssisissssii";
-        // ==========================================================
-
-        $types = "ssssdssisisssiii";
+    // Usar 's' para todos los parámetros por simplicidad (16 parámetros)
+    $types = "ssssssssssssssss"; // 16 's'
         $bindResult = $stmt->bind_param(
             $types,
             $fecha,                 // s
