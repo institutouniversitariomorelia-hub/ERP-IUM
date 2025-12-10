@@ -57,37 +57,40 @@ class EgresoModel {
      * Crea un nuevo egreso (sin id_presupuesto, alineado al changelog).
      */
     public function createEgreso($data) {
-        $proveedor   = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : null;
-        $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
-        $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
+        // La BD requiere NOT NULL en varios campos; usar string vacío cuando no se proporcione.
+        $proveedor   = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : '';
+        $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : '';
+        $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : '';
 
         if (empty($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
             empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['destinatario']) || empty($data['forma_pago']) ||
-            empty($data['id_user']) || !filter_var($data['id_user'], FILTER_VALIDATE_INT) ||
-            empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) {
+                        empty($data['id_user']) || !filter_var($data['id_user'], FILTER_VALIDATE_INT) ||
+                        empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT) ||
+                        empty($data['id_presupuesto']) || !filter_var($data['id_presupuesto'], FILTER_VALIDATE_INT)) {
             throw new Exception("Datos inválidos o faltantes para crear egreso. Verifique fecha (YYYY-MM-DD) y campos obligatorios.");
         }
 
         $id_categoria = (int)$data['id_categoria'];
         $id_user      = (int)$data['id_user'];
+                $id_pres      = (int)$data['id_presupuesto'];
         $monto        = (float)$data['monto'];
         $fecha        = $data['fecha'];
         $destinatario = trim($data['destinatario']);
         $forma_pago   = $data['forma_pago'];
 
-        $query = "INSERT INTO egresos
-                    (proveedor, descripcion, monto, fecha, destinatario, forma_pago, documento_de_amparo, id_user, id_categoria)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                $query = "INSERT INTO egresos
+                                        (proveedor, descripcion, monto, fecha, destinatario, forma_pago, documento_de_amparo, id_user, id_presupuesto, id_categoria)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $stmt = $this->db->prepare($query);
         if (!$stmt) {
             throw new Exception("Error al preparar consulta INSERT: " . $this->db->error);
         }
 
-        // s s d s s s s i i  => 9 parámetros
+        // s s d s s s s i i i  => 10 parámetros
         $bindResult = $stmt->bind_param(
-            "ssds" . "ss" . "sii",
+            "ssds" . "ss" . "siii",
             $proveedor,
             $descripcion,
             $monto,
@@ -96,6 +99,7 @@ class EgresoModel {
             $forma_pago,
             $doc_amparo,
             $id_user,
+            $id_pres,
             $id_categoria
         );
 
@@ -126,29 +130,31 @@ class EgresoModel {
      * Actualiza un egreso existente (sin id_presupuesto).
      */
     public function updateEgreso($folio_egreso, $data) {
-        $proveedor   = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : null;
-        $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : null;
-        $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : null;
+        $proveedor   = isset($data['proveedor']) && trim($data['proveedor']) !== '' ? trim($data['proveedor']) : '';
+        $descripcion = isset($data['descripcion']) && trim($data['descripcion']) !== '' ? trim($data['descripcion']) : '';
+        $doc_amparo  = isset($data['documento_de_amparo']) && trim($data['documento_de_amparo']) !== '' ? trim($data['documento_de_amparo']) : '';
 
         if (empty($data['monto']) || !is_numeric($data['monto']) || $data['monto'] <= 0 ||
             empty($data['fecha']) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $data['fecha']) ||
             empty($data['destinatario']) || empty($data['forma_pago']) ||
             empty($data['id_user']) || !filter_var($data['id_user'], FILTER_VALIDATE_INT) ||
-            empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT)) {
+            empty($data['id_categoria']) || !filter_var($data['id_categoria'], FILTER_VALIDATE_INT) ||
+            empty($data['id_presupuesto']) || !filter_var($data['id_presupuesto'], FILTER_VALIDATE_INT)) {
             throw new Exception("Datos inválidos o faltantes para actualizar egreso.");
         }
 
         $id_categoria = (int)$data['id_categoria'];
         $id_user      = (int)$data['id_user'];
-        $monto        = (float)$data['monto'];
+                $monto        = (float)$data['monto'];
+                $id_pres      = (int)$data['id_presupuesto'];
         $fecha        = $data['fecha'];
         $destinatario = trim($data['destinatario']);
         $forma_pago   = $data['forma_pago'];
 
-        $query = "UPDATE egresos SET
+                $query = "UPDATE egresos SET
                     proveedor = ?, descripcion = ?, monto = ?, fecha = ?,
-                    destinatario = ?, forma_pago = ?, documento_de_amparo = ?,
-                    id_user = ?, id_categoria = ?
+                                        destinatario = ?, forma_pago = ?, documento_de_amparo = ?,
+                                        id_user = ?, id_presupuesto = ?, id_categoria = ?
                   WHERE folio_egreso = ?";
 
         $stmt = $this->db->prepare($query);
@@ -156,9 +162,9 @@ class EgresoModel {
             throw new Exception("Error al preparar consulta UPDATE: " . $this->db->error);
         }
 
-        // s s d s s s s i i i => 10 parámetros
+        // s s d s s s s i i i i => 11 parámetros
         $bindResult = $stmt->bind_param(
-            "ssds" . "ss" . "siii",
+            "ssds" . "ss" . "siiii",
             $proveedor,
             $descripcion,
             $monto,
@@ -167,6 +173,7 @@ class EgresoModel {
             $forma_pago,
             $doc_amparo,
             $id_user,
+            $id_pres,
             $id_categoria,
             $folio_egreso
         );

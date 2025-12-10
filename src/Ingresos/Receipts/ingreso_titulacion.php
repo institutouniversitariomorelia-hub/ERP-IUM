@@ -104,7 +104,7 @@ if ($cantidadConLetra === '') {
     $cantidadConLetra = $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.';
 }
 
-$logoPath = '../../../public/logo ium blanco.png';
+$logoPath = '../../../public/logo ium rojo (3).png';
 $fecha = htmlspecialchars($ingreso['fecha'] ?? '');
 $folioEsc = htmlspecialchars($ingreso['folio_ingreso'] ?? '');
 $alumno = htmlspecialchars($ingreso['alumno'] ?? '');
@@ -129,59 +129,140 @@ if (!empty($pagosParciales)) {
 <head>
     <meta charset="utf-8">
     <title>Recibo de Titulación #<?php echo $folioEsc; ?></title>
-    <style>
-        @page { size: 8.5in 11in; margin: 0; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 7px; line-height: 1.2; background: #f2f2f2; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 16px; }
-        .page { width: 8.5in; padding: 0.15in 0.2in; position: relative; background: white; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(0,0,0,0.08); border: 1px solid #e5e5e5; border-radius: 6px; }
-        
-        .header { display: table; width: 100%; margin-bottom: 8px; }
-        .header-left { display: table-cell; width: 30%; vertical-align: top; }
-        .header-right { display: table-cell; width: 70%; vertical-align: top; text-align: right; }
-        .logo-box { display: inline-block; background: #9e1b32; padding: 4px 8px; border-radius: 3px; }
-        .logo-box img { height: 32px; vertical-align: middle; }
-        .institution { font-size: 7px; color: #333; margin-top: 2px; font-weight: bold; }
-        .doc-title { font-size: 13px; font-weight: bold; color: #1a1a1a; margin-bottom: 1px; }
-        .doc-subtitle { font-size: 10px; color: #9e1b32; font-weight: bold; margin-bottom: 2px; }
-        .folio { font-size: 11px; color: #9e1b32; font-weight: bold; }
-        
-        .divider { height: 2px; background: #9e1b32; margin: 6px 0; }
-        
-        .content { flex: 1; display: flex; flex-direction: column; }
-        
-        .grid { display: table; width: 100%; margin-bottom: 6px; }
-        .grid-row { display: table-row; }
-        .grid-cell { display: table-cell; padding: 3px 6px 3px 0; vertical-align: top; }
-        .grid-cell.full { width: 100%; }
-        .grid-cell.half { width: 50%; }
-        
-        .label { font-size: 7px; color: #666; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 1px; }
-        .value { font-size: 9px; color: #000; border-bottom: 1px solid #ddd; padding-bottom: 2px; min-height: 14px; }
-        
-        .monto-section { background: #f8f9fa; border: 2px solid #9e1b32; padding: 8px; text-align: center; margin: 8px 0; border-radius: 4px; }
-        .monto-label { font-size: 8px; color: #666; font-weight: bold; margin-bottom: 3px; }
-        .monto-value { font-size: 20px; font-weight: bold; color: #9e1b32; line-height: 1.2; }
-        .monto-currency { font-size: 8px; color: #666; margin-top: 2px; }
-        
-        .letra-box { background: #fff8dc; border: 1px solid #daa520; padding: 6px; margin: 6px 0; border-radius: 3px; }
-        .letra-text { font-size: 7px; font-style: italic; color: #333; line-height: 1.3; }
-        
-        .payment-box { background: #f5f5f5; border: 1px solid #ddd; padding: 6px; margin: 6px 0; border-radius: 3px; font-size: 7px; }
-        .description-box { border: 1px solid #ddd; padding: 8px; min-height: 45px; background: #fafafa; margin: 6px 0; border-radius: 3px; font-size: 7px; flex: 1; }
-        
-        .signature-section { margin-top: auto; padding-top: 20px; text-align: center; }
-        .signature-line { border-top: 1px solid #333; width: 55%; margin: 0 auto 6px auto; }
-        .signature-label { font-size: 9px; font-weight: bold; color: #333; }
-        .signature-name { font-size: 10px; color: #000; margin-top: 3px; font-weight: bold; }
-        
-        .footer { font-size: 7px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 4px; margin-top: 8px; }
-        .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 70px; color: rgba(220, 53, 69, 0.12); font-weight: bold; z-index: 0; pointer-events: none; }
-        
-        .no-print { position: fixed; top: 16px; right: 16px; z-index: 10; }
-        .print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-        .print-btn:hover { background: #b7213c; }
-        @media print { body { margin: 0; background: none; display: block; } .no-print { display: none; } .page { box-shadow: none; border: none; } }
-    </style>
+    <style>/* ===========================================
+   AJUSTE EXACTO PARA MEDIA CARTA 13.7 CM ALTO
+   AUMENTO DE LETRA (sin mover contenedores)
+   =========================================== */
+
+@page {
+    size: Letter portrait !important;
+    margin: 0 !important;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Aumentamos letra global */
+body {
+    font-family: Arial, sans-serif;
+    font-size: 9.5px;   /* antes 8.2px */
+    line-height: 1.20;
+    background: #f2f2f2;
+    padding: 0;
+}
+
+/* Mantiene dimensiones */
+.page {
+    width: 100%;
+    max-width: 8.5in;
+    height: 13.4cm;
+    padding: 0.2in 0.25in;
+    background: white;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+/* -------- ENCABEZADO -------- */
+.logo-box img {
+    height: 30px; /* antes 26px */
+}
+.institution {
+    font-size: 9.5px; /* antes 8px */
+    font-weight: bold;
+}
+
+.doc-title {
+    font-size: 14px; /* antes 12px */
+    font-weight: bold;
+}
+
+.folio {
+    font-size: 13px; /* antes 11px */
+    font-weight: bold;
+    color: #9e1b32;
+}
+
+/* -------- TABLAS -------- */
+.label {
+    font-size: 9px;    /* antes 7.5px */
+    color: #444;
+    font-weight: bold;
+}
+
+.value {
+    font-size: 11.5px; /* antes 9.5px */
+    border-bottom: 1px solid #ccc;
+    padding: 1px 0;
+    min-height: 11px;
+}
+
+/* --------- MONTO --------- */
+.monto-label {
+    font-size: 9.5px; /* antes 8px */
+}
+
+.monto-value {
+    font-size: 22px; /* antes 18px */
+    font-weight: bold;
+    color: #9e1b32;
+}
+
+.monto-currency {
+    font-size: 9px; /* antes 8px */
+}
+
+/* --------- METODO DE PAGO --------- */
+.payment-box {
+    background: #f8f8f8;
+    border: 1px solid #ccc;
+    padding: 4px;
+    border-radius: 3px;
+    font-size: 10.5px; /* antes 8px */
+}
+
+/* -------- OBSERVACIONES -------- */
+.description-box {
+    font-size: 10px; /* antes 8px */
+    min-height: 35px;
+}
+
+/* -------- FIRMA -------- */
+.signature-label {
+    font-size: 11px; /* antes 9px */
+    font-weight: bold;
+}
+
+.signature-name {
+    font-size: 13px; /* antes 10.5px */
+    font-weight: bold;
+}
+
+/* -------- FOOTER -------- */
+.footer {
+    font-size: 9px; /* antes 7.5px */
+    margin-top: 4px;
+    text-align: center;
+    border-top: 1px solid #ddd;
+    padding-top: 3px;
+}
+
+/* -------- IMPRESIÓN -------- */
+@media print {
+    body {
+        background: white;
+    }
+    .no-print {
+        display: none !important;
+    }
+    .page {
+        border: none;
+        box-shadow: none;
+    }
+}
+</style>
 </head>
 <body>
     <div class="no-print"><button class="print-btn" onclick="window.print()">Imprimir</button></div>
@@ -249,9 +330,8 @@ if (!empty($pagosParciales)) {
             <div class="monto-currency">PESOS MEXICANOS (MXN)</div>
         </div>
         
-        <!-- Cantidad con letra destacada -->
+        <!-- Cantidad en letra (solo texto) -->
         <div class="letra-box">
-            <span class="label">Cantidad con letra</span>
             <div class="letra-text"><?php echo $cantidadConLetra ?: '-'; ?></div>
         </div>
         
