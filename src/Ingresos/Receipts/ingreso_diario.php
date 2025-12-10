@@ -311,12 +311,17 @@ body {
         box-shadow: none;
     }
 }
+
+/* Unified red print button */
+.print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.print-btn:hover { background: #b7213c; }
+.print-container { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 9999; }
 </style>
 
 </head>
 <body>
 
-<div class="no-print"><button class="print-btn" onclick="window.print()">Imprimir</button></div>
+<!-- print button moved to bottom center -->
 
 <?php if ($reimpresion): ?>
     <div class="watermark">REIMPRESIÓN</div>
@@ -458,7 +463,11 @@ body {
         <?php endif; ?>
     </div>
 
-</div>
+    </div>
+
+    <div class="no-print print-container">
+        <button class="print-btn" onclick="window.print()">Imprimir</button>
+    </div>
 
 </body>
 </html>

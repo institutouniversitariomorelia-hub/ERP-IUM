@@ -47,6 +47,102 @@ if ($stmtPagos) {
     }
     $stmtPagos->close();
 }
+
+// Inicializar variables usadas en la plantilla para evitar Notices
+$logoPath = '../../../public/logo ium rojo (3).png';
+$categoria = htmlspecialchars($ingreso['nombre_categoria'] ?? 'Sin categoría');
+$folioEsc = htmlspecialchars($ingreso['folio_ingreso'] ?? $folio);
+$fecha = htmlspecialchars($ingreso['fecha'] ?? '');
+if (class_exists('IntlDateFormatter') && !empty($fecha)) {
+    try {
+        $formatter = new IntlDateFormatter('es_ES', IntlDateFormatter::LONG, IntlDateFormatter::NONE);
+        $fecha = $formatter->format(new DateTime($fecha));
+    } catch (Throwable $e) { /* fallback usa $fecha cruda */ }
+}
+
+$anio = htmlspecialchars($ingreso['anio'] ?? date('Y'));
+$modalidad = htmlspecialchars($ingreso['modalidad'] ?? 'N/A');
+$alumno = htmlspecialchars($ingreso['alumno'] ?? '');
+$matricula = htmlspecialchars($ingreso['matricula'] ?? '');
+$nivel = htmlspecialchars($ingreso['nivel'] ?? '');
+$grado = htmlspecialchars($ingreso['grado'] ?? '');
+$programa = htmlspecialchars($ingreso['programa'] ?? '');
+$observaciones = htmlspecialchars($ingreso['observaciones'] ?? '');
+
+// Monto y formato
+$monto = isset($ingreso['monto']) ? (float)$ingreso['monto'] : 0.0;
+$montoFormateado = '$ ' . number_format($monto, 2);
+if (class_exists('NumberFormatter')) {
+    try {
+        $fmt = new NumberFormatter('es_MX', NumberFormatter::CURRENCY);
+        $montoFormateado = $fmt->formatCurrency($monto, 'MXN');
+    } catch (Exception $e) { /* fallback */ }
+}
+
+// Cantidad en letra
+$cantidadConLetra = '';
+function numToWordsEsLocal($num) {
+    $num = (int)$num;
+    $U = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
+    $T = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
+    $C = ['', 'cien', 'doscientos', 'trescientos', 'cuatrocientos', 'quinientos', 'seiscientos', 'setecientos', 'ochocientos', 'novecientos'];
+    $to99 = function($n) use ($U, $T) {
+        if ($n < 20) return $U[$n];
+        if ($n == 20) return 'veinte';
+        $d = intdiv($n, 10); $u = $n % 10;
+        if ($d == 2 && $u > 0) return 'veinti' . $U[$u];
+        return $T[$d] . ($u ? ' y ' . $U[$u] : '');
+    };
+    $to999 = function($n) use ($C, $to99) {
+        if ($n == 0) return '';
+        if ($n == 100) return 'cien';
+        $c = intdiv($n, 100); $r = $n % 100;
+        $pref = $c ? (($c == 1) ? 'ciento' : $C[$c]) : '';
+        return trim($pref . ($r ? ' ' . $to99($r) : ''));
+    };
+    if ($num == 0) return 'cero';
+    $millones = intdiv($num, 1000000); $resto = $num % 1000000;
+    $miles = intdiv($resto, 1000); $unidades = $resto % 1000;
+    $parts = [];
+    if ($millones) $parts[] = ($millones == 1 ? 'un millón' : trim(numToWordsEsLocal($millones) . ' millones'));
+    if ($miles) $parts[] = ($miles == 1 ? 'mil' : trim($to999($miles) . ' mil'));
+    if ($unidades) $parts[] = $to999($unidades);
+    return trim(implode(' ', $parts));
+}
+if (class_exists('NumberFormatter')) {
+    try {
+        $entero = floor($monto);
+        $centavos = round(($monto - $entero) * 100);
+        $fmtSpell = new NumberFormatter('es_MX', NumberFormatter::SPELLOUT);
+        $letras = $fmtSpell->format($entero);
+        $letras = strtoupper($letras);
+        $cantidadConLetra = '(' . $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.)';
+    } catch (Exception $e) { /* fallback abajo */ }
+}
+if ($cantidadConLetra === '') {
+    $entero = floor($monto);
+    $centavos = round(($monto - $entero) * 100);
+    $letras = strtoupper(numToWordsEsLocal($entero));
+    $cantidadConLetra = '(' . $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.)';
+}
+
+// Métodos de pago
+$detalleMetodos = '';
+if (!empty($pagosParciales)) {
+    $parts = [];
+    foreach ($pagosParciales as $p) {
+        $m = htmlspecialchars($p['metodo'] ?? $p['metodo_pago'] ?? '');
+        $amt = isset($p['monto']) ? number_format((float)$p['monto'], 2) : '0.00';
+        $parts[] = "<div class='payment-item'><span class='pay-method'>" . $m . "</span><span class='pay-amt'>$ " . $amt . "</span></div>";
+    }
+    $detalleMetodos = "<div class='payment-items'>" . implode('', $parts) . "</div>";
+    $metodo = 'Pago Dividido';
+} else {
+    $metodo = htmlspecialchars($ingreso['metodo_de_pago'] ?? $ingreso['metodo'] ?? '-');
+}
+
+// Cerrar conexión si es necesario
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -160,6 +256,13 @@ body {
     font-size: 8px;
 }
 
+/* Presentación horizontal de métodos de pago (evita crecimiento vertical) */
+.payment-items { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.payment-item { display: inline-flex; align-items: center; gap: 6px; background: #ffffff; border: 1px solid #e6e6e6; padding: 4px 6px; border-radius: 4px; font-size: 8px; }
+.pay-method { font-weight: 600; color: #333; }
+.pay-amt { color: #9e1b32; font-weight: 700; }
+.payment-box { min-height: 40px; }
+
 /* ------------------------ */
 /*   OBSERVACIONES          */
 /* ------------------------ */
@@ -224,9 +327,15 @@ body {
     }
 }
 </style>
+    <style>
+    /* Print button styles */
+    .print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    .print-btn:hover { background: #b7213c; }
+    .print-container { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 9999; }
+    </style>
 </head>
 <body>
-    <div class="no-print"><button class="print-btn" onclick="window.print()">Imprimir</button></div>
+    <!-- print button moved to bottom center -->
     <?php if ($reimpresion): ?>
         <div class="watermark">REIMPRESIÓN</div>
     <?php endif; ?>
@@ -339,10 +448,12 @@ body {
         </div>
     </div>
     
-    <div class="no-print" style="text-align: center; margin: 20px;">
-        <button onclick="window.print()" style="background: #2b7be4; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-            Imprimir Recibo
-        </button>
+</div>
+
+    <div class="no-print print-container">
+        <button class="print-btn" onclick="window.print()">Imprimir</button>
     </div>
+</body>
+</html>
 </body>
     

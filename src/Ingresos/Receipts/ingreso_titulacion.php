@@ -129,143 +129,49 @@ if (!empty($pagosParciales)) {
 <head>
     <meta charset="utf-8">
     <title>Recibo de Titulación #<?php echo $folioEsc; ?></title>
-    <style>/* ===========================================
-   AJUSTE EXACTO PARA MEDIA CARTA 13.7 CM ALTO
-   AUMENTO DE LETRA (sin mover contenedores)
-   =========================================== */
+    <style>
+/* Adopt layout from ingreso_diario (compact media-card) */
+@page { size: Letter portrait !important; margin: 0 !important; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: Arial, sans-serif; font-size: 8.2px; line-height: 1.15; background: #f2f2f2; padding: 0; }
+.page { width: 100%; max-width: 8.5in; height: 13.4cm; padding: 0.2in 0.25in; background: white; border-radius: 4px; overflow: hidden; }
+.header { display: table; width: 100%; margin-bottom: 4px; }
+.header-left { display: table-cell; width: 35%; vertical-align: top; }
+.header-right { display: table-cell; width: 65%; vertical-align: top; text-align: right; }
+.logo-box { display: inline-block; background: #9e1b32; padding: 3px 6px; border-radius: 3px; }
+.logo-box img { height: 26px; }
+.institution { font-size: 8px; font-weight: bold; }
+.doc-title { font-size: 12px; font-weight: bold; }
+.folio { font-size: 11px; font-weight: bold; color: #9e1b32; }
+.divider { height: 2px; background: #9e1b32; margin: 4px 0; }
+.grid { display: table; width: 100%; margin-bottom: 4px; }
+.grid-row { display: table-row; }
+.grid-cell { display: table-cell; padding: 2px 4px 2px 0; vertical-align: top; }
+.label { font-size: 7.5px; color: #444; font-weight: bold; }
+.value { font-size: 9.5px; border-bottom: 1px solid #ccc; padding: 1px 0; min-height: 10px; }
+.monto-section { text-align: right; margin: 4px 0; }
+.monto-label { font-size: 8px; }
+.monto-value { font-size: 18px; font-weight: bold; color: #9e1b32; }
+.monto-currency { font-size: 8px; }
+.payment-box { background: #f8f8f8; border: 1px solid #ccc; padding: 4px; border-radius: 3px; font-size: 8px; }
+.description-box { border: 1px solid #ddd; padding: 6px; min-height: 35px; background: #fafafa; border-radius: 3px; font-size: 8px; }
+.signature-section { margin-top: 4px; text-align: center; }
+.signature-line { border-top: 1px solid #444; width: 55%; margin: 0 auto 3px auto; }
+.signature-label { font-size: 9px; font-weight: bold; }
+.signature-name { font-size: 10.5px; font-weight: bold; margin-top: 2px; }
+.footer { font-size: 7.5px; margin-top: 4px; text-align: center; border-top: 1px solid #ddd; padding-top: 3px; }
+@media print { body { background: white; } .no-print { display: none !important; } .page { border: none; box-shadow: none; } }
 
-@page {
-    size: Letter portrait !important;
-    margin: 0 !important;
-}
+/* Unified red print button */
+.print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+.print-btn:hover { background: #b7213c; }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-/* Aumentamos letra global */
-body {
-    font-family: Arial, sans-serif;
-    font-size: 9.5px;   /* antes 8.2px */
-    line-height: 1.20;
-    background: #f2f2f2;
-    padding: 0;
-}
-
-/* Mantiene dimensiones */
-.page {
-    width: 100%;
-    max-width: 8.5in;
-    height: 13.4cm;
-    padding: 0.2in 0.25in;
-    background: white;
-    border-radius: 4px;
-    overflow: hidden;
-}
-
-/* -------- ENCABEZADO -------- */
-.logo-box img {
-    height: 30px; /* antes 26px */
-}
-.institution {
-    font-size: 9.5px; /* antes 8px */
-    font-weight: bold;
-}
-
-.doc-title {
-    font-size: 14px; /* antes 12px */
-    font-weight: bold;
-}
-
-.folio {
-    font-size: 13px; /* antes 11px */
-    font-weight: bold;
-    color: #9e1b32;
-}
-
-/* -------- TABLAS -------- */
-.label {
-    font-size: 9px;    /* antes 7.5px */
-    color: #444;
-    font-weight: bold;
-}
-
-.value {
-    font-size: 11.5px; /* antes 9.5px */
-    border-bottom: 1px solid #ccc;
-    padding: 1px 0;
-    min-height: 11px;
-}
-
-/* --------- MONTO --------- */
-.monto-label {
-    font-size: 9.5px; /* antes 8px */
-}
-
-.monto-value {
-    font-size: 22px; /* antes 18px */
-    font-weight: bold;
-    color: #9e1b32;
-}
-
-.monto-currency {
-    font-size: 9px; /* antes 8px */
-}
-
-/* --------- METODO DE PAGO --------- */
-.payment-box {
-    background: #f8f8f8;
-    border: 1px solid #ccc;
-    padding: 4px;
-    border-radius: 3px;
-    font-size: 10.5px; /* antes 8px */
-}
-
-/* -------- OBSERVACIONES -------- */
-.description-box {
-    font-size: 10px; /* antes 8px */
-    min-height: 35px;
-}
-
-/* -------- FIRMA -------- */
-.signature-label {
-    font-size: 11px; /* antes 9px */
-    font-weight: bold;
-}
-
-.signature-name {
-    font-size: 13px; /* antes 10.5px */
-    font-weight: bold;
-}
-
-/* -------- FOOTER -------- */
-.footer {
-    font-size: 9px; /* antes 7.5px */
-    margin-top: 4px;
-    text-align: center;
-    border-top: 1px solid #ddd;
-    padding-top: 3px;
-}
-
-/* -------- IMPRESIÓN -------- */
-@media print {
-    body {
-        background: white;
-    }
-    .no-print {
-        display: none !important;
-    }
-    .page {
-        border: none;
-        box-shadow: none;
-    }
-}
-</style>
+/* Fixed centered container at bottom for print button (hidden when printing) */
+.print-container { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 9999; }
+    </style>
 </head>
 <body>
-    <div class="no-print"><button class="print-btn" onclick="window.print()">Imprimir</button></div>
+    <!-- print button moved to bottom center -->
     <?php if ($reimpresion): ?>
         <div class="watermark">REIMPRESIÓN</div>
     <?php endif; ?>
@@ -372,10 +278,8 @@ body {
         </div>
     </div>
     
-    <div class="no-print" style="text-align: center; margin: 20px;">
-        <button onclick="window.print()" style="background: #2b7be4; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-            Imprimir Recibo
-        </button>
+    <div class="no-print print-container">
+        <button class="print-btn" onclick="window.print()">Imprimir</button>
     </div>
 </body>
 </html>

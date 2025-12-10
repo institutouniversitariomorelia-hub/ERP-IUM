@@ -181,7 +181,7 @@ $destinatario = htmlspecialchars($egreso['destinatario'] ?? '-'); // Para la fir
         .footer { font-size: 8px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 5px; margin-top: 8px; }
         .watermark { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 72px; color: rgba(220, 53, 69, 0.12); font-weight: 800; z-index: 0; pointer-events: none; }
 
-        .no-print { position: fixed; top: 16px; right: 16px; z-index: 10; }
+        .no-print { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); z-index: 9999; }
         .print-btn { background: #9e1b32; color: #fff; border: none; border-radius: 4px; padding: 8px 12px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
         .print-btn:hover { background: #b7213c; }
         @media print { body { margin: 0; background: none; padding: 0; display: block; } .no-print { display: none; } .page { box-shadow: none; border: none; width: 8.5in; height: 5.5in; } }
