@@ -148,20 +148,24 @@ class IngresoModel {
         $grado = isset($data['grado']) && $data['grado'] !== '' ? (int)$data['grado'] : null;
         $grupo = isset($data['grupo']) && trim($data['grupo']) !== '' ? trim($data['grupo']) : null;
 
-        $query = "INSERT INTO ingresos
-                    (fecha, alumno, matricula, nivel, monto, metodo_de_pago, mes_correspondiente, anio, observaciones, dia_pago, modalidad, grado, programa, grupo, id_categoria)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // 15 campos
+                // Asegurar que el ingreso se inserta como activo (estatus = 1)
+                $query = "INSERT INTO ingresos
+                                        (fecha, alumno, matricula, nivel, monto, metodo_de_pago, mes_correspondiente, anio, observaciones, dia_pago, modalidad, grado, programa, grupo, id_categoria, estatus)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"; // 16 campos (estatus)
 
         $stmt = $this->db->prepare($query);
         if (!$stmt) { throw new Exception("Error al preparar consulta INSERT Ingreso: " . $this->db->error); }
 
-    // Cadena de tipos EXACTA para los 15 parámetros en el orden del INSERT
+    // Cadena de tipos EXACTA para los 16 parámetros en el orden del INSERT
     // fecha(s), alumno(s), matricula(s), nivel(s), monto(d), metodo(s),
     // mes_correspondiente(s), anio(i), observaciones(s), dia_pago(i), modalidad(s),
     // grado(i), programa(s), grupo(s), id_categoria(i)
     // Simplificamos a 's' para evitar errores en bind_param por desajustes de tipos
-    $types = "sssssssssssssss"; // 15 parámetros, todos como string (mysqli convertirá tipos automáticamente)
+    $types = "ssssssssssssssss"; // 16 parámetros, todos como string (mysqli convertirá tipos automáticamente)
         // ===============================================
+
+        // Forzar estatus activo
+        $estatus = 1;
 
         $bindResult = $stmt->bind_param(
             $types,
@@ -179,8 +183,9 @@ class IngresoModel {
             $grado,                 // i
             $programa,              // s
             $grupo,                 // s
-            $id_categoria           // i
-        ); // 15 variables
+            $id_categoria,          // i
+            $estatus                // i (estatus)
+        ); // 16 variables
 
         if ($bindResult === false) { $error = $stmt->error; $stmt->close(); throw new Exception("Error en bind_param (create Ingreso): " . $error); }
 
