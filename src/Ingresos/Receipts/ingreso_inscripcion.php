@@ -81,7 +81,7 @@ if (class_exists('NumberFormatter')) {
 
 // Cantidad en letra
 $cantidadConLetra = '';
-function numToWordsEsLocal($num) {
+function numToWordsEs($num) {
     $num = (int)$num;
     $U = ['', 'uno', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve', 'diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
     $T = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];

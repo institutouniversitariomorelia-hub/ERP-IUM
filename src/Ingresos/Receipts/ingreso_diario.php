@@ -91,7 +91,6 @@ function numToWordsEs($num) {
     if ($unidades) $parts[] = $to999($unidades);
     return trim(implode(' ', $parts));
 }
-
 if (class_exists('NumberFormatter')) {
     try {
         $entero = floor($monto);
@@ -101,7 +100,6 @@ if (class_exists('NumberFormatter')) {
         $cantidadConLetra = $letras . ' PESOS ' . sprintf('%02d', $centavos) . '/100 M.N.';
     } catch (Exception $e) { /* fallback abajo */ }
 }
-
 if ($cantidadConLetra === '') {
     $entero = floor($monto);
     $centavos = round(($monto - $entero) * 100);
