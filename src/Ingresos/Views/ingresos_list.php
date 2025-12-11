@@ -14,7 +14,7 @@
                 <span class="d-inline d-sm-none">Agregar</span>
             </button>
         <?php endif; ?>
-        <button class="btn btn-outline-secondary btn-sm flex-grow-1 flex-md-grow-0 order-2" onclick="window.open('generate_receipt_blanco.php', '_blank')">
+        <button class="btn btn-outline-secondary btn-sm flex-grow-1 flex-md-grow-0 order-2" onclick="window.open('generate_receipt_blanco_ingreso.php', '_blank')">
             <ion-icon name="document-outline" style="vertical-align: middle;"></ion-icon>
             <span class="d-none d-sm-inline">Recibo en Blanco</span>
             <span class="d-inline d-sm-none">Blanco</span>
