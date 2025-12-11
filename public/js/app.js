@@ -877,44 +877,41 @@ const IngresosModule = (function() {
 // ============================================================================
 // MÓDULO: Gestión de Egresos (CORREGIDO)
 // ============================================================================
+// ============================================================================
+// MÓDULO: Gestión de Egresos (CORREGIDO Y COMPLETADO)
+// ============================================================================
 const EgresosModule = (function() {
-    const { ajaxCall, mostrarError, ensureNumberEditable, showSuccess, showError, showConfirm } = ERPUtils;
+    // Importamos las utilidades necesarias
+    const { ajaxCall, mostrarError, ensureNumberEditable, showSuccess, showError, showConfirm, attachMoneyFormatter } = ERPUtils;
 
-    // Cargar categorías y sub-presupuestos (Lógica centralizada)
+    // 1. Cargar categorías y sub-presupuestos (Tu lógica original intacta)
     function cargarCategoriasEgresos() {
         const $selectCat = $('#eg_id_categoria');
         const $selectPres = $('#eg_id_presupuesto');
         
-        // 1. Mostrar "Cargando..."
         $selectCat.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
         $selectPres.empty().append('<option value="">Cargando...</option>').prop('disabled', true);
 
-        // 2. Pedir Presupuestos
         return ajaxCall('presupuesto', 'getFilteredSubPresupuestos', {}, 'GET')
             .then(presupuestos => {
                 $selectPres.empty().append('<option value="">Seleccione un presupuesto...</option>');
-                
-                // Detectar si venimos de un reembolso para filtrar
                 const prefillReembolso = (typeof window.PREFILL_EGRESO !== 'undefined' && window.PREFILL_EGRESO && window.PREFILL_EGRESO.from_ingreso);
-
+                
                 if (Array.isArray(presupuestos) && presupuestos.length > 0) {
                     let count = 0;
                     presupuestos.forEach(p => {
-                        // Filtros visuales
-                        if (!prefillReembolso && p.fecha && p.fecha.indexOf('3000') === 0) return; // Ocultar fantasma
+                        // Filtro: Ocultar presupuesto fantasma y el de reembolsos en flujo normal
+                        if (!prefillReembolso && p.fecha && p.fecha.indexOf('3000') === 0) return; 
                         const pid = parseInt(p.id_presupuesto || p.id);
-                        if (!prefillReembolso && pid === 11) return; // Ocultar presupuesto reembolso en flujo normal
+                        if (!prefillReembolso && pid === 11) return; 
 
-                        // Calcular disponible
                         const disponible = (typeof p.disponible !== 'undefined') ? parseFloat(p.disponible) : 0;
                         const montoFmt = isNaN(disponible) ? 'N/A' : disponible.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
                         
-                        // Generar etiqueta
                         let label = `${p.cat_nombre || 'Sin categoría'} - Disponible: ${montoFmt}`;
                         const isPerm = p.es_permanente && parseInt(p.es_permanente) === 1;
                         if (isPerm) label = "Presupuesto de Reembolsos (Fondo)";
                         
-                        // Datos para validación
                         const dataDisp = isPerm ? '' : disponible;
                         const dataPerm = isPerm ? '1' : '0';
                         
@@ -927,13 +924,12 @@ const EgresosModule = (function() {
                 }
                 $selectPres.prop('disabled', false);
 
-                // Sincronización: Al cambiar presupuesto, intentar seleccionar la categoría asociada
+                // Sincronización
                 $selectPres.off('change.presupuestoSync').on('change.presupuestoSync', function() {
                     const catId = $(this).find(':selected').data('categoria');
                     if (catId) $selectCat.val(catId.toString());
                 });
 
-                // 3. Pedir Categorías (Encadenado)
                 return ajaxCall('egreso', 'getCategoriasEgreso', {}, 'GET');
             })
             .then(categorias => {
@@ -943,14 +939,14 @@ const EgresosModule = (function() {
                 if (Array.isArray(categorias) && categorias.length > 0) {
                     categorias.forEach(cat => {
                         const cid = parseInt(cat.id_categoria || cat.id);
-                        if (!prefillReembolso && cid === 21) return; // Ocultar categoría reembolso en flujo normal
+                        if (!prefillReembolso && cid === 21) return; 
                         $selectCat.append(`<option value="${cid}">${cat.nombre}</option>`);
                     });
                 } else {
                     $selectCat.append('<option value="">-- No hay categorías --</option>');
                 }
                 
-                // Asegurar opción de reembolso si es necesario
+                // Asegurar categoría Reembolsos si es necesario
                 if (prefillReembolso) {
                     if ($selectCat.find('option[value="21"]').length === 0) {
                         $selectCat.append('<option value="21">IUM Reembolsos</option>');
@@ -965,6 +961,7 @@ const EgresosModule = (function() {
             });
     }
 
+    // 2. Inicializar Modal de Egreso (Tu lógica original)
     function initModalEgreso() {
         $('#modalEgreso').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
@@ -974,24 +971,18 @@ const EgresosModule = (function() {
 
             if (!$form.length) return;
             
-            // Resetear formulario visualmente
             $form[0].reset();
             $('#egreso_id').val('');
             
-            // Formateador de dinero
             if ($montoInput.length) {
                 $montoInput.val('');
                 try { if (window.attachMoneyFormatter) attachMoneyFormatter('#eg_monto'); } catch(e) {}
             }
 
-            // Textos por defecto
             $('#modalEgresoTitle').text('Registrar Nuevo Egreso');
             $('#btnSubmitEgreso').text('Guardar Egreso');
 
-            // === CARGAR DATOS Y LUEGO LLENAR FORMULARIO ===
             cargarCategoriasEgresos().then(() => {
-                // Aquí las listas YA ESTÁN LLENAS. Solo seleccionamos valores.
-
                 if (egresoId) {
                     // MODO EDICIÓN
                     $('#modalEgresoTitle').text('Editar Egreso');
@@ -1002,19 +993,16 @@ const EgresosModule = (function() {
                             $('#egreso_id').val(data.folio_egreso);
                             $('#eg_fecha').val(data.fecha);
                             
-                            // Monto
                             const rawMonto = (data.monto || '').toString().replace(/,/g, '');
                             if (!isNaN(parseFloat(rawMonto))) {
                                 $('#eg_monto').val(parseFloat(rawMonto).toLocaleString('en-US', { minimumFractionDigits: 2 }));
                             }
 
-                            // Selects
                             $('#eg_id_categoria').val(data.id_categoria);
                             if (data.id_presupuesto) {
                                 $('#eg_id_presupuesto').val(data.id_presupuesto);
                             }
 
-                            // Inputs texto
                             $('#eg_proveedor').val(data.proveedor);
                             $('#eg_destinatario').val(data.destinatario);
                             $('#eg_forma_pago').val(data.forma_pago);
@@ -1022,9 +1010,8 @@ const EgresosModule = (function() {
                             $('#eg_descripcion').val(data.descripcion);
                         }
                     });
-
                 } else {
-                    // MODO CREACIÓN / REEMBOLSO (PREFILL)
+                    // MODO CREACIÓN / REEMBOLSO
                     let prefill = window.PREFILL_EGRESO || null;
                     if (!prefill && localStorage.getItem('reembolso_from_ingreso')) {
                         prefill = JSON.parse(localStorage.getItem('reembolso_from_ingreso'));
@@ -1032,22 +1019,19 @@ const EgresosModule = (function() {
                     }
 
                     if (prefill) {
-                        window.PREFILL_EGRESO = null; // Limpiar flag global
+                        window.PREFILL_EGRESO = null;
                         
                         if (prefill.from_ingreso) {
                             $('#modalEgresoTitle').text('Registrar Reembolso');
                             $('#btnSubmitEgreso').text('Confirmar Reembolso');
                             
-                            // Bloquear y forzar selects para reembolso
                             $('#eg_id_categoria').val('21').prop('disabled', true);
                             if(prefill.id_presupuesto) $('#eg_id_presupuesto').val(prefill.id_presupuesto).prop('disabled', true);
                             
-                            // Campo oculto para vincular ingreso
                             $('#formEgreso').find('#eg_from_ingreso').remove();
                             $('#formEgreso').append(`<input type="hidden" id="eg_from_ingreso" name="from_ingreso" value="${prefill.from_ingreso}">`);
                         }
 
-                        // Llenar campos comunes
                         $('#eg_fecha').val(prefill.fecha || new Date().toISOString().slice(0,10));
                         if (prefill.monto) $('#eg_monto').val(parseFloat(String(prefill.monto).replace(/,/g,'')).toLocaleString('en-US', {minimumFractionDigits:2}));
                         if (prefill.destinatario || prefill.alumno) $('#eg_destinatario').val(prefill.destinatario || prefill.alumno);
@@ -1055,7 +1039,6 @@ const EgresosModule = (function() {
                         if (prefill.documento_de_amparo) $('#eg_documento_de_amparo').val(prefill.documento_de_amparo);
                         if (prefill.descripcion) $('#eg_descripcion').val(prefill.descripcion);
                     } else {
-                        // Nuevo egreso limpio
                         $('#eg_fecha').val(new Date().toISOString().slice(0,10));
                     }
                 }
@@ -1063,24 +1046,7 @@ const EgresosModule = (function() {
         });
     }
 
-    // [MANTENER] Funciones auxiliares sin cambios: openReembolsoModal, initSubmitReembolso, etc.
-    function initSubmitReembolso() { /* ... (usa tu código original o el del bloque anterior si estaba bien) ... */ 
-        // Nota: Para abreviar, asumo que usas la versión que ya tienes de submitReembolso
-        $(document).on('submit', '#formReembolso', function(e) {
-            e.preventDefault();
-            let formArr = $(this).serializeArray();
-            if (!formArr.some(p => p.name === 'proveedor')) formArr.push({ name: 'proveedor', value: 'Reembolsos' });
-            $.ajax({ url: BASE_URL + 'index.php?controller=egreso&action=save', method: 'POST', data: $.param(formArr), dataType: 'json' })
-             .done(r => { 
-                 if(r.success) { 
-                     $('#modalReembolso').modal('hide'); 
-                     localStorage.setItem('reem_ok', '1'); 
-                     window.location.reload(); 
-                 } else showError(r.error || 'Error'); 
-             }).fail(xhr => mostrarError('reembolso', xhr));
-        });
-    }
-
+    // 3. Submit Egreso (Tu lógica original)
     function initSubmitEgreso() {
         $(document).on('submit', '#formEgreso', function(e) {
             e.preventDefault();
@@ -1088,7 +1054,6 @@ const EgresosModule = (function() {
             const formData = {};
             serialized.forEach(item => { formData[item.name] = item.value; });
             
-            // Validación Cliente: Disponible
             try {
                 const monto = parseFloat((formData.monto || '0').replace(/,/g, ''));
                 const $opt = $('#eg_id_presupuesto option:selected');
@@ -1113,9 +1078,146 @@ const EgresosModule = (function() {
         });
     }
 
-    // Funciones menores (Buscador, Editar Monto, etc.) - Usar las mismas que tenías
-    function initBuscadorEgresos() { /* Copiar de tu versión anterior */ } 
-    function initEditarMontoEgreso() { /* Copiar de tu versión anterior */ }
+    function initSubmitReembolso() {
+        $(document).on('submit', '#formReembolso', function(e) {
+            e.preventDefault();
+            let formArr = $(this).serializeArray();
+            if (!formArr.some(p => p.name === 'proveedor')) formArr.push({ name: 'proveedor', value: 'Reembolsos' });
+            $.ajax({ url: BASE_URL + 'index.php?controller=egreso&action=save', method: 'POST', data: $.param(formArr), dataType: 'json' })
+             .done(r => { 
+                 if(r.success) { 
+                     $('#modalReembolso').modal('hide'); 
+                     localStorage.setItem('reem_ok', '1'); 
+                     window.location.reload(); 
+                 } else showError(r.error || 'Error'); 
+             }).fail(xhr => mostrarError('reembolso', xhr));
+        });
+    }
+
+    // =========================================================
+    // FUNCIONES INTEGRADAS Y CORREGIDAS
+    // =========================================================
+
+    // 4. Función para Editar solo el Monto
+    function initEditarMontoEgreso() {
+        $(document).on('click', '.btn-edit-monto-egreso', function() {
+            const id = $(this).data('id');
+            const monto = $(this).data('monto');
+            $('#editMontoEgresoId').val(id);
+            $('#editMontoEgresoValor').val(monto);
+            const modalEl = document.getElementById('modalEditarMontoEgreso');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+                bsModal.show();
+            } else {
+                $('#modalEditarMontoEgreso').modal('show');
+            }
+        });
+
+        $(document).on('click', '#btnGuardarNuevoMontoEgreso', function() {
+            const id = $('#editMontoEgresoId').val();
+            const monto = $('#editMontoEgresoValor').val();
+            if (!id) { showError('No se encontró el egreso a actualizar.'); return; }
+            if (monto === '' || isNaN(monto) || parseFloat(monto) < 0) {
+                showError('El monto no puede ser negativo.');
+                return;
+            }
+            ajaxCall('egreso', 'updateMonto', { id: id, monto: monto })
+                .done(r => {
+                    if (r.success) {
+                        showSuccess('Monto actualizado correctamente.');
+                        setTimeout(() => { window.location.reload(); }, 900);
+                    } else {
+                        showError('Error al actualizar monto: ' + (r.error || ''));
+                    }
+                })
+                .fail(xhr => mostrarError('actualizar monto de egreso', xhr));
+        });
+    }
+
+    // 5. Función del Buscador Avanzado de Egresos
+    function initBuscadorEgresos() {
+        const $searchInput = $('#searchEgresos');
+        if (!$searchInput.length) return;
+        
+        const $clearBtn = $('#clearSearchEgresos');
+        const $fechaInicio = $('#fechaInicioEgresos');
+        const $fechaFin = $('#fechaFinEgresos');
+        const $clearDateBtn = $('#clearDateEgresos');
+        const $categoriaSelect = $('#filtroCategoriaEgresos');
+        const $resultCount = $('#resultCountEgresos');
+        const $tableBody = $('#tablaEgresos');
+        
+        function filtrarEgresos() {
+            const searchTerm = $searchInput.val().toLowerCase().trim();
+            const fechaInicio = $fechaInicio.val();
+            const fechaFin = $fechaFin.val();
+            const categoriaId = $categoriaSelect.val();
+            
+            $clearBtn.toggle(searchTerm.length > 0);
+            $clearDateBtn.toggle(!!(fechaInicio || fechaFin || categoriaId));
+            
+            let visibleCount = 0;
+            let totalCount = 0;
+            
+            $tableBody.find('tr').each(function() {
+                const $row = $(this);
+                if ($row.find('td[colspan]').length > 0) return;
+                totalCount++;
+                
+                const destinatario = $row.find('td').eq(2).text().toLowerCase();
+                let folio = '';
+                const $editBtn = $row.find('.btn-edit-egreso');
+                if ($editBtn.length) folio = $editBtn.data('id').toString().toLowerCase();
+                
+                const fechaRegistro = $row.attr('data-fecha');
+                const catRowId = $row.data('categoria-id') ? $row.data('categoria-id').toString() : '';
+                
+                const searchableText = folio + ' ' + destinatario;
+                let matchText = !searchTerm || searchableText.includes(searchTerm);
+                let matchDate = true;
+                let matchCategoria = true;
+                
+                if (fechaRegistro && (fechaInicio || fechaFin)) {
+                    if (fechaInicio && fechaFin) matchDate = fechaRegistro >= fechaInicio && fechaRegistro <= fechaFin;
+                    else if (fechaInicio) matchDate = fechaRegistro >= fechaInicio;
+                    else if (fechaFin) matchDate = fechaRegistro <= fechaFin;
+                }
+                
+                if (categoriaId) {
+                    matchCategoria = catRowId === categoriaId;
+                }
+                
+                if (matchText && matchDate && matchCategoria) { 
+                    $row.show();
+                    visibleCount++; 
+                } else { 
+                    $row.hide(); 
+                }
+            });
+
+            if (searchTerm.length > 0 || fechaInicio || fechaFin || categoriaId) {
+                if (visibleCount === 0) {
+                    $resultCount.html('<ion-icon name="alert-circle-outline" style="vertical-align:middle;"></ion-icon> No se encontraron resultados').addClass('text-danger').removeClass('text-success');
+                } else {
+                    // CORRECCIÓN: Se añadieron las comillas invertidas faltantes en los template literals
+                    $resultCount.html(`<ion-icon name="checkmark-circle-outline" style="vertical-align:middle;"></ion-icon> Mostrando ${visibleCount} de ${totalCount} egresos`).addClass('text-success').removeClass('text-danger');
+                }
+            } else {
+                $resultCount.html('').removeClass('text-success text-danger');
+            }
+        }
+        
+        $searchInput.on('keyup', filtrarEgresos);
+        $fechaInicio.on('change', filtrarEgresos);
+        $fechaFin.on('change', filtrarEgresos);
+        $clearBtn.on('click', function() { $searchInput.val(''); filtrarEgresos(); $searchInput.focus(); });
+        $clearDateBtn.on('click', function() { $fechaInicio.val(''); $fechaFin.val(''); $categoriaSelect.val(''); filtrarEgresos(); });
+        $categoriaSelect.on('change', filtrarEgresos);
+        $searchInput.on('keydown', function(e) { if (e.key === 'Escape') { $(this).val(''); filtrarEgresos(); } });
+    }
+
+    // =========================================================
 
     // Función pública para llamar desde Ingresos
     window.openReembolsoModal = function(folio, alumno, monto) {
@@ -1131,10 +1233,13 @@ const EgresosModule = (function() {
     function init() {
         initModalEgreso();
         initSubmitEgreso();
-        initSubmitReembolso(); // Si usas el modal separado
-        // initEditarMontoEgreso(); // Descomentar si usas estas funciones
-        // initBuscadorEgresos();
-        console.log('[✓] Módulo Egresos inicializado (Corregido)');
+        initSubmitReembolso();
+        
+        // INICIALIZACIÓN DE LAS NUEVAS FUNCIONES
+        initEditarMontoEgreso();
+        initBuscadorEgresos();
+        
+        console.log('[✓] Módulo Egresos inicializado (Corregido y Extendido)');
     }
 
     return { init };
