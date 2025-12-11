@@ -1,5 +1,5 @@
 <?php
-// src/Egresos/Models/EgresoModel.php (LIMPIO, SIN id_presupuesto/activo_fijo)
+// src/Egresos/Models/EgresoModel.php (CORREGIDO)
 
 class EgresoModel {
     private $db;
@@ -95,33 +95,39 @@ class EgresoModel {
             throw new Exception("Error al preparar consulta INSERT: " . $this->db->error);
         }
 
+        // CORRECCIÓN: Crear variables intermedias para pasar por referencia
+        $strMonto = (string)$monto;
+        $strIdUser = (string)$id_user;
+        $strIdCategoria = (string)$id_categoria;
+        $strIdPresupuesto = (string)$id_presupuesto;
+
         // Usar 's' para todos los bind_param por robustez y conversión automática
         if ($id_presupuesto) {
             $bindResult = $stmt->bind_param(
                 str_repeat('s', 10),
                 $proveedor,
                 $descripcion,
-                (string)$monto,
+                $strMonto,          // Variable corregida
                 $fecha,
                 $destinatario,
                 $forma_pago,
                 $doc_amparo,
-                (string)$id_user,
-                (string)$id_presupuesto,
-                (string)$id_categoria
+                $strIdUser,         // Variable corregida
+                $strIdPresupuesto,  // Variable corregida
+                $strIdCategoria     // Variable corregida
             );
         } else {
             $bindResult = $stmt->bind_param(
                 str_repeat('s', 9),
                 $proveedor,
                 $descripcion,
-                (string)$monto,
+                $strMonto,          // Variable corregida
                 $fecha,
                 $destinatario,
                 $forma_pago,
                 $doc_amparo,
-                (string)$id_user,
-                (string)$id_categoria
+                $strIdUser,         // Variable corregida
+                $strIdCategoria     // Variable corregida
             );
         }
 
@@ -194,34 +200,41 @@ class EgresoModel {
             throw new Exception("Error al preparar consulta UPDATE: " . $this->db->error);
         }
 
+        // CORRECCIÓN: Variables intermedias para update
+        $strMonto = (string)$monto;
+        $strIdUser = (string)$id_user;
+        $strIdPresupuesto = (string)$id_presupuesto;
+        $strIdCategoria = (string)$id_categoria;
+        $strFolioEgreso = (string)$folio_egreso;
+
         if ($id_presupuesto) {
             $bindResult = $stmt->bind_param(
                 str_repeat('s', 11),
                 $proveedor,
                 $descripcion,
-                (string)$monto,
+                $strMonto,          // Corregido
                 $fecha,
                 $destinatario,
                 $forma_pago,
                 $doc_amparo,
-                (string)$id_user,
-                (string)$id_presupuesto,
-                (string)$id_categoria,
-                (string)$folio_egreso
+                $strIdUser,         // Corregido
+                $strIdPresupuesto,  // Corregido
+                $strIdCategoria,    // Corregido
+                $strFolioEgreso     // Corregido
             );
         } else {
             $bindResult = $stmt->bind_param(
                 str_repeat('s', 10),
                 $proveedor,
                 $descripcion,
-                (string)$monto,
+                $strMonto,          // Corregido
                 $fecha,
                 $destinatario,
                 $forma_pago,
                 $doc_amparo,
-                (string)$id_user,
-                (string)$id_categoria,
-                (string)$folio_egreso
+                $strIdUser,         // Corregido
+                $strIdCategoria,    // Corregido
+                $strFolioEgreso     // Corregido
             );
         }
 

@@ -271,7 +271,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-danger" id="btnGuardarNuevoMontoEgreso">
                     <ion-icon name="save-outline" style="vertical-align:middle; margin-right:4px;"></ion-icon>
-                    Aceptar cambios
+                    Aceptar cambio
                 </button>
             </div>
         </div>
