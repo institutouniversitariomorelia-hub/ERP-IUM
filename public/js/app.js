@@ -775,6 +775,12 @@ const IngresosModule = (function() {
                             showSuccess('Ingreso actualizado correctamente.');
                         } else {
                             showSuccess('Ingreso guardado correctamente.');
+                            if (r.newId) {
+                                try {
+                                    // Abrir comprobante de ingreso en una nueva pestaña
+                                    window.open(`generate_receipt.php?folio=${encodeURIComponent(r.newId)}`, '_blank');
+                                } catch (e) {}
+                            }
                         }
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
