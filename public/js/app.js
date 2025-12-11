@@ -775,12 +775,6 @@ const IngresosModule = (function() {
                             showSuccess('Ingreso actualizado correctamente.');
                         } else {
                             showSuccess('Ingreso guardado correctamente.');
-                            if (r.newId) {
-                                try {
-                                    // Abrir comprobante de ingreso en nueva pestaña
-                                    window.open(generate_receipt.php?folio=${encodeURIComponent(r.newId)}, '_blank');
-                                } catch (e) {}
-                            }
                         }
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
@@ -2288,5 +2282,4 @@ $(document).on('click', '.btn-reopen-presupuesto', function(e) {
             }
         })
         .fail(function(xhr) { mostrarError('Reabrir presupuesto', xhr); });
-
 });
