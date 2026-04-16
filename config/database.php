@@ -12,9 +12,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_HOST', 'localhost:3306');
+define('DB_USER', 'admin_IUM');
+define('DB_PASS', 'Temporal100*');
 define('DB_NAME', 'erp_ium');
 
 $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
