@@ -276,7 +276,7 @@ $currentUser = [
     <div id="sidebar">
         <!-- Header del Sidebar -->
         <div class="logo-container" id="logoContainer" style="cursor: pointer;">
-            <img src="public/logo ium blanco.png" alt="Logo IUM" class="sidebar-logo">
+            <img src="<?php echo BASE_URL; ?>public/logo ium blanco.png" alt="Logo IUM" class="sidebar-logo">
         </div>
         
         <!-- User Info Section (Moved from Footer) -->
