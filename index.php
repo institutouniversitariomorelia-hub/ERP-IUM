@@ -37,7 +37,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // (request debug removed)
 
 // Configuración básica
-define('BASE_URL', '//'); // Ajusta si tu carpeta tiene otro nombre
+define('BASE_URL', '/atenea.institutoi3o.com/'); // Ajusta si tu carpeta tiene otro nombre
 define('DEFAULT_CONTROLLER', 'user'); // Controlador por defecto si hay sesión
 define('DEFAULT_ACTION', 'profile'); // Acción por defecto si hay sesión
 
