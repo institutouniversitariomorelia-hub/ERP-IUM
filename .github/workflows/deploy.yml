@@ -1,0 +1,24 @@
+name: Desplegar ERP a Testing
+
+on:
+  push:
+    branches:
+      - desarrollo
+
+jobs:
+  web-deploy:
+    name: Despliegue vía SFTP
+    runs-on: ubuntu-latest
+    steps:
+    - name: Obtener última versión del código
+      uses: actions/checkout@v4
+    
+    - name: Sincronizar archivos por SFTP
+      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+      with:
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server: '74.208.78.78'
+        port: 22
+        local_path: './'
+        remote_path: './testing.institutoi3o.com/'
