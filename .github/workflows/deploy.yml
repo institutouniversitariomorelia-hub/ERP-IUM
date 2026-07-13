@@ -21,5 +21,4 @@ jobs:
         server: '74.208.78.78'
         port: 22
         local_path: './'
-        remote_path: './'
-        ssh_options: -o StrictHostKeyChecking=no
+        remote_path: './testing.institutoi3o.com/'
