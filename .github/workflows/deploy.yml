@@ -7,19 +7,19 @@ on:
 
 jobs:
   web-deploy:
-    name: Despliegue vía FTP
+    name: Despliegue vía SFTP
     runs-on: ubuntu-latest
     steps:
     - name: Obtener última versión del código
       uses: actions/checkout@v4
     
-    - name: Sincronizar archivos por FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+    - name: Sincronizar archivos por SFTP
+      uses: wlixcc/SFTP-Deploy-Action@v1.2.4
       with:
-        server: ${{ secrets.FTP_SERVER }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        local-dir: ./
-        server-dir: ./
-        port: 21
-        security: loose
+        server: '74.208.78.78'
+        port: 22
+        local_path: './'
+        remote_path: './'
+        ssh_options: -o StrictHostKeyChecking=no
