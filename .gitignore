@@ -1,0 +1,18 @@
+# Archivos de Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de entorno local (XAMPP/MAMP)
+config/config.local.php
+.env.local
+
+# Archivos de VS Code
+.vscode/
+
+# Archivos de caché
+/cache/
+/temp/
+
+# Logs del servidor
+*.log
+logs/

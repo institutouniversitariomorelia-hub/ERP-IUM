@@ -1,0 +1,12 @@
+# Activa el motor de reescritura de URLs
+RewriteEngine On
+
+# Define el directorio base de tu aplicación
+# ESTA LÍNEA ES CRÍTICA PARA SUBDIRECTORIOS como /Curso/
+RewriteBase /Curso/
+
+# Regla: Si la petición NO es para un archivo (o directorio) que existe realmente,
+# entonces la envía a index.php para que el router de PHP la procese.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [L]
