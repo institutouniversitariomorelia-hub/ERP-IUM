@@ -195,9 +195,12 @@ class IngresoController {
             if (!$isUpdate) { // Crear
 
             // Agregar validación para el campo 'descripcion' antes de crear el ingreso
-             if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
-                throw new Exception('El campo Descripción es obligatorio.');
-            }
+           if (!isset($data['observaciones']) || trim($data['observaciones']) === '') {
+    // En lugar de throw new Exception, devolvemos el error como lo hace el sistema:
+    $response['error'] = 'El campo Observaciones es obligatorio.';
+    echo json_encode($response);
+    exit; // Importante para detener la ejecución aquí
+}
             
                 $newId = $this->ingresoModel->createIngreso($data);
                 if ($newId) {
