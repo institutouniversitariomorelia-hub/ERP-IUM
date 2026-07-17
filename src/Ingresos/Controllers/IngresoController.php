@@ -203,9 +203,9 @@ class IngresoController {
 }
 
 // Validacion para el campo de Descripcion
-                     if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
-                        throw new Exception('El campo Descripción es obligatorio.'); 
-                        }
+                    if (empty($data['descripcion'])) {
+                        throw new Exception('El campo Descripción es obligatorio.');
+                    }
             
                 $newId = $this->ingresoModel->createIngreso($data);
                 if ($newId) {
@@ -242,10 +242,19 @@ class IngresoController {
                  }
             }
         } catch (Exception $e) {
-            if (strpos($e->getMessage(), 'Duplicate entry') !== false && strpos($e->getMessage(), "'matricula'") !== false) {
+            $msg = $e -> getMessage();
+
+            // Error de Matricula Duplicada 
+            if (strpos($msg, 'Duplicate entry') !== false && strpos($msg, "'matricula'") !== false) {
                  $response['error'] = "La matrícula '{$data['matricula']}' ya existe.";
-            } else {
-                 error_log("Error en IngresoController->save: " . $e->getMessage());
+                }
+
+            elseif (strpos($msg, "Column 'descripcion' cannot be null") !== false) {
+                $response ['error']= 'El campo descripcion es obligatorio.';
+            }
+
+             else {
+                 error_log("Error en IngresoController->save: " . $msg);
                  $response['error'] = 'Error interno del servidor al guardar. Consulte el log.';
             }
         }
