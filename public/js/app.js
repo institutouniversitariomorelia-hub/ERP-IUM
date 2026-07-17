@@ -903,6 +903,7 @@ const EgresosModule = (function() {
                 const prefillReembolso = (typeof window.PREFILL_EGRESO !== 'undefined' && window.PREFILL_EGRESO && window.PREFILL_EGRESO.from_ingreso);
                 
                 if (Array.isArray(presupuestos) && presupuestos.length > 0) {
+                    console.log("Datos recibidos:", presupuestos);
                     let count = 0;
                     presupuestos.forEach(p => {
                         // Filtro: Ocultar presupuesto fantasma y el de reembolsos en flujo normal
