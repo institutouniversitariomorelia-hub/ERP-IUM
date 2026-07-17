@@ -913,8 +913,8 @@ const EgresosModule = (function() {
                         
 
                         // Afregamos filtro para ocultar el presupuesto de reembolsos si no es un prefill de reembolso
-                        if (p.cat_nombre === 'IUM REEMBOLSOS') return;
-
+                        if (p.cat_nombre === 'IUM REEMBOLSOS' && !prefillReembolso) return;
+                        
                         const pid = parseInt(p.id_presupuesto || p.id);
                         if (!prefillReembolso && pid === 11) return; 
 
@@ -1047,7 +1047,7 @@ const EgresosModule = (function() {
                             $('#modalEgresoTitle').text('Registrar Reembolso');
                             $('#btnSubmitEgreso').text('Confirmar Reembolso');
                             
-                            $('#eg_id_categoria').val('224').prop('disabled', false);
+                            $('#eg_id_categoria').val('224').prop('disabled', false); 
                             if(prefill.id_presupuesto) $('#eg_id_presupuesto').val(prefill.id_presupuesto).prop('disabled', false);
                             
                             $('#formEgreso').find('#eg_from_ingreso').remove();
