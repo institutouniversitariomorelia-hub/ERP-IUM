@@ -193,6 +193,12 @@ class IngresoController {
 
         try {
             if (!$isUpdate) { // Crear
+
+            // Agregar validación para el campo 'descripcion' antes de crear el ingreso
+             if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
+                throw new Exception('El campo Descripción es obligatorio.');
+            }
+            
                 $newId = $this->ingresoModel->createIngreso($data);
                 if ($newId) {
                     // Guardar pagos parciales si existen
