@@ -186,6 +186,10 @@ class EgresoController {
                     if (intval($rowChk['estatus']) === 0) { throw new Exception('El ingreso ya fue reembolsado previamente.'); }
 
                     // Transacción: insertar egreso y marcar ingreso como reembolsado
+                    // Validar que la descripción no esté vacía antes de tocar la base de datos
+if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
+    throw new Exception('El campo Descripción es obligatorio.');
+}
                     $this->db->begin_transaction();
                     $newId = $this->egresoModel->createEgreso($data);
                     if ($newId) {
