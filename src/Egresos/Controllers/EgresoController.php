@@ -187,9 +187,7 @@ class EgresoController {
 
                     // Transacción: insertar egreso y marcar ingreso como reembolsado
                     // Validar que la descripción no esté vacía antes de tocar la base de datos
-if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
-    throw new Exception('El campo Descripción es obligatorio.');
-}
+
                     $this->db->begin_transaction();
                     $newId = $this->egresoModel->createEgreso($data);
                     if ($newId) {
@@ -246,6 +244,11 @@ if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
                             }
                         }
                     }
+
+                    // Validacion para el campo de Descripcion
+                     if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
+    throw new Exception('El campo Descripción es obligatorio.');
+}
 
                     // Solo insertar el egreso
                     $newId = $this->egresoModel->createEgreso($data);
