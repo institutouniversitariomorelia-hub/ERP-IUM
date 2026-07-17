@@ -268,7 +268,7 @@ window.openEgresoModalWithPrefill = function(prefill) {
                     const $selectCat = $('#eg_id_categoria');
                     const $selectPres = $('#eg_id_presupuesto');
 
-                    const catVal = prefill.id_categoria ? String(prefill.id_categoria) : '21';
+                    const catVal = prefill.id_categoria ? String(prefill.id_categoria) : '224'; // Valor por defecto para Reembolsos
                     if ($selectCat.find('option[value="' + catVal + '"]').length === 0) {
                         $selectCat.append('<option value="' + catVal + '">IUM Reembolsos</option>');
                     }
@@ -1046,7 +1046,7 @@ const EgresosModule = (function() {
                             $('#modalEgresoTitle').text('Registrar Reembolso');
                             $('#btnSubmitEgreso').text('Confirmar Reembolso');
                             
-                            $('#eg_id_categoria').val('21').prop('disabled', true);
+                            $('#eg_id_categoria').val('224').prop('disabled', true);
                             if(prefill.id_presupuesto) $('#eg_id_presupuesto').val(prefill.id_presupuesto).prop('disabled', true);
                             
                             $('#formEgreso').find('#eg_from_ingreso').remove();
@@ -1262,7 +1262,7 @@ const EgresosModule = (function() {
         window.PREFILL_EGRESO = {
             from_ingreso: folio, alumno, monto, 
             fecha: new Date().toISOString().slice(0,10),
-            id_categoria: 21, id_presupuesto: 11, proveedor: 'IUM Reembolsos',
+            id_categoria: 224, id_presupuesto: 11, proveedor: 'IUM Reembolsos',
             documento_de_amparo: 'Recibo ingreso #' + folio
         };
         $('#modalEgreso').modal('show');
