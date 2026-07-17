@@ -908,15 +908,15 @@ const EgresosModule = (function() {
                     presupuestos.forEach(p => {
                         // Filtro: Ocultar presupuesto fantasma y el de reembolsos en flujo normal
                         
-                        if (!prefillReembolso && p.fecha && p.fecha.indexOf('3000') === 0) return; 
+                        // if (!prefillReembolso && p.fecha && p.fecha.indexOf('3000') === 0) return; 
 
                         
 
                         // Afregamos filtro para ocultar el presupuesto de reembolsos si no es un prefill de reembolso
-                        if (p.cat_nombre === 'IUM REEMBOLSOS') return;
+                        // if (p.cat_nombre === 'IUM REEMBOLSOS') return;
 
                         const pid = parseInt(p.id_presupuesto || p.id);
-                        if (!prefillReembolso && pid === 11) return; 
+                        // if (!prefillReembolso && pid === 11) return; 
 
                         const disponible = (typeof p.disponible !== 'undefined') ? parseFloat(p.disponible) : 0;
                         const montoFmt = isNaN(disponible) ? 'N/A' : disponible.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
