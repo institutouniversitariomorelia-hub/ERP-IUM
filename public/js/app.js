@@ -909,6 +909,8 @@ const EgresosModule = (function() {
                         
                         if (!prefillReembolso && p.fecha && p.fecha.indexOf('3000') === 0) return; 
 
+                        
+
                         // Afregamos filtro para ocultar el presupuesto de reembolsos si no es un prefill de reembolso
                         if (p.cat_nombre === 'IUM REEMBOLSOS') return;
 
@@ -947,7 +949,7 @@ const EgresosModule = (function() {
                 if (Array.isArray(categorias) && categorias.length > 0) {
                     categorias.forEach(cat => {
                         const cid = parseInt(cat.id_categoria || cat.id);
-                        if (!prefillReembolso && cid === 21) return; 
+                        if (!prefillReembolso && cid === 224) return; 
                         $selectCat.append(`<option value="${cid}">${cat.nombre}</option>`);
                     });
                 } else {
@@ -956,8 +958,8 @@ const EgresosModule = (function() {
                 
                 // Asegurar categoría Reembolsos si es necesario
                 if (prefillReembolso) {
-                    if ($selectCat.find('option[value="21"]').length === 0) {
-                        $selectCat.append('<option value="21">IUM Reembolsos</option>');
+                    if ($selectCat.find('option[value="224"]').length === 0) {
+                        $selectCat.append('<option value="224">IUM Reembolsos</option>');
                     }
                 }
                 $selectCat.prop('disabled', false);
