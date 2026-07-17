@@ -201,6 +201,11 @@ class IngresoController {
     echo json_encode($response);
     exit; // Importante para detener la ejecución aquí
 }
+
+// Validacion para el campo de Descripcion
+                     if (!isset($data['descripcion']) || trim($data['descripcion']) === '') {
+                        throw new Exception('El campo Descripción es obligatorio.'); 
+                        }
             
                 $newId = $this->ingresoModel->createIngreso($data);
                 if ($newId) {
