@@ -114,8 +114,23 @@ class CategoriaController {
                  }
             }
         } catch (Exception $e) {
-            error_log("Error en CategoriaController->save: " . $e->getMessage());
-            $response['error'] = 'Error interno del servidor al guardar.';
+
+        // En lugar de exponer el error completo al usuario, lo registramos y damos un mensaje genérico.
+        //     error_log("Error en CategoriaController->save: " . $e->getMessage());
+        //     $response['error'] = 'Error interno del servidor al guardar.';
+        // }
+
+        //  Mejorar la captura de errores para detectar duplicados y otros problemas de MySQL.
+        } catch (Exception $e) {
+            $msg = $e->getMessage();
+            
+            // Interceptamos el error de MySQL directamente desde la Excepción
+            if (strpos($msg, 'Duplicate') !== false || strpos($msg, '1062') !== false) {
+                $response['error'] = 'Ya existe una categoría con este nombre. Por favor, elige uno diferente.';
+            } else {
+                error_log("Error en CategoriaController->save: " . $msg);
+                $response['error'] = 'Error interno del servidor al guardar.';
+            }
         }
 
         echo json_encode($response);
