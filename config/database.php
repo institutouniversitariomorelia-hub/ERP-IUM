@@ -32,7 +32,10 @@ if (!$conn->set_charset("utf8mb4")) {
 // Se eliminaron aquí para evitar 'Cannot redeclare ...'. Asegúrate de incluir helpers.php después de este archivo (index.php ya lo hace).
 
 // **CAMBIO IMPORTANTE PARA AUDITORÍA**
-// Establecer la variable de sesión de MySQL para los Triggers de Auditoría.
+
+// Establecer la variable de zona horaria de MySQL para los Triggers
+$conn->query("SET time_zone = '-06:00'");
+// Establecer la variable de sesión de MySQL para los Triggers
 // Tus triggers (ej: trg_ingresos_after_insert_aud) usan @auditoria_user_id.
 // El procedimiento (sp_auditar_accion) espera p_user_id, que es alimentado por @auditoria_user_id o NEW.id_user.
 if (isset($_SESSION['user_id'])) {
