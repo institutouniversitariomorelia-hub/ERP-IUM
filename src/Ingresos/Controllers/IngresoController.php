@@ -107,9 +107,19 @@ class IngresoController {
             exit;
         } catch (Exception $e) {
             $this->db->rollback();
-            error_log('Error en reembolsar: ' . $e->getMessage());
-            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-            exit;
+
+           // Obtenemos el error real
+    $msg = $e->getMessage();
+    
+    // Si el error es por el campo 'descripcion', ponemos nuestro mensaje en español
+    if (strpos($msg, 'descripcion') !== false || strpos($msg, '1048') !== false) {
+        $mensaje = ' El campo Descripción es obligatorio.';
+    } else {
+        $mensaje = $msg; // Si es otro error, dejamos el original
+    }
+
+    echo json_encode(['success' => false, 'error' => $mensaje]);
+    exit;
         }
     }
 
