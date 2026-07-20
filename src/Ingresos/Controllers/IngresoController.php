@@ -10,6 +10,8 @@ class IngresoController {
     private $ingresoModel;
     private $categoriaModel;
     private $auditoriaModel;
+    //Se agrego EgresoModel
+    private $egresoModel;
 
     public function __construct($dbConnection) {
         $this->db = $dbConnection;
@@ -87,6 +89,18 @@ class IngresoController {
         // Ejecutar transacción: insertar egreso y marcar ingreso
         try {
             $this->db->begin_transaction();
+            // Validación unificada para Descripción
+        // 1. Aquí validamos directamente sobre los datos que vas a enviar
+$descripcion_valida = trim($_POST['descripcion'] ?? '');
+$observaciones_validas = trim($_POST['observaciones'] ?? '');
+
+// 2. Si ambos están vacíos, lanzamos el error en español
+if (empty($descripcion_valida) && empty($observaciones_validas)) {
+    throw new Exception('El campo Descripción es obligatorio.');
+}
+
+// 3. Actualizamos el array que sí se enviará al modelo
+$egresoData['descripcion'] = !empty($descripcion_valida) ? $descripcion_valida : $observaciones_validas;
             
             $newEgresoId = $this->egresoModel->createEgreso($egresoData);
             if (!$newEgresoId) throw new Exception('No se pudo crear el egreso');
@@ -107,19 +121,9 @@ class IngresoController {
             exit;
         } catch (Exception $e) {
             $this->db->rollback();
-
-           // Obtenemos el error real
-    $msg = $e->getMessage();
-    
-    // Si el error es por el campo 'descripcion', ponemos nuestro mensaje en español
-    if (strpos($msg, 'descripcion') !== false || strpos($msg, '1048') !== false) {
-        $mensaje = ' El campo Descripción es obligatorio.';
-    } else {
-        $mensaje = $msg; // Si es otro error, dejamos el original
-    }
-
-    echo json_encode(['success' => false, 'error' => $mensaje]);
-    exit;
+            error_log('Error en reembolsar: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            exit;
         }
     }
 
