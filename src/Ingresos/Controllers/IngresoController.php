@@ -194,18 +194,34 @@ class IngresoController {
         try {
             if (!$isUpdate) { // Crear
 
-            // Agregar validación para el campo 'descripcion' antes de crear el ingreso
-           if (!isset($data['observaciones']) || trim($data['observaciones']) === '') {
-    // En lugar de throw new Exception, devolvemos el error como lo hace el sistema:
-    $response['error'] = 'El campo Observaciones es obligatorio.';
-    echo json_encode($response);
-    exit; // Importante para detener la ejecución aquí
-}
+//             // Agregar validación para el campo 'descripcion' antes de crear el ingreso
+//            if (!isset($data['observaciones']) || trim($data['observaciones']) === '') {
+//     // En lugar de throw new Exception, devolvemos el error como lo hace el sistema:
+//     $response['error'] = 'El campo Observaciones es obligatorio.';
+//     echo json_encode($response);
+//     exit; // Importante para detener la ejecución aquí
+// }
 
-// Validacion para el campo de Descripcion
-                    if (empty($data['descripcion'])) {
-                        throw new Exception('El campo Descripción es obligatorio.');
-                    }
+// // Validacion para el campo de Descripcion
+//                     if (empty($data['descripcion'])) {
+//                         throw new Exception('El campo Descripción es obligatorio.');
+//                     }
+
+// Validación unificada para Descripción / Observaciones
+        $texto_validacion = '';
+        
+        if (!empty($data['descripcion'])) {
+            $texto_validacion = $data['descripcion'];
+        } elseif (!empty($data['observaciones'])) {
+            $texto_validacion = $data['observaciones'];
+        }
+
+        if (empty(trim($texto_validacion))) {
+            throw new Exception('El campo Descripción u Observaciones es obligatorio.');
+        }
+
+        // Forzamos a que el campo correcto para la base de datos tenga el valor
+        $data['descripcion'] = $texto_validacion;
             
                 $newId = $this->ingresoModel->createIngreso($data);
                 if ($newId) {
