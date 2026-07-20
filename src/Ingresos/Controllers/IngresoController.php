@@ -10,7 +10,7 @@ class IngresoController {
     private $ingresoModel;
     private $categoriaModel;
     private $auditoriaModel;
-    //Se agrego EgresoModel
+    //Se agrego egresoModel para poder crear egresos a partir de ingresos
     private $egresoModel;
 
     public function __construct($dbConnection) {
@@ -96,7 +96,7 @@ $observaciones_validas = trim($_POST['observaciones'] ?? '');
 
 // 2. Si ambos están vacíos, lanzamos el error en español
 if (empty($descripcion_valida) && empty($observaciones_validas)) {
-    throw new Exception('El campo Descripción es obligatorio.');
+    throw new Exception('El campo Descripción u Observaciones es obligatorio.');
 }
 
 // 3. Actualizamos el array que sí se enviará al modelo

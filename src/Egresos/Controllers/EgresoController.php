@@ -280,12 +280,24 @@ class EgresoController {
                  } else { $response['error'] = 'No se pudo actualizar el egreso.'; }
             }
         } catch (Exception $e) {
-            // Revertir cualquier transacción abierta
-            try { if ($this->db) $this->db->rollback(); } catch (Exception $ex) { }
-            error_log("Error en EgresoController->save: " . $e->getMessage());
-            // Devolver el mensaje de la excepción (ej: matrícula duplicada) si existe
-            $response['error'] = $e->getMessage() ?: 'Error interno del servidor al guardar.';
+    // Revertir cualquier transacción abierta
+    try {
+        if ($this->db) {
+            $this->db->rollback();
         }
+    } catch (Exception $ex) {}
+
+    error_log("Error en EgresoController->save: " . $e->getMessage());
+
+    $msg = $e->getMessage();
+
+    // Error de descripción vacía
+    if (strpos($msg, "Column 'descripcion' cannot be null") !== false) {
+        $response['error'] = 'El campo Descripción es obligatorio.';
+    } else {
+        $response['error'] = $msg ?: 'Error interno del servidor al guardar.';
+    }
+}
 
         echo json_encode($response);
         exit;
