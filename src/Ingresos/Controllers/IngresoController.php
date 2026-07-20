@@ -255,7 +255,7 @@ class IngresoController {
 
              else {
                  error_log("Error en IngresoController->save: " . $msg);
-                 $response['error'] = 'Error interno del servidor al guardar. Consulte el log.';
+                 $response['error'] = 'ERROR REAL: ' . $msg;
             }
         }
 
