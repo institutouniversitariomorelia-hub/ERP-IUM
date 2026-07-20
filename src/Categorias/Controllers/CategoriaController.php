@@ -113,7 +113,6 @@ class CategoriaController {
                      $response['error'] = 'No se pudo guardar la categoría en la base de datos. ' . ($dbErr ?: '');
                  }
             }
-        } catch (Exception $e) {
 
         // En lugar de exponer el error completo al usuario, lo registramos y damos un mensaje genérico.
         //     error_log("Error en CategoriaController->save: " . $e->getMessage());
