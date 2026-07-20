@@ -257,21 +257,47 @@ class IngresoController {
                      $response['error'] = 'No se pudo actualizar el ingreso en la base de datos.';
                  }
             }
+            // CATCH DE ERRORES ANTERIOR
+        // } catch (Exception $e) {
+        //     $msg = $e -> getMessage();
+
+        //     // Error de Matricula Duplicada 
+        //     if (strpos($msg, 'Duplicate entry') !== false && strpos($msg, "'matricula'") !== false) {
+        //          $response['error'] = "La matrícula '{$data['matricula']}' ya existe.";
+        //         }
+
+        //     elseif (strpos($msg, "Column 'descripcion' cannot be null") !== false) {
+        //         $response ['error']= 'El campo descripcion es obligatorio.';
+        //     }
+
+        //      else {
+        //          error_log("Error en IngresoController->save: " . $msg);
+        //          $response['error'] = 'ERROR REAL: ' . $msg;
+        //     }
+        // }
+
+        // CATCH DE ERRORES REVISADO Y MEJORADO
+
         } catch (Exception $e) {
-            $msg = $e -> getMessage();
+            $msg = $e->getMessage();
 
-            // Error de Matricula Duplicada 
-            if (strpos($msg, 'Duplicate entry') !== false && strpos($msg, "'matricula'") !== false) {
-                 $response['error'] = "La matrícula '{$data['matricula']}' ya existe.";
-                }
-
+            // 1. Error de Matrícula Duplicada (MySQL)
+            // Quitamos las comillas extra para que detecte el error sin fallar
+            if (strpos($msg, 'Duplicate entry') !== false && strpos(strtolower($msg), 'matricula') !== false) {
+                $response['error'] = "La matrícula ingresada ya se encuentra registrada.";
+            } 
+            // 2. Error de Descripción a nivel de Base de Datos
             elseif (strpos($msg, "Column 'descripcion' cannot be null") !== false) {
-                $response ['error']= 'El campo descripcion es obligatorio.';
+                $response['error'] = 'El campo descripción es obligatorio.';
             }
-
-             else {
-                 error_log("Error en IngresoController->save: " . $msg);
-                 $response['error'] = 'ERROR REAL: ' . $msg;
+            // 3. Nuestra validación manual (Atrapa exactamente el error que creamos arriba)
+            elseif ($msg === 'El campo Descripción u Observaciones es obligatorio.') {
+                $response['error'] = $msg;
+            }
+            // 4. Cualquier otro error técnico (Lo volvemos a ocultar por seguridad)
+            else {
+                error_log("Error en IngresoController->save: " . $msg);
+                $response['error'] = 'Error interno del servidor al guardar. Consulte el log.';
             }
         }
 
