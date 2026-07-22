@@ -231,6 +231,9 @@ class PresupuestoController {
          // Normalizar salida: id, monto_limite, fecha, nombre. Añadir disponible calculado.
          $out = [];
          foreach ($pres as $p) {
+            // Si el presupuesto está cerrado (activo = 0), lo ignoramos y no lo mandamos al frontend
+             if (isset($p['activo']) && (int)$p['activo'] === 0) { continue; }
+
              $idp = $p['id_presupuesto'] ?? ($p['id'] ?? null);
              $monto = floatval($p['monto_limite'] ?? ($p['monto'] ?? 0));
              $gastado = $this->presupuestoModel->getGastadoEnPresupuesto($idp);
@@ -261,7 +264,7 @@ class PresupuestoController {
          header('Content-Type: application/json');
          if (!isset($_SESSION['user_id'])) { echo json_encode(['error' => 'No autorizado']); exit; }
 
-         $subPresupuestos = $this->presupuestoModel->getSubPresupuestos();
+         $subPresupuestos = $this->presupuestoModel->getSubPresupuestosActivos();
          echo json_encode($subPresupuestos);
          exit;
      }
