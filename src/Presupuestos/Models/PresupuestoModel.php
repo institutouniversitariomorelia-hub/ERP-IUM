@@ -60,7 +60,7 @@ class PresupuestoModel {
                          COALESCE((SELECT SUM(e.monto) FROM egresos e WHERE e.id_presupuesto = p.id_presupuesto), 0) AS gastado
                   FROM presupuestos p
                   LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
-                  WHERE p.parent_presupuesto IS NOT NULL
+                  WHERE p.parent_presupuesto IS NOT NULL AND p.activo = 1
                   ORDER BY p.fecha DESC, p.id_presupuesto DESC";
         
         $result = $this->db->query($query);
