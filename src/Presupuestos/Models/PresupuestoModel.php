@@ -83,6 +83,7 @@ class PresupuestoModel {
                 FROM presupuestos p
                 LEFT JOIN egresos e ON e.id_presupuesto = p.id_presupuesto
                 WHERE p.parent_presupuesto IS NOT NULL
+                AND p.activo = 1
                 GROUP BY p.id_presupuesto, p.monto_limite
                 HAVING porcentaje >= 90
                 ORDER BY porcentaje DESC";
