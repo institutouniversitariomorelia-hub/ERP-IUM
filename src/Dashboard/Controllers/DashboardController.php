@@ -265,7 +265,8 @@ class DashboardController {
                         ) as gastado
                      FROM presupuestos p
                      INNER JOIN categorias c ON c.id_categoria = p.id_categoria
-                     WHERE p.monto_limite > 0
+                     WHERE p.monto_limite > 0 
+                     AND p.activo = 1
                      ORDER BY p.id_presupuesto DESC";
             
             $result = $this->db->query($query);
