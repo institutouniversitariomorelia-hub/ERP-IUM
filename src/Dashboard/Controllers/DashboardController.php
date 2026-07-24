@@ -251,6 +251,10 @@ class DashboardController {
      */
     public function getAlertasPresupuesto() {
         header('Content-Type: application/json');
+        // Evitar cache para que siempre se obtengan datos actualizados
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
         
         try {
             // Obtener presupuestos y calcular el gasto total por categoría (sin filtrar por mes)
@@ -260,7 +264,7 @@ class DashboardController {
                         COALESCE(
                             (SELECT SUM(e.monto) 
                              FROM egresos e 
-                             WHERE e.id_categoria = p.id_categoria), 
+                             WHERE e.id_presupuesto = p.id_presupuesto), 
                             0
                         ) as gastado
                      FROM presupuestos p
