@@ -276,7 +276,7 @@ $hasActions = roleCan('edit','presupuestos') || roleCan('delete','presupuestos')
                                             </span>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center gap-2">
+                                    <div class="d-flex align-items-center gap-2 pe-2">
                                         <?php if ($hasActions): ?>
                                         <div class="btn-group btn-group-sm">
                                             <?php if (roleCan('edit','presupuestos')): ?>
