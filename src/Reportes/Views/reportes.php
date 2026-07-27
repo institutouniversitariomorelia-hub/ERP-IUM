@@ -312,7 +312,7 @@ function generarReporteIngresos(tipo) {
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('Error de conexión', 'danger');
+            showNotification('danger','Error de conexión');
         });
 }
 
@@ -322,7 +322,7 @@ function generarReporteIngresosPersonalizado(event) {
     const fechaFin = document.getElementById('ingresos_fecha_fin').value;
     
     if (new Date(fechaInicio) > new Date(fechaFin)) {
-        showNotification('La fecha de inicio no puede ser mayor a la fecha fin', 'warning');
+        showNotification('warning', 'La fecha de inicio no puede ser mayor a la fecha fin');
         return;
     }
     
