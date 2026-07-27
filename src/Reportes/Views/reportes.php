@@ -532,7 +532,7 @@ function generarReporteEgresosPersonalizado(event) {
     const fechaFin = document.getElementById('egresos_fecha_fin').value;
     
     if (new Date(fechaInicio) > new Date(fechaFin)) {
-        showNotification('La fecha de inicio no puede ser mayor a la fecha fin', 'warning');
+        showNotification('warning', 'La fecha de inicio no puede ser mayor a la fecha fin');
         return;
     }
     
@@ -545,12 +545,12 @@ function generarReporteEgresosPersonalizado(event) {
                 datosReporteEgresos = data;
                 mostrarReporteEgresos(data);
             } else {
-                showNotification(data.error || 'Error al generar reporte', 'danger');
+                showNotification(data.error || 'danger', 'Error al generar reporte');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('Error de conexión', 'danger');
+            showNotification( 'danger', 'Error de conexión');
         });
 }
 
@@ -723,12 +723,12 @@ function generarReporteConsolidado(tipo) {
                 datosReporteConsolidado = data;
                 mostrarReporteConsolidado(data);
             } else {
-                showNotification(data.error || 'Error al generar reporte', 'danger');
+                showNotification(data.error || 'danger', 'Error al generar reporte');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('Error de conexión', 'danger');
+            showNotification('danger', 'Error de conexión');
         });
 }
 
@@ -738,7 +738,7 @@ function generarReporteConsolidadoPersonalizado(event) {
     const fechaFin = document.getElementById('consolidado_fecha_fin').value;
     
     if (new Date(fechaInicio) > new Date(fechaFin)) {
-        showNotification('La fecha de inicio no puede ser mayor a la fecha fin', 'warning');
+        showNotification('warning', 'La fecha de inicio no puede ser mayor a la fecha fin');
         return;
     }
     
@@ -751,12 +751,12 @@ function generarReporteConsolidadoPersonalizado(event) {
                 datosReporteConsolidado = data;
                 mostrarReporteConsolidado(data);
             } else {
-                showNotification(data.error || 'Error al generar reporte', 'danger');
+                showNotification(data.error || 'danger', 'Error al generar reporte');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('Error de conexión', 'danger');
+            showNotification('danger','Error de conexión');
         });
 }
 
