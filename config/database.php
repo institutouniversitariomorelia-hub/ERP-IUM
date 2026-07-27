@@ -1,4 +1,6 @@
 <?php
+// Establecer la zona horaria predeterminada para PHP
+date_default_timezone_set('America/Mexico_City');
 // db.php (Conexión a BD y Funciones Auxiliares - MODIFICADO PARA TRIGGERS)
 
 // Validar y limpiar PHPSESSID inválido antes de iniciar sesión
