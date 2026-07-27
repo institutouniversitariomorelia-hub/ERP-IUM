@@ -55,21 +55,20 @@ $logoPath = '../../../public/logo ium rojo (3).png';
         .blank-line { border-bottom: 1px solid #333; height: 18px; width: 100%; }
         
         /* Sección de Monto */
-        .monto-section { background: #f8f9fa; border: 2px solid #9e1b32; padding: 10px; text-align: center; margin: 10px 0; border-radius: 6px; }
+        .monto-section { background: #f8f9fa; border: 2px solid #9e1b32; padding: 6px 10px; text-align: center; margin: 6px 0; border-radius: 6px; }
         .monto-label { font-size: 9px; color: #666; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.2px; }
         .monto-currency { font-size: 9px; color: #666; margin-top: 6px; }
-        .monto-blank { border-bottom: 2px solid #333; height: 24px; width: 60%; margin: 0 auto; }
-
+        .monto-blank { border-bottom: 2px solid #333; height: 20px; width: 60%; margin: 0 auto; }
         /* Cajas de texto vacías */
-        .letra-box { background: #fffdf3; border: 1px solid #e6c565; padding: 8px; margin: 8px 0; border-radius: 4px; min-height: 35px; }
+        .letra-box { background: #fffdf3; border: 1px solid #e6c565; padding: 6px 8px; margin: 6px 0; border-radius: 4px; min-height: 26px; }
         .payment-box { background: #f5f5f5; border: 1px solid #ddd; padding: 7px; margin: 6px 0; border-radius: 4px; min-height: 28px; }
-        .description-box { border: 1px solid #ddd; padding: 9px; min-height: 60px; background: #fafafa; margin: 8px 0; border-radius: 4px; flex: 1; }
+        .description-box { border: 1px solid #ddd; padding: 6px 9px; min-height: 45px; background: #fafafa; margin: 6px 0; border-radius: 4px; flex: 1; }
 
         /* Firma */
-        .signature-section { margin-top: auto; padding-top: 18px; text-align: center; }
+        .signature-section { margin-top: auto; padding-top: 10px; text-align: center; }
         .signature-line { border-top: 1px solid #444; width: 58%; margin: 0 auto 6px auto; }
         .signature-label { font-size: 10px; font-weight: 700; color: #333; letter-spacing: 0.2px; }
-        .signature-name-blank { height: 16px; } /* Espacio vacío para el nombre */
+        .signature-name-blank { height: 10px; } /* Espacio vacío para el nombre */
 
         .footer { font-size: 8px; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 5px; margin-top: 8px; }
 
