@@ -14,7 +14,7 @@ class UserModel {
      */
     public function getAllUsers() {
         // Excluir el Super Usuario (rol 'SU') de la lista general
-        $query = "SELECT id_user as id, nombre, username, rol FROM usuarios WHERE rol <> 'SU' ORDER BY nombre ASC";
+        $query = "SELECT id_user as id, nombre, username, rol FROM usuarios  ORDER BY nombre ASC"; // Se elimino la condicion WHERE rol <> 'SU' para mostrar a todos los usuarios incluidos SU
         $result = $this->db->query($query);
         if ($result) {
             return $result->fetch_all(MYSQLI_ASSOC);
