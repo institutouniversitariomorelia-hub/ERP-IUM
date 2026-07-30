@@ -1780,46 +1780,62 @@ function initSubmitPresupuestoGeneral() {
 
 
    function initSubmitSubPresupuesto() {
-    // 1. Cambiamos el selector al formulario correcto: #formSubPresupuesto
     $(document).off('submit', '#formSubPresupuesto').on('submit', '#formSubPresupuesto', function(e) {
         e.preventDefault();
+        e.stopImmediatePropagation(); // Evita que el navegador apile eventos si das muchos clics
 
         const $form = $(this);
-        const $submitBtn = $form.find('button[type="submit"]');
 
-        // Si el botón ya fue deshabilitado, ignoramos el clic
-        if ($submitBtn.prop('disabled')) {
-            return;
+        // CANDADO DE MEMORIA (Instantáneo)
+        if ($form.data('enviando')) {
+            console.warn("Bloqueo activado: Se evitó un registro duplicado por clics múltiples.");
+            return; 
         }
+        $form.data('enviando', true); // Activamos la bandera de seguridad
 
-        // 2. Ajustamos el ID de la alerta: #subpresupuestoAlert
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalText = $submitBtn.text(); 
+        
+        // CANDADO VISUAL Y FÍSICO
+        $submitBtn.prop('disabled', true).text('Procesando...');
+        $form.css('pointer-events', 'none'); // Congela todo el formulario (nadie puede darle clic a nada)
+
         const $alert = $('#subpresupuestoAlert');
         $alert.addClass('d-none').text('');
 
-        // 3. Ajustamos los IDs de los inputs que ahora llevan "subpres_"
         if (!$('#subpres_parent').val() || !$('#subpres_categoria').val() || !$('#subpres_monto').val()) {
             $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
+            
+            // Si hay error de validación, liberamos los candados
+            $form.data('enviando', false); 
+            $submitBtn.prop('disabled', false).text(originalText);
+            $form.css('pointer-events', 'auto'); 
             return;
         }
-
-        // Deshabilitamos el botón de inmediato
-        const originalText = $submitBtn.text(); 
-        $submitBtn.prop('disabled', true).text('Procesando...');
 
         ajaxCall('presupuesto', 'save', $form.serialize())
             .done(r => {
                 if (r.success) {
                     showSuccess('Guardado correctamente.');
+                    // Al recargar la página, no necesitamos liberar candados
                     setTimeout(() => { window.location.reload(); }, 200);
                 } else {
                     $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
+                    
+                    // Si el servidor marca error, liberamos para que intentes de nuevo
+                    $form.data('enviando', false);
                     $submitBtn.prop('disabled', false).text(originalText);
+                    $form.css('pointer-events', 'auto');
                 }
             })
             .fail(xhr => {
                 mostrarError('guardar sub-presupuesto', xhr);
                 $alert.removeClass('d-none').text('Error inesperado.');
+                
+                // Si falla la red, liberamos candados
+                $form.data('enviando', false);
                 $submitBtn.prop('disabled', false).text(originalText);
+                $form.css('pointer-events', 'auto');
             });
     });
 }
