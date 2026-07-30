@@ -1795,7 +1795,13 @@ function initSubmitPresupuestoGeneral() {
                 $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
                 return;
             }
-guardandoSubPresupuesto = true;
+    guardandoSubPresupuesto = true;
+        // Capturamos el botón y su texto original
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalText = $submitBtn.text(); 
+
+        // Deshabilitamos el botón y cambiamos el mensaje
+        $submitBtn.prop('disabled', true).text('Procesando...');
 
             ajaxCall('presupuesto', 'save', $form.serialize())
                 .done(r => {
@@ -1814,6 +1820,8 @@ guardandoSubPresupuesto = true;
                 .always(() => {
                 // 6. Apertura del candado (siempre al final)
                 guardandoSubPresupuesto = false;
+                // Restauramos el botón a su estado original
+                $submitBtn.prop('disabled', false).text(originalText);
             });
                 
         });
