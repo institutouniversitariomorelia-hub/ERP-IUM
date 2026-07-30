@@ -1777,57 +1777,53 @@ function initSubmitPresupuestoGeneral() {
         });
     }
 
-function initSubmitSubPresupuesto() {
-    $(document).off('submit', '#formPresupuesto').on('submit', '#formPresupuesto', function(e) {
+
+
+    let guardandoSubPresupuesto = false;
+    function initSubmitSubPresupuesto() {
+        $(document).off('submit', '#formPresupuesto').on('submit', '#formPresupuesto', function(e) {
         e.preventDefault();
-
-        const $form = $(this);
-        
-        // 🛑 CANDADO DIRECTO EN EL ELEMENTO HTML: 
-        // Si el formulario ya tiene el indicador activo, matamos el evento de inmediato.
-        if ($form.data('enviando')) {
-            return;
-        }
-
-        const $alert = $('#presupuestoAlert');
-        $alert.addClass('d-none').text('');
-
-        if (!$('#pres_parent').val() || !$('#pres_categoria').val() || !$('#pres_monto').val()) {
-            $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
-            return;
-        }
-
-        // Activamos el candado directamente en los datos del formulario
-        $form.data('enviando', true);
-
-        const $submitBtn = $form.find('button[type="submit"]');
-        const originalText = $submitBtn.text(); 
-        $submitBtn.prop('disabled', true).text('Procesando...');
-
-        ajaxCall('presupuesto', 'save', $form.serialize())
-            .done(r => {
-                if (r.success) {
-                    showSuccess('Guardado correctamente.');
-                    setTimeout(() => { window.location.reload(); }, 200);
-                } else {
-                    $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
-                    // Si el servidor rechaza pero no recarga, liberamos el candado
-                    $form.data('enviando', false);
-                    $submitBtn.prop('disabled', false).text(originalText);
-                }
-            })
-            .fail(xhr => {
-                mostrarError('guardar sub-presupuesto', xhr);
-                $alert.removeClass('d-none').text('Error inesperado.');
-                // Liberamos el candado en caso de fallo de red
-                $form.data('enviando', false);
-                $submitBtn.prop('disabled', false).text(originalText);
-            });
-    });
+            const $form = $(this);
+            const $alert = $('#presupuestoAlert');
+            $alert.addClass('d-none').text('');
+            
+            if (guardandoSubPresupuesto) {
+    return; // Evita que se ejecute si ya hay una petición en curso
 }
 
+            if (!$('#pres_parent').val() || !$('#pres_categoria').val() || !$('#pres_monto').val()) {
+                $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
+                return;
+            }
+    guardandoSubPresupuesto = true;
+        // Capturamos el botón y su texto original
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalText = $submitBtn.text(); 
+
+        // Deshabilitamos el botón y cambiamos el mensaje
+        $submitBtn.prop('disabled', true).text('Procesando...');
+
+            ajaxCall('presupuesto', 'save', $form.serialize())
+    .done(r => {
+        if (r.success) {
+            showSuccess('Guardado correctamente.');
+            // No reabrimos el candado: la recarga limpiará todo
+            setTimeout(() => { window.location.reload(); }, 900);
+        } else {
+            $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
+            guardandoSubPresupuesto = false;
+            $submitBtn.prop('disabled', false).text(originalText);
+        }
+    })
+    .fail(xhr => {
+        mostrarError('guardar sub-presupuesto', xhr);
+        $alert.removeClass('d-none').text('Error inesperado.');
+        guardandoSubPresupuesto = false;
+        $submitBtn.prop('disabled', false).text(originalText);
+    });
                 
-        
+        });
+    }
     
     function initModalPresupuestoCategoria() {
         $('#modalPresupuestoCategoria').on('show.bs.modal', function(event) {
