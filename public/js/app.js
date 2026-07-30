@@ -1777,56 +1777,56 @@ function initSubmitPresupuestoGeneral() {
         });
     }
 
-
-
-    let guardandoSubPresupuesto = false;
-    function initSubmitSubPresupuesto() {
-        $(document).off('submit', '#formPresupuesto').on('submit', '#formPresupuesto', function(e) {
+let guardandoSubPresupuesto = false;
+function initSubmitSubPresupuesto() {
+    $(document).off('submit', '#formPresupuesto').on('submit', '#formPresupuesto', function(e) {
         e.preventDefault();
-            const $form = $(this);
-            const $alert = $('#presupuestoAlert');
-            $alert.addClass('d-none').text('');
-            
-            if (guardandoSubPresupuesto) {
-    return; // Evita que se ejecute si ya hay una petición en curso
-}
 
-            if (!$('#pres_parent').val() || !$('#pres_categoria').val() || !$('#pres_monto').val()) {
-                $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
-                return;
-            }
-    guardandoSubPresupuesto = true;
-        // Capturamos el botón y su texto original
+        // CANDADO ABSOLUTO: Si ya se está procesando, se frena aquí mismo al primer microsegundo
+        if (guardandoSubPresupuesto) {
+            return; 
+        }
+
+        const $form = $(this);
+        const $alert = $('#presupuestoAlert');
+        $alert.addClass('d-none').text('');
+
+        if (!$('#pres_parent').val() || !$('#pres_categoria').val() || !$('#pres_monto').val()) {
+            $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
+            return;
+        }
+
+        // Activamos el candado de inmediato antes de cualquier AJAX
+        guardandoSubPresupuesto = true;
+
         const $submitBtn = $form.find('button[type="submit"]');
         const originalText = $submitBtn.text(); 
-
-        // Deshabilitamos el botón y cambiamos el mensaje
         $submitBtn.prop('disabled', true).text('Procesando...');
 
-            ajaxCall('presupuesto', 'save', $form.serialize())
-                .done(r => {
-                    if (r.success) {
-                        showSuccess('Guardado correctamente.');
-                        setTimeout(() => { window.location.reload(); }, 900);
-                    } else {
-                        $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
-                    }
-                })
-                .fail(xhr => {
-                    mostrarError('guardar sub-presupuesto', xhr);
-                    $alert.removeClass('d-none').text('Error inesperado.');
-                })
-
-                .always(() => {
-                // 6. Apertura del candado (siempre al final)
+        ajaxCall('presupuesto', 'save', $form.serialize())
+            .done(r => {
+                if (r.success) {
+                    showSuccess('Guardado correctamente.');
+                    setTimeout(() => { window.location.reload(); }, 200);
+                } else {
+                    $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
+                }
+            })
+            .fail(xhr => {
+                mostrarError('guardar sub-presupuesto', xhr);
+                $alert.removeClass('d-none').text('Error inesperado.');
+            })
+            .always(() => {
+                // Si hubo error, regresamos el botón y abrimos el candado
                 guardandoSubPresupuesto = false;
-                // Restauramos el botón a su estado original
                 $submitBtn.prop('disabled', false).text(originalText);
             });
+    });
+}
+
                 
-        });
-    }
-    
+        
+
     function initModalPresupuestoCategoria() {
         $('#modalPresupuestoCategoria').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
