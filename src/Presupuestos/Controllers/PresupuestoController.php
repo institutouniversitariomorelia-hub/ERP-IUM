@@ -69,7 +69,9 @@ class PresupuestoController {
 
         // Si detectamos campos de sub-presupuesto, obligamos a que el $id propio sea null 
         // para que MySQL use el AUTO_INCREMENT libre y no toque al padre.
-        if (isset($data['id_categoria']) || isset($data['categoria']) || isset($data['monto'])) {
+       // Si no viene un ID de edición explícito pero es un sub-presupuesto,
+        // nos aseguramos de que sea un INSERT (nuevo sub-presupuesto).
+        if (empty($id) && (isset($data['id_categoria']) || isset($data['monto']))) {
             $id = null;
         }
         // ==========================================
