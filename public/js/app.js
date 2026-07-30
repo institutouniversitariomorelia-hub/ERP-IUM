@@ -1777,17 +1777,18 @@ function initSubmitPresupuestoGeneral() {
         });
     }
 
-let guardandoSubPresupuesto = false;
 function initSubmitSubPresupuesto() {
     $(document).off('submit', '#formPresupuesto').on('submit', '#formPresupuesto', function(e) {
         e.preventDefault();
 
-        // CANDADO ABSOLUTO: Si ya se está procesando, se frena aquí mismo al primer microsegundo
-        if (guardandoSubPresupuesto) {
-            return; 
+        const $form = $(this);
+        
+        // 🛑 CANDADO DIRECTO EN EL ELEMENTO HTML: 
+        // Si el formulario ya tiene el indicador activo, matamos el evento de inmediato.
+        if ($form.data('enviando')) {
+            return;
         }
 
-        const $form = $(this);
         const $alert = $('#presupuestoAlert');
         $alert.addClass('d-none').text('');
 
@@ -1796,8 +1797,8 @@ function initSubmitSubPresupuesto() {
             return;
         }
 
-        // Activamos el candado de inmediato antes de cualquier AJAX
-        guardandoSubPresupuesto = true;
+        // Activamos el candado directamente en los datos del formulario
+        $form.data('enviando', true);
 
         const $submitBtn = $form.find('button[type="submit"]');
         const originalText = $submitBtn.text(); 
@@ -1810,15 +1811,16 @@ function initSubmitSubPresupuesto() {
                     setTimeout(() => { window.location.reload(); }, 200);
                 } else {
                     $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
+                    // Si el servidor rechaza pero no recarga, liberamos el candado
+                    $form.data('enviando', false);
+                    $submitBtn.prop('disabled', false).text(originalText);
                 }
             })
             .fail(xhr => {
                 mostrarError('guardar sub-presupuesto', xhr);
                 $alert.removeClass('d-none').text('Error inesperado.');
-            })
-            .always(() => {
-                // Si hubo error, regresamos el botón y abrimos el candado
-                guardandoSubPresupuesto = false;
+                // Liberamos el candado en caso de fallo de red
+                $form.data('enviando', false);
                 $submitBtn.prop('disabled', false).text(originalText);
             });
     });
@@ -1826,7 +1828,7 @@ function initSubmitSubPresupuesto() {
 
                 
         
-
+    
     function initModalPresupuestoCategoria() {
         $('#modalPresupuestoCategoria').on('show.bs.modal', function(event) {
             const button = event.relatedTarget;
