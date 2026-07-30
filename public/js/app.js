@@ -1779,51 +1779,50 @@ function initSubmitPresupuestoGeneral() {
 
 
 
-    let guardandoSubPresupuesto = false;
-    function initSubmitSubPresupuesto() {
-        $(document).off('submit', '#formPresupuesto').on('submit', '#formPresupuesto', function(e) {
+   function initSubmitSubPresupuesto() {
+    // 1. Cambiamos el selector al formulario correcto: #formSubPresupuesto
+    $(document).off('submit', '#formSubPresupuesto').on('submit', '#formSubPresupuesto', function(e) {
         e.preventDefault();
-            const $form = $(this);
-            const $alert = $('#presupuestoAlert');
-            $alert.addClass('d-none').text('');
-            
-            if (guardandoSubPresupuesto) {
-    return; // Evita que se ejecute si ya hay una petición en curso
-}
 
-            if (!$('#pres_parent').val() || !$('#pres_categoria').val() || !$('#pres_monto').val()) {
-                $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
-                return;
-            }
-    guardandoSubPresupuesto = true;
-        // Capturamos el botón y su texto original
+        const $form = $(this);
         const $submitBtn = $form.find('button[type="submit"]');
-        const originalText = $submitBtn.text(); 
 
-        // Deshabilitamos el botón y cambiamos el mensaje
+        // Si el botón ya fue deshabilitado, ignoramos el clic
+        if ($submitBtn.prop('disabled')) {
+            return;
+        }
+
+        // 2. Ajustamos el ID de la alerta: #subpresupuestoAlert
+        const $alert = $('#subpresupuestoAlert');
+        $alert.addClass('d-none').text('');
+
+        // 3. Ajustamos los IDs de los inputs que ahora llevan "subpres_"
+        if (!$('#subpres_parent').val() || !$('#subpres_categoria').val() || !$('#subpres_monto').val()) {
+            $alert.removeClass('d-none').text('Todos los campos son obligatorios.');
+            return;
+        }
+
+        // Deshabilitamos el botón de inmediato
+        const originalText = $submitBtn.text(); 
         $submitBtn.prop('disabled', true).text('Procesando...');
 
-            ajaxCall('presupuesto', 'save', $form.serialize())
-    .done(r => {
-        if (r.success) {
-            showSuccess('Guardado correctamente.');
-            // No reabrimos el candado: la recarga limpiará todo
-            setTimeout(() => { window.location.reload(); }, 900);
-        } else {
-            $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
-            guardandoSubPresupuesto = false;
-            $submitBtn.prop('disabled', false).text(originalText);
-        }
-    })
-    .fail(xhr => {
-        mostrarError('guardar sub-presupuesto', xhr);
-        $alert.removeClass('d-none').text('Error inesperado.');
-        guardandoSubPresupuesto = false;
-        $submitBtn.prop('disabled', false).text(originalText);
+        ajaxCall('presupuesto', 'save', $form.serialize())
+            .done(r => {
+                if (r.success) {
+                    showSuccess('Guardado correctamente.');
+                    setTimeout(() => { window.location.reload(); }, 200);
+                } else {
+                    $alert.removeClass('d-none').text(r.error || 'Error al guardar.');
+                    $submitBtn.prop('disabled', false).text(originalText);
+                }
+            })
+            .fail(xhr => {
+                mostrarError('guardar sub-presupuesto', xhr);
+                $alert.removeClass('d-none').text('Error inesperado.');
+                $submitBtn.prop('disabled', false).text(originalText);
+            });
     });
-                
-        });
-    }
+}
     
     function initModalPresupuestoCategoria() {
         $('#modalPresupuestoCategoria').on('show.bs.modal', function(event) {
