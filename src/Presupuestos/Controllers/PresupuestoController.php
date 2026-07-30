@@ -65,15 +65,19 @@ class PresupuestoController {
         
         
         // Capturamos el ID normal por si fuera una edición de presupuesto general
-        $id = $data['id'] ?? $data['id_presupuesto'] ?? $data['presupuesto_id'] ?? null;
+    //     $id = $data['id'] ?? $data['id_presupuesto'] ?? $data['presupuesto_id'] ?? null;
 
-        // Si detectamos campos de sub-presupuesto, obligamos a que el $id propio sea null 
-        // para que MySQL use el AUTO_INCREMENT libre y no toque al padre.
-       // Si no viene un ID de edición explícito pero es un sub-presupuesto,
-        // nos aseguramos de que sea un INSERT (nuevo sub-presupuesto).
-        if (empty($id) && (isset($data['id_categoria']) || isset($data['monto']))) {
-            $id = null;
-        }
+    //     // Si detectamos campos de sub-presupuesto, obligamos a que el $id propio sea null 
+    //     // para que MySQL use el AUTO_INCREMENT libre y no toque al padre.
+    //    // Si no viene un ID de edición explícito pero es un sub-presupuesto,
+    //     // nos aseguramos de que sea un INSERT (nuevo sub-presupuesto).
+    //     if (empty($id) && (isset($data['id_categoria']) || isset($data['monto']))) {
+    //         $id = null;
+    //     }
+
+        // Capturar ID de edición (si viene vacío, será null para crear un nuevo registro)
+            $id = !empty($data['id']) ? (int)$data['id'] : null;
+
         // ==========================================
         $response = ['success' => false];
 
