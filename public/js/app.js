@@ -740,7 +740,7 @@ const IngresosModule = (function() {
         $(document).on('submit', '#formIngreso', function(e) {
             e.preventDefault();
             const $form = $(this);
-            const $btnSubmit = $form.find('button [type="submit"]');
+            const $btnSubmit = $form.find('button[type="submit"]');
 
             //CANDADO 1: Memoria. Si ya se está enviando, abortar clics fantasma.
             if($form.data('enviando')){
