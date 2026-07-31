@@ -737,7 +737,7 @@ const IngresosModule = (function() {
     }
 
     function initSubmitIngreso() {
-        $(document).on('submit', '#formIngreso', function(e) {
+        $(document).off('submit', '#formIngreso').on('submit', '#formIngreso', function(e) {
             e.preventDefault();
             const $form = $(this);
             const $btnSubmit = $form.find('button[type="submit"]');
