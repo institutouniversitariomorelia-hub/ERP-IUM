@@ -737,83 +737,108 @@ const IngresosModule = (function() {
     }
 
     function initSubmitIngreso() {
-        $(document).off('submit', '#formIngreso').on('submit', '#formIngreso', function(e) {
-            e.preventDefault();
-            const $form = $(this);
-            const $btnSubmit = $form.find('button[type="submit"]');
+    $(document).off('submit', '#formIngreso').on('submit', '#formIngreso', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation(); // 🛑 Evita que se apilen eventos si hay clics múltiples
 
-            //CANDADO 1: Memoria. Si ya se está enviando, abortar clics fantasma.
-            if($form.data('enviando')){
-                return;
+        const $form = $(this);
+
+        // 1. CANDADO DE MEMORIA (Instantáneo)
+        if ($form.data('enviando')) {
+            console.warn("Bloqueo activado: Se evitó un registro duplicado por clics múltiples.");
+            return; 
+        }
+        $form.data('enviando', true); // Activamos la bandera de seguridad
+
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalText = $submitBtn.text(); 
+        
+        // 2 y 3. CANDADO VISUAL, FÍSICO Y CONGELAMIENTO DE FORMULARIO
+        $submitBtn.prop('disabled', true).text('Guardando...');
+        $form.css('pointer-events', 'none');
+
+        // Función auxiliar interna para liberar candados si una validación falla
+        const liberarCandados = () => {
+            $form.data('enviando', false);
+            $submitBtn.prop('disabled', false).text(originalText);
+            $form.css('pointer-events', 'auto');
+        };
+
+        const esDividido = $('#toggleCobroDividido').is(':checked');
+        let formData = $form.serializeArray();
+        let dataObj = {};
+        formData.forEach(item => { dataObj[item.name] = item.value; });
+
+        if (!esDividido) {
+            const metodoUnico = $('#in_metodo_unico').val();
+            if (!metodoUnico) { 
+                showError('Debe seleccionar un método de pago.'); 
+                liberarCandados();
+                return; 
+            }
+            dataObj.metodo_de_pago = metodoUnico;
+            dataObj.pagos = JSON.stringify([{ metodo: metodoUnico, monto: ERPUtils.parseMoney($('#in_monto').val()) }]);
+        } else {
+            const montoTotal = ERPUtils.parseMoney($('#in_monto').val()) || 0;
+            let sumaParciales = 0;
+            let pagos = [];
+            let valido = true;
+            
+            $('.pago-parcial-item').each(function() {
+                const metodo = $(this).find('.pago-metodo').val();
+                const monto = ERPUtils.parseMoney($(this).find('.pago-monto').val()) || 0;
+                if (!metodo || monto <= 0) { 
+                    valido = false; 
+                    return false; 
+                }
+                sumaParciales += monto;
+                pagos.push({ metodo: metodo, monto: monto });
+            });
+
+            if (!valido) { 
+                showError('Todos los pagos parciales deben tener método y monto válido.'); 
+                liberarCandados();
+                return; 
             }
 
-            const esDividido = $('#toggleCobroDividido').is(':checked');
-            let formData = $(this).serializeArray(); // Serialize form data
-            let dataObj = {};
-            formData.forEach(item => { dataObj[item.name] = item.value; });
-            
-            if (!esDividido) {
-                const metodoUnico = $('#in_metodo_unico').val();
-                if (!metodoUnico) { showError('Debe seleccionar un método de pago.'); return; }
-                dataObj.metodo_de_pago = metodoUnico;
-                dataObj.pagos = JSON.stringify([{ metodo: metodoUnico, monto: ERPUtils.parseMoney($('#in_monto').val()) }]);
-            } else {
-                const montoTotal = ERPUtils.parseMoney($('#in_monto').val()) || 0;
-                let sumaParciales = 0;
-                const pagos = [];
-                let valido = true;
-                $('.pago-parcial-item').each(function() {
-                    const metodo = $(this).find('.pago-metodo').val();
-                    const monto = ERPUtils.parseMoney($(this).find('.pago-monto').val()) || 0;
-                    if (!metodo || monto <= 0) { valido = false; return false; }
-                    sumaParciales += monto;
-                    pagos.push({ metodo: metodo, monto: monto });
-                });
-                if (!valido) { showError('Todos los pagos parciales deben tener método y monto válido.'); return; }
-                const diferencia = Math.abs(montoTotal - sumaParciales);
-                if (diferencia >= 0.01) { showError(`La suma de pagos parciales no coincide con el total.`); return; }
-                dataObj.metodo_de_pago = 'Mixto';
-                dataObj.pagos = JSON.stringify(pagos);
+            const diferencia = Math.abs(montoTotal - sumaParciales);
+            if (diferencia >= 0.01) { 
+                showError('La suma de pagos parciales no coincide con el total.'); 
+                liberarCandados();
+                return; 
             }
-            
-            const esEdicion = !!dataObj.id;
+            dataObj.metodo_de_pago = 'Mixto';
+            dataObj.pagos = JSON.stringify(pagos);
+        }
 
-            // CANDADO 2: Bloqueo físico e indicador visual antes del AJAX
-            
-            $form.data('enviando', true);
-            const textoOriginalBtn = $btnSubmit.text();
-            $btnSubmit.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...');
+        const esEdicion = !!dataObj.id;
 
-            ajaxCall('ingreso', 'save', dataObj)
-                .done(r => {
-                    if (r.success) {
-                        if (esEdicion) {
-                            showSuccess('Ingreso actualizado correctamente.');
-                        } else {
-                            showSuccess('Ingreso guardado correctamente.');
-                            if (r.newId) {
-                                try {
-                                    // Abrir comprobante de ingreso en una nueva pestaña
-                                    window.open(`generate_receipt.php?folio=${encodeURIComponent(r.newId)}`, '_blank');
-                                } catch (e) {}
-                            }
-                        }
-                        setTimeout(() => { window.location.reload(); }, 900);
+        ajaxCall('ingreso', 'save', dataObj)
+            .done(r => {
+                if (r.success) {
+                    if (esEdicion) {
+                        showSuccess('Ingreso actualizado correctamente.');
                     } else {
-                        showError('Error al guardar: ' + (r.error || 'Verifique datos.'));
-                        // CANDADO 3: Liberar si el backend rechaza la operación por validación
-                        $form.data('enviando', false);
-                         $btnSubmit.prop('disabled', false).text(textoOriginalBtn);
-
+                        showSuccess('Ingreso guardado correctamente.');
                     }
-                })
-                .fail(xhr => mostrarError('guardar ingreso', xhr));
-                // CANDADO 3: Liberar si la petición HTTP falla (500, 404, red caída)
-                $form.data('enviando', false);
-                $btnSubmit.prop('disabled', false).text(textoOriginalBtn);
-        });
-    }
-
+                    if (r.newId) {
+                        try {
+                            window.open(`generate_receipt.php?folio=${encodeURIComponent(r.newId)}`, '_blank');
+                        } catch (e) {}
+                    }
+                    // Al recargar, dejamos el estado congelado hasta que el navegador limpie la página
+                    setTimeout(() => { window.location.reload(); }, 900);
+                } else {
+                    showError('Error al guardar: ' + (r.error || 'Verifique datos.'));
+                    liberarCandados();
+                }
+            })
+            .fail(xhr => {
+                mostrarError('guardar ingreso', xhr);
+                liberarCandados();
+            });
+    });
+}
     function initEliminarIngreso() {
         $(document).on('click', '.btn-del-ingreso', function() {
             const id = $(this).data('id');
