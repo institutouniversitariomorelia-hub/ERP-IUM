@@ -782,7 +782,7 @@ const IngresosModule = (function() {
             
             $form.data('enviando', true);
             const textoOriginalBtn = $btnSubmit.text();
-            $btnSubmit.prop('disable', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...');
+            $btnSubmit.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...');
 
             ajaxCall('ingreso', 'save', dataObj)
                 .done(r => {
@@ -803,14 +803,14 @@ const IngresosModule = (function() {
                         showError('Error al guardar: ' + (r.error || 'Verifique datos.'));
                         // CANDADO 3: Liberar si el backend rechaza la operación por validación
                         $form.data('enviando', false);
-                         $btnSubmit.prop('disable', false).text(textoOriginalBtn);
+                         $btnSubmit.prop('disabled', false).text(textoOriginalBtn);
 
                     }
                 })
                 .fail(xhr => mostrarError('guardar ingreso', xhr));
                 // CANDADO 3: Liberar si la petición HTTP falla (500, 404, red caída)
                 $form.data('enviando', false);
-                $btnSubmit.prop('disable', false).text(textoOriginalBtn);
+                $btnSubmit.prop('disabled', false).text(textoOriginalBtn);
         });
     }
 
