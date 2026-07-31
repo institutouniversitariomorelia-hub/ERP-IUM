@@ -739,6 +739,14 @@ const IngresosModule = (function() {
     function initSubmitIngreso() {
         $(document).on('submit', '#formIngreso', function(e) {
             e.preventDefault();
+            const $form = $(this);
+            const $btnSubmit = $form.find('button [type="submit"]');
+
+            //CANDADO 1: Memoria. Si ya se está enviando, abortar clics fantasma.
+            if($form.data('enviando')){
+                return;
+            }
+
             const esDividido = $('#toggleCobroDividido').is(':checked');
             let formData = $(this).serializeArray(); // Serialize form data
             let dataObj = {};
@@ -769,6 +777,13 @@ const IngresosModule = (function() {
             }
             
             const esEdicion = !!dataObj.id;
+
+            // CANDADO 2: Bloqueo físico e indicador visual antes del AJAX
+            
+            $form.data('enviando', true);
+            const textoOriginalBtn = $btnSubmit.text();
+            $btnSubmit.prop('disable', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...');
+
             ajaxCall('ingreso', 'save', dataObj)
                 .done(r => {
                     if (r.success) {
@@ -786,9 +801,16 @@ const IngresosModule = (function() {
                         setTimeout(() => { window.location.reload(); }, 900);
                     } else {
                         showError('Error al guardar: ' + (r.error || 'Verifique datos.'));
+                        // CANDADO 3: Liberar si el backend rechaza la operación por validación
+                        $form.data('enviando', false);
+                         $btnSubmit.prop('disable', false).text(textoOriginalBtn);
+
                     }
                 })
                 .fail(xhr => mostrarError('guardar ingreso', xhr));
+                // CANDADO 3: Liberar si la petición HTTP falla (500, 404, red caída)
+                $form.data('enviando', false);
+                $btnSubmit.prop('disable', false).text(textoOriginalBtn);
         });
     }
 
