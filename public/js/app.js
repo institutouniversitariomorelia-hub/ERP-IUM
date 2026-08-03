@@ -1116,36 +1116,99 @@ const EgresosModule = (function() {
     }
 
     // 3. Submit Egreso (Tu lógica original)
-    function initSubmitEgreso() {
-        $(document).on('submit', '#formEgreso', function(e) {
-            e.preventDefault();
-            const serialized = $(this).serializeArray();
-            const formData = {};
-            serialized.forEach(item => { formData[item.name] = item.value; });
+    // function initSubmitEgreso() {
+    //     $(document).on('submit', '#formEgreso', function(e) {
+    //         e.preventDefault();
+    //         const serialized = $(this).serializeArray();
+    //         const formData = {};
+    //         serialized.forEach(item => { formData[item.name] = item.value; });
             
-            try {
-                const monto = parseFloat((formData.monto || '0').replace(/,/g, ''));
-                const $opt = $('#eg_id_presupuesto option:selected');
-                const esPerm = $opt.data('es-permanente') == '1';
-                const disp = parseFloat($opt.data('disponible'));
+    //         try {
+    //             const monto = parseFloat((formData.monto || '0').replace(/,/g, ''));
+    //             const $opt = $('#eg_id_presupuesto option:selected');
+    //             const esPerm = $opt.data('es-permanente') == '1';
+    //             const disp = parseFloat($opt.data('disponible'));
                 
-                if (!esPerm && !isNaN(disp) && monto > disp) {
-                    showError(`Monto excede disponible (${disp.toLocaleString('es-MX', {style:'currency', currency:'MXN'})})`);
-                    return;
-                }
-            } catch(ex){}
+    //             if (!esPerm && !isNaN(disp) && monto > disp) {
+    //                 showError(`Monto excede disponible (${disp.toLocaleString('es-MX', {style:'currency', currency:'MXN'})})`);
+    //                 return;
+    //             }
+    //         } catch(ex){}
 
-            ajaxCall('egreso', 'save', formData).done(r => {
-                if (r.success) {
-                    $('#modalEgreso').modal('hide');
-                    if (r.folio) window.open(`generate_receipt.php?folio=${r.folio}&tipo=egreso`, '_blank');
-                    setTimeout(() => window.location.reload(), 500);
-                } else {
-                    showError(r.error || 'Error al guardar');
-                }
-            }).fail(xhr => mostrarError('guardar egreso', xhr));
+            
+    //         ajaxCall('egreso', 'save', formData).done(r => {
+    //             if (r.success) {
+    //                 $('#modalEgreso').modal('hide');
+    //                 if (r.folio) window.open(`generate_receipt.php?folio=${r.folio}&tipo=egreso`, '_blank');
+    //                 setTimeout(() => window.location.reload(), 500);
+    //             } else {
+    //                 showError(r.error || 'Error al guardar');
+    //             }
+    //         }).fail(xhr => mostrarError('guardar egreso', xhr));
+    //     });
+    // }
+
+    // SE MODIFICO LA FUNCION CON CANDADOS Y VALIDACIONES MEJORADAS
+    function initSubmitEgreso() {
+    $(document).off('submit', '#formEgreso').on('submit', '#formEgreso', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation(); // Evita que se apilen eventos si hay clics múltiples
+
+        const $form = $(this);
+
+        // 1. CANDADO DE MEMORIA (Instantáneo)
+        if ($form.data('enviando')) {
+            console.warn("Bloqueo activado: Se evitó un registro duplicado por clics múltiples.");
+            return;
+        }
+        $form.data('enviando', true); // Activamos la bandera de seguridad
+
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalText = $submitBtn.text();
+
+        // 2 y 3. CANDADO VISUAL, FÍSICO Y CONGELAMIENTO DE FORMULARIO
+        $submitBtn.prop('disabled', true).text('Guardando...');
+        $form.css('pointer-events', 'none');
+
+        // Función auxiliar interna para liberar candados si una validación o la petición falla
+        const liberarCandados = () => {
+            $form.data('enviando', false);
+            $submitBtn.prop('disabled', false).text(originalText);
+            $form.css('pointer-events', 'auto');
+        };
+
+        const serialized = $form.serializeArray();
+        const formData = {};
+        serialized.forEach(item => { formData[item.name] = item.value; });
+
+        try {
+            const monto = parseFloat((formData.monto || '0').replace(/,/g, ''));
+            const $opt = $('#eg_id_presupuesto option:selected');
+            const esPerm = $opt.data('es-permanente') == '1';
+            const disp = parseFloat($opt.data('disponible'));
+
+            if (!esPerm && !isNaN(disp) && monto > disp) {
+                showError(`Monto excede disponible (${disp.toLocaleString('es-MX', {style:'currency', currency:'MXN'})})`);
+                liberarCandados(); // Liberamos si el monto excede el presupuesto
+                return;
+            }
+        } catch(ex){}
+
+        ajaxCall('egreso', 'save', formData).done(r => {
+            if (r.success) {
+                $('#modalEgreso').modal('hide');
+                if (r.folio) window.open(`generate_receipt.php?folio=${r.folio}&tipo=egreso`, '_blank');
+                setTimeout(() => window.location.reload(), 500);
+            } else {
+                showError(r.error || 'Error al guardar');
+                liberarCandados(); // Liberamos si la respuesta del backend indica error
+            }
+        }).fail(xhr => {
+            mostrarError('guardar egreso', xhr);
+            liberarCandados(); // Liberamos si falla la petición HTTP/Server
         });
-    }
+    });
+}
 
     function initSubmitReembolso() {
         $(document).on('submit', '#formReembolso', function(e) {
