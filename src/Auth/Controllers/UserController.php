@@ -138,13 +138,19 @@ class UserController {
             }
             $stmt->close();
 
-        } catch (Exception $e) {
-            error_log("Excepción en UserController->save: " . $e->getMessage());
-            $response['error'] = 'Error interno del servidor al guardar.';
-        }
-        echo json_encode($response);
-        exit;
+       } catch (Exception $e) {
+    error_log("Excepción en UserController->save: " . $e->getMessage());
+    
+    // Verificamos si la excepción fue causada por un dato duplicado (código 1062)
+    if ($e->getCode() == 1062) {
+        $response['error'] = 'El nombre de usuario ya existe. Por favor, elige otro.';
+    } else {
+        $response['error'] = 'Error interno del servidor al guardar.';
     }
+    
+    echo json_encode($response);
+    exit;
+}}
 
     /**
      * Acción AJAX: Elimina un usuario.
